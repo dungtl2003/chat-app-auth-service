@@ -15,15 +15,29 @@ info:
       method: "insert_user"
 
 spring:
+  config:
+    import: secrets.yaml
   security:
     user:
-      name: Dung
-      password: password
+      name: ${security.username}
+      password: ${security.password}
   output:
     ansi:
       enabled: always # color terminal output
-
-#
+  datasource:
+    url: ${postgresql.driver}/${postgresql.host}:${postgresql.port}/${postgresql.database}?sslmode=require&sslcert=${postgresql.root-cert}
+    username: ${postgresql.user}
+    password: ${postgresql.password}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+      show-sql: true
+      properties:
+        hibernate:
+          format_sql: true
+      database: postgresql
+#    open-in-view: false # TODO: add later (https://stackoverflow.com/questions/30549489/what-is-this-spring-jpa-open-in-view-true-property-in-spring-boot)
 # Logging
 # The current logger is log4j2
 # The default log4j2 config file is resources/log4j2-spring.xml
@@ -35,6 +49,7 @@ logging:
     org:
       springframework:
         web: debug
+        jdbc: debug
       hibernate: error
 
 # Lazy initialization
