@@ -47,6 +47,7 @@
 			<artifactId>spring-boot-starter-actuator</artifactId>
 		</dependency>
 
+		<!-- For security purposes -->
 		<!-- https://docs.spring.io/spring-security/reference/getting-spring-security.html -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>

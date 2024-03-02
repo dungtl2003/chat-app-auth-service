@@ -1,0 +1,41 @@
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,beans
+  info:
+    env:
+      enabled: true
+
+info:
+  app:
+    name: "authentication and authorization service"
+    description: "Huy ngu vl"
+    metadata:
+      method: "insert_user"
+
+spring:
+  security:
+    user:
+      name: Dung
+      password: password
+  output:
+    ansi:
+      enabled: always # color terminal output
+
+#
+# Logging
+# The current logger is log4j2
+# The default log4j2 config file is resources/log4j2-spring.xml
+# You can define attributes here to override the value in config file
+#
+logging:
+  level:
+    root: info
+    org:
+      springframework:
+        web: debug
+      hibernate: error
+
+# Lazy initialization
+# spring.main.lazy-initialization=true
