@@ -90,3 +90,4 @@ out/
 ## Miscellaneous
 ##############################
 *.log
+secrets.*
