@@ -9,10 +9,10 @@
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <groupId>org.service.auth</groupId>
-    <artifactId>chat-app-authentication-service</artifactId>
+    <artifactId>chat-app-auth-service</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>chat-app-authentication-service</name>
-    <description>authentication service for chat application</description>
+    <name>chat-app-auth-service</name>
+    <description>authentication and authorization service for chat application</description>
     <properties>
         <java.version>21</java.version>
     </properties>

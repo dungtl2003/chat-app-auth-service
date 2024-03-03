@@ -1,8 +1,8 @@
-package org.service.auth.chatappauthenticationservice.utils;
+package org.service.auth.chatappauthservice.utils;
 
 import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Converter;
-import org.service.auth.chatappauthenticationservice.entity.enums.Gender;
+import org.service.auth.chatappauthservice.entity.enums.Gender;
 
 import java.util.stream.Stream;
 

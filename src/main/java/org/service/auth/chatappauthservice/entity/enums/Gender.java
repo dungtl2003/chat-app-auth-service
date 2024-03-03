@@ -1,4 +1,4 @@
-package org.service.auth.chatappauthenticationservice.entity.enums;
+package org.service.auth.chatappauthservice.entity.enums;
 
 public enum Gender {
 

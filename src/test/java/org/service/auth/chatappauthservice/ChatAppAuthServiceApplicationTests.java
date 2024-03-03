@@ -1,10 +1,10 @@
-package org.service.auth.chatappauthenticationservice;
+package org.service.auth.chatappauthservice;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
-class ChatAppAuthenticationServiceApplicationTests {
+class ChatAppAuthServiceApplicationTests {
 
 	@Test
 	void contextLoads() {

@@ -1,4 +1,4 @@
-package org.service.auth.chatappauthenticationservice.controller;
+package org.service.auth.chatappauthservice.controller;
 
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;

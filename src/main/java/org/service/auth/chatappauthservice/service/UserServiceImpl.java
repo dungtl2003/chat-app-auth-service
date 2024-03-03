@@ -1,7 +1,7 @@
-package org.service.auth.chatappauthenticationservice.service;
+package org.service.auth.chatappauthservice.service;
 
 import lombok.AllArgsConstructor;
-import org.service.auth.chatappauthenticationservice.repository.UserRepository;
+import org.service.auth.chatappauthservice.repository.UserRepository;
 
 @AllArgsConstructor
 public class UserServiceImpl implements UserService {
