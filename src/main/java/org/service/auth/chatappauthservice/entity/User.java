@@ -21,47 +21,48 @@ import java.time.LocalDateTime;
 @Table(name = "users")
 public class User {
 
-    @Id
-    private Long userId;
+	@Id
+	private Long userId;
 
-    @Column(nullable = false, unique = true, columnDefinition = "text")
-    private String email;
+	@Column(nullable = false, unique = true, columnDefinition = "text")
+	private String email;
 
-    @Column(nullable = false, columnDefinition = "text")
-    private String username;
+	@Column(nullable = false, columnDefinition = "text")
+	private String username;
 
-    @Column(nullable = false, columnDefinition = "text")
-    private String password;
+	@Column(nullable = false, columnDefinition = "text")
+	private String password;
 
-    @Column(nullable = false, columnDefinition = "text")
-    private String firstName;
+	@Column(nullable = false, columnDefinition = "text")
+	private String firstName;
 
-    @Column(nullable = false, columnDefinition = "text")
-    private String lastName;
+	@Column(nullable = false, columnDefinition = "text")
+	private String lastName;
 
-    @Column(nullable = false)
-    private LocalDate birthday;
+	@Column(nullable = false)
+	private LocalDate birthday;
 
-    @Column(nullable = false, columnDefinition = "text")
-    private Gender gender;
+	@Column(nullable = false, columnDefinition = "text")
+	private Gender gender;
 
-    @Column(nullable = false, columnDefinition = "text")
-    private String phoneNumber;
+	@Column(nullable = false, columnDefinition = "text")
+	private String phoneNumber;
 
-    @Column(columnDefinition = "json")
-    private String privacy;
+	@Column(columnDefinition = "json")
+	private String privacy;
 
-    @Column(nullable = false)
-    private Boolean isActive;
+	@Column(nullable = false)
+	private Boolean isActive;
 
-    @Column(columnDefinition = "text")
-    private String avatarLocation;
+	@Column(columnDefinition = "text")
+	private String avatarLocation;
 
-    @Column(nullable = false)
-    private LocalDateTime createdAt = LocalDateTime.now();
+	@Column(nullable = false)
+	@Builder.Default
+	private LocalDateTime createdAt = LocalDateTime.now();
 
-    private LocalDateTime updatedAt;
+	private LocalDateTime updatedAt;
 
-    private LocalDateTime deletedAt;
+	private LocalDateTime deletedAt;
 
 }
