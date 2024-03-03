@@ -19,8 +19,8 @@ spring:
     import: secrets.yaml
   security:
     user:
-      name: ${security.username}
-      password: ${security.password}
+      name: ${application.security.username}
+      password: ${application.security.password}
   output:
     ansi:
       enabled: always # color terminal output
@@ -34,7 +34,8 @@ spring:
       ddl-auto: create-drop
       show-sql: false
       database: postgresql
-#    open-in-view: false # TODO: add later (https://stackoverflow.com/questions/30549489/what-is-this-spring-jpa-open-in-view-true-property-in-spring-boot)
+    open-in-view: false # https://stackoverflow.com/questions/30549489/what-is-this-spring-jpa-open-in-view-true-property-in-spring-boot
+
 # Logging
 # The current logger is log4j2
 # The default log4j2 config file is resources/log4j2-spring.xml
