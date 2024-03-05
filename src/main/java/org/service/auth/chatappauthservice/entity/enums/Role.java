@@ -3,13 +3,13 @@ package org.service.auth.chatappauthservice.entity.enums;
 import lombok.Getter;
 
 @Getter
-public enum Gender {
+public enum Role {
 
-	MALE("male"), FEMALE("female"), OTHER("other"),;
+	ADMIN("admin"), USER("user"),;
 
 	private final String name;
 
-	Gender(String name) {
+	Role(String name) {
 		this.name = name;
 	}
 

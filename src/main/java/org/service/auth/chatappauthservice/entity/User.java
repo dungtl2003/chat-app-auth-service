@@ -9,6 +9,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.service.auth.chatappauthservice.entity.enums.Gender;
+import org.service.auth.chatappauthservice.entity.enums.Role;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -44,6 +45,9 @@ public class User {
 
 	@Column(nullable = false, columnDefinition = "text")
 	private Gender gender;
+
+	@Column(nullable = false, columnDefinition = "text")
+	private Role role;
 
 	@Column(nullable = false, columnDefinition = "text")
 	private String phoneNumber;
