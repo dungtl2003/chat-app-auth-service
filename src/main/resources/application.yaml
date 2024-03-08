@@ -1,3 +1,7 @@
+local:
+  server:
+    port: 8080
+
 management:
   endpoints:
     web:
@@ -17,10 +21,6 @@ info:
 spring:
   config:
     import: secrets.yaml
-  security:
-    user:
-      name: ${application.security.username}
-      password: ${application.security.password}
   output:
     ansi:
       enabled: always # color terminal output
@@ -48,12 +48,13 @@ logging:
       springframework:
         web: debug
         jdbc: debug
+        security: trace
       hibernate:
-        SQL: DEBUG
+        SQL: debug
         type:
           descriptor:
             sql:
-              BasicBinder: TRACE
+              BasicBinder: trace
 
 # Lazy initialization
 # spring.main.lazy-initialization=true

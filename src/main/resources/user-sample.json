@@ -1,0 +1,67 @@
+[
+  {
+    "user_id": 1,
+    "email": "t+@2+\\.JyW",
+    "username": "gQJoBOBTbU",
+    "password": "%I%#^#^It*V%",
+    "first_name": "John",
+    "last_name": "Johnson",
+    "birthday": "2002-08-22",
+    "gender": "female",
+    "role": "admin",
+    "phone_number": "597-257-5202",
+    "is_active": false
+  },
+  {
+    "user_id": 2,
+    "email": "9+@8+\\.xpO",
+    "username": "ULfLqu",
+    "password": "&^y*i_@_*3&*^",
+    "first_name": "David",
+    "last_name": "Moore",
+    "birthday": "1990-10-18",
+    "gender": "female",
+    "role": "admin",
+    "phone_number": "157-306-8030",
+    "is_active": true
+  },
+  {
+    "user_id": 3,
+    "email": "a+@C+\\.vx",
+    "username": "PaiRZJYzMoEl",
+    "password": "$@$^^6_+q+yc+&w$",
+    "first_name": "John",
+    "last_name": "Taylor",
+    "birthday": "1994-10-09",
+    "gender": "male",
+    "role": "user",
+    "phone_number": "062-697-6530",
+    "is_active": false
+  },
+  {
+    "user_id": 4,
+    "email": "I+@v+\\.XW",
+    "username": "iphHNam",
+    "password": "3BpW!!@*",
+    "first_name": "David",
+    "last_name": "Moore",
+    "birthday": "2013-06-28",
+    "gender": "female",
+    "role": "admin",
+    "phone_number": "177-045-2505",
+    "is_active": false
+  },
+  {
+    "user_id": 5,
+    "email": "j+@m+\\.Zk",
+    "username": "yusrnwfEO",
+    "password": "$@$3_+$%e$^&@7#",
+    "first_name": "Michael",
+    "last_name": "Johnson",
+    "birthday": "1991-05-17",
+    "gender": "other",
+    "role": "admin",
+    "phone_number": "313-354-7741",
+    "is_active": true
+  }
+]

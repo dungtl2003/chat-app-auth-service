@@ -1,11 +1,13 @@
 package org.service.auth.chatappauthservice.service;
 
 import org.service.auth.chatappauthservice.DTO.UserDTO;
+import org.service.auth.chatappauthservice.entity.User;
 
 public interface UserService {
 
-	public void createRandomUser();
+    UserDTO getValidUser(String email, String password);
 
-	public UserDTO getValidUser(String email, String password);
+    void add(User user);
 
+    void delete(Long userId);
 }

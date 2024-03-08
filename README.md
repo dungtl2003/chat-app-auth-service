@@ -1,5 +1,7 @@
 # Read Me First
 
+PLEASE DO NOT USE "EXTENDS" KEYWORD
+
 The following was discovered as part of building this project:
 
 * The original package name 'org.service.auth.chat-app-authentication-service' is invalid and this project uses '
