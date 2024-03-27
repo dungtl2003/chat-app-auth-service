@@ -17,49 +17,50 @@ import java.io.IOException;
 @JsonDeserialize(using = RoleDeserializer.class)
 public enum Role {
 
-    ADMIN("admin"), USER("user"),
-    ;
+	ADMIN("admin"), USER("user"),;
 
-    private final String name;
+	private final String name;
 
-    Role(String name) {
-        this.name = name;
-    }
+	Role(String name) {
+		this.name = name;
+	}
 
 }
 
 class RoleSerializer extends StdSerializer<Role> {
 
-    protected RoleSerializer() {
-        super(Role.class);
-    }
+	protected RoleSerializer() {
+		super(Role.class);
+	}
 
-    @Override
-    public void serialize(Role role, JsonGenerator jsonGenerator, SerializerProvider serializerProvider)
-            throws IOException {
-        jsonGenerator.writeStartObject();
-        jsonGenerator.writeFieldName("role");
-        jsonGenerator.writeString(role.getName());
-        jsonGenerator.writeEndObject();
-    }
+	@Override
+	public void serialize(Role role, JsonGenerator jsonGenerator, SerializerProvider serializerProvider)
+			throws IOException {
+		jsonGenerator.writeStartObject();
+		jsonGenerator.writeFieldName("role");
+		jsonGenerator.writeString(role.getName());
+		jsonGenerator.writeEndObject();
+	}
+
 }
 
 class RoleDeserializer extends StdDeserializer<Role> {
 
-    protected RoleDeserializer() {
-        super(Role.class);
-    }
+	protected RoleDeserializer() {
+		super(Role.class);
+	}
 
-    @Override
-    public Role deserialize(JsonParser jsonParser, DeserializationContext deserializationContext) throws IOException {
-        String name = jsonParser.getValueAsString();
+	@Override
+	public Role deserialize(JsonParser jsonParser, DeserializationContext deserializationContext) throws IOException {
+		String name = jsonParser.getValueAsString();
 
-        for (Role role : Role.values()) {
-            if (name.equals(role.getName())) {
-                return role;
-            }
-        }
+		for (Role role : Role.values()) {
+			if (name.equals(role.getName())) {
+				return role;
+			}
+		}
 
-        return null;
-    }
+		return null;
+	}
+
 }

@@ -8,12 +8,11 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 
 @ControllerAdvice
 public class DatabaseExceptionHandler {
-    public ResponseEntity<ErrorResponse> handleException(PSQLException exception) {
-        ErrorResponse error = new ErrorResponse(
-                HttpStatus.SERVICE_UNAVAILABLE.value(),
-                "There is something wrong with the server",
-                System.currentTimeMillis()
-        );
-        return new ResponseEntity<>(error, HttpStatus.SERVICE_UNAVAILABLE);
-    }
+
+	public ResponseEntity<ErrorResponse> handleException(PSQLException exception) {
+		ErrorResponse error = new ErrorResponse(HttpStatus.SERVICE_UNAVAILABLE.value(),
+				"There is something wrong with the server", System.currentTimeMillis());
+		return new ResponseEntity<>(error, HttpStatus.SERVICE_UNAVAILABLE);
+	}
+
 }
