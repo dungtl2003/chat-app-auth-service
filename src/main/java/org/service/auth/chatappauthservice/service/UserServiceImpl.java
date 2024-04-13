@@ -50,8 +50,10 @@ public class UserServiceImpl implements UserService {
 	@Override
 	public void updateUserRefreshTokens(User user, String refreshToken) {
 		// Remove expired refresh tokens
-		List<String> refreshTokens = user.getRefreshTokens() == null ? new ArrayList<>()
-				: new ArrayList<>(List.of(user.getRefreshTokens())).stream()
+		String[] refreshTokensFromDb = user.getRefreshTokens();
+
+		List<String> refreshTokens = refreshTokensFromDb == null ? new ArrayList<>()
+				: new ArrayList<>(List.of(refreshTokensFromDb)).stream()
 					.filter(token -> !authTokenService.isTokenExpired(token, TokenType.REFRESH_TOKEN))
 					.collect(Collectors.toList());
 

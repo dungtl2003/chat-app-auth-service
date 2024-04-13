@@ -1,7 +1,7 @@
 package org.service.auth.chatappauthservice.service;
 
 import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jwe;
+import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtParser;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
@@ -17,9 +17,9 @@ import java.util.Date;
 @Service
 public class JwtAuthTokenService implements AuthTokenService {
 
-	private static final int ACCESS_EXPIRATION = 2 * 60 * 60; // 2 hours
+	private static final long ACCESS_EXPIRATION = 2 * 60 * 60 * 1000; // 2 hours
 
-	private static final int REFRESH_EXPIRATION = 7 * 24 * 60 * 60; // 7 days
+	private static final long REFRESH_EXPIRATION = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 	@Value("${application.jwt.access_token_secret}")
 	private String secretAccessKey;
@@ -40,7 +40,7 @@ public class JwtAuthTokenService implements AuthTokenService {
 		return createToken(user, secretRefreshKey, REFRESH_EXPIRATION);
 	}
 
-	public String createToken(User user, String secretKey, int expiration) {
+	private String createToken(User user, String secretKey, long expiration) {
 		Date createdAt = new Date(System.currentTimeMillis());
 		Date expireAt = new Date(createdAt.getTime() + expiration);
 
@@ -62,24 +62,35 @@ public class JwtAuthTokenService implements AuthTokenService {
 
 	@Override
 	public boolean isTokenExpired(String jwtToken, TokenType type) {
-		Claims claims;
-		switch (type) {
-			case ACCESS_TOKEN -> claims = extractAllClaims(jwtToken, secretAccessKey);
-			case REFRESH_TOKEN -> claims = extractAllClaims(jwtToken, secretRefreshKey);
-			default -> throw new RuntimeException("Not handle yet");
+		try {
+			String secretKey;
+			switch (type) {
+				case ACCESS_TOKEN -> secretKey = secretAccessKey;
+				case REFRESH_TOKEN -> secretKey = secretRefreshKey;
+				default -> throw new RuntimeException("Invalid token type");
+			}
+			JwtParser parser = getParser(secretKey);
+			parser.parseSignedClaims(jwtToken);
+		}
+		catch (ExpiredJwtException eje) {
+			return true;
 		}
 
-		return claims.getExpiration().after(new Date());
+		return false;
 	}
 
-	private Claims extractAllClaims(String jwtToken, String secretKey) {
-		JwtParser parser = Jwts.parser().verifyWith(getSecretKey(secretKey)).build();
-		return parser.parse(jwtToken).accept(Jwe.CLAIMS).getPayload();
+	private Claims extractAllClaims(String jwtToken, String secretKey) throws ExpiredJwtException {
+		JwtParser parser = getParser(secretKey);
+		return parser.parseSignedClaims(jwtToken).getPayload();
 	}
 
 	private SecretKey getSecretKey(String secretKey) {
 		byte[] keyBytes = Decoders.BASE64.decode(secretKey);
 		return Keys.hmacShaKeyFor(keyBytes);
+	}
+
+	private JwtParser getParser(String secretKey) {
+		return Jwts.parser().verifyWith(getSecretKey(secretKey)).build();
 	}
 
 }
