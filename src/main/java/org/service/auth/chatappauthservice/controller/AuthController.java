@@ -22,10 +22,16 @@ public class AuthController {
 
 	private final AuthService authService;
 
-	@PostMapping("/authenticate")
+	@PostMapping("/login")
     public ResponseEntity<String> authenticate(@RequestBody JsonNode request) throws UserNotFoundException, InvalidUserException {
         logger.info(STR."Received request: \{request}");
-        return authService.authenticate(request);
+        return authService.login(request);
+    }
+
+	// TODO: do later
+	public ResponseEntity<String> authorize(@RequestBody JsonNode request) {
+        logger.info(STR."Received request: \{request}");
+        return authService.authorize(request);
     }
 
 }

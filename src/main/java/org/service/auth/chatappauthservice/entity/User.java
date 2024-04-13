@@ -87,8 +87,6 @@ public class User implements Cloneable {
 	@Override
 	public User clone() {
 		try {
-			// TODO: copy mutable state here, so the clone can't change the internals of
-			// the original
 			return (User) super.clone();
 		}
 		catch (CloneNotSupportedException e) {

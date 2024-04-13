@@ -17,7 +17,7 @@ public class AuthServiceImpl implements AuthService {
 	private final AuthTokenService authTokenService;
 
 	@Override
-    public ResponseEntity<String> authenticate(JsonNode request) throws UserNotFoundException, InvalidUserException {
+    public ResponseEntity<String> login(JsonNode request) throws UserNotFoundException, InvalidUserException {
         JsonNode jsonUser = request.get("payload").get("user");
         String email = jsonUser.get("email").asText();
         String password = jsonUser.get("password").asText();
@@ -43,5 +43,10 @@ public class AuthServiceImpl implements AuthService {
 
         return new ResponseEntity<>(headers, HttpStatus.OK);
     }
+
+	@Override
+	public ResponseEntity<String> authorize(JsonNode request) {
+		return null;
+	}
 
 }

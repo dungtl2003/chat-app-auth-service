@@ -8,7 +8,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 
 public interface AuthService {
 
-	ResponseEntity<String> authenticate(@RequestBody JsonNode request)
-			throws UserNotFoundException, InvalidUserException;
+	ResponseEntity<String> login(@RequestBody JsonNode request) throws UserNotFoundException, InvalidUserException;
+
+	ResponseEntity<String> authorize(@RequestBody JsonNode request);
 
 }

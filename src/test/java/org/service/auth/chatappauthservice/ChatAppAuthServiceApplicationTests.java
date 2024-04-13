@@ -46,7 +46,7 @@ class ChatAppAuthServiceApplicationTests {
 
 	@BeforeAll
     public static void setup() {
-        authenticateUrl = STR."http://localhost:\{port}/api/v1/auth/authenticate";
+        authenticateUrl = STR."http://localhost:\{port}/api/v1/auth/login";
         tempUsers = getSampleUserFromJson();
     }
 
