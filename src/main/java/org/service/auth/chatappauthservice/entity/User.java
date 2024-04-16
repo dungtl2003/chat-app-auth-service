@@ -22,72 +22,76 @@ import java.time.LocalDateTime;
 @Table(name = "users")
 public class User implements Cloneable {
 
-    @Id
-    @JsonAlias({"user_id"})
-    private Long userId;
+	@Id
+	@JsonAlias({ "user_id" })
+	private Long userId;
 
-    @Column(nullable = false, unique = true, columnDefinition = "text")
-    private String email;
+	@Column(nullable = false, unique = true, columnDefinition = "text")
+	private String email;
 
-    @Column(nullable = false, columnDefinition = "text")
-    private String username;
+	@Column(nullable = false, columnDefinition = "text")
+	private String username;
 
-    @Column(nullable = false, columnDefinition = "text")
-    private String password;
+	@Column(nullable = false, columnDefinition = "text")
+	private String password;
 
-    @Column(nullable = false, columnDefinition = "text")
-    @JsonAlias({"first_name"})
-    private String firstName;
+	@Column(nullable = false, columnDefinition = "text")
+	@JsonAlias({ "first_name" })
+	private String firstName;
 
-    @Column(nullable = false, columnDefinition = "text")
-    @JsonAlias({"last_name"})
-    private String lastName;
+	@Column(nullable = false, columnDefinition = "text")
+	@JsonAlias({ "last_name" })
+	private String lastName;
 
-    @Column(nullable = false)
-    private LocalDate birthday;
+	@Column(nullable = false)
+	private LocalDate birthday;
 
-    @Column(nullable = false, columnDefinition = "text")
-    private Gender gender;
+	@Column(nullable = false, columnDefinition = "text")
+	private Gender gender;
 
-    @Column(nullable = false, columnDefinition = "text")
-    private Role role;
+	@Column(nullable = false, columnDefinition = "text")
+	private Role role;
 
-    @Column(nullable = false, columnDefinition = "text")
-    @JsonAlias({"phone_number"})
-    private String phoneNumber;
+	@Column(nullable = false, columnDefinition = "text")
+	@JsonAlias({ "phone_number" })
+	private String phoneNumber;
 
-    @Convert(converter = PrivacyConverter.class)
-    @Column(columnDefinition = "json")
-    @ColumnTransformer(write = "?::json")
-    private String privacy;
+	@Convert(converter = PrivacyConverter.class)
+	@Column(columnDefinition = "json")
+	@ColumnTransformer(write = "?::json")
+	private String privacy;
 
-    @Column(nullable = false)
-    @JsonAlias({"is_active"})
-    private Boolean isActive;
+	@Column(nullable = false)
+	@JsonAlias({ "is_active" })
+	private Boolean isActive;
 
-    @Column(columnDefinition = "text")
-    @JsonAlias({"avatar_location"})
-    private String avatarLocation;
+	@Column(columnDefinition = "text")
+	@JsonAlias({ "avatar_location" })
+	private String avatarLocation;
 
-    @Column(nullable = false)
-    @JsonAlias({"created_at"})
-    @Builder.Default
-    private LocalDateTime createdAt = LocalDateTime.now();
+	@Column(columnDefinition = "text[]")
+	@JsonAlias({ "refresh_tokens" })
+	private String[] refreshTokens;
 
-    @JsonAlias({"updated_at"})
-    private LocalDateTime updatedAt;
+	@Column(nullable = false)
+	@JsonAlias({ "created_at" })
+	@Builder.Default
+	private LocalDateTime createdAt = LocalDateTime.now();
 
-    @JsonAlias({"deleted_at"})
-    private LocalDateTime deletedAt;
+	@JsonAlias({ "updated_at" })
+	private LocalDateTime updatedAt;
 
-    @Override
-    public User clone() {
-        try {
-            User clone = (User) super.clone();
-            // TODO: copy mutable state here, so the clone can't change the internals of the original
-            return clone;
-        } catch (CloneNotSupportedException e) {
-            throw new AssertionError();
-        }
-    }
+	@JsonAlias({ "deleted_at" })
+	private LocalDateTime deletedAt;
+
+	@Override
+	public User clone() {
+		try {
+			return (User) super.clone();
+		}
+		catch (CloneNotSupportedException e) {
+			throw new AssertionError();
+		}
+	}
+
 }

@@ -12,8 +12,7 @@ public class UserDTOMapper implements Function<User, UserDTO> {
 		if (user == null) {
 			return null;
 		}
-		return new UserDTO(user.getUserId(), user.getEmail(), user.getUsername(), user.getPassword(),
-				user.getRole().getName());
+		return new UserDTO(user.getUserId(), user.getEmail(), user.getUsername(), user.getRole().getName());
 	}
 
 }

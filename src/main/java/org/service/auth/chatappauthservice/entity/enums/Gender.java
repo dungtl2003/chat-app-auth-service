@@ -17,50 +17,50 @@ import java.io.IOException;
 @JsonDeserialize(using = GenderDeserializer.class)
 public enum Gender {
 
-    MALE("male"), FEMALE("female"), OTHER("other"),
-    ;
+	MALE("male"), FEMALE("female"), OTHER("other"),;
 
-    private final String name;
+	private final String name;
 
-    Gender(String name) {
-        this.name = name;
-    }
+	Gender(String name) {
+		this.name = name;
+	}
 
 }
 
 class GenderSerializer extends StdSerializer<Gender> {
 
-    protected GenderSerializer() {
-        super(Gender.class);
-    }
+	protected GenderSerializer() {
+		super(Gender.class);
+	}
 
-    @Override
-    public void serialize(Gender gender, JsonGenerator jsonGenerator, SerializerProvider serializerProvider)
-            throws IOException {
-        jsonGenerator.writeStartObject();
-        jsonGenerator.writeFieldName("gender");
-        jsonGenerator.writeString(gender.getName());
-        jsonGenerator.writeEndObject();
-    }
+	@Override
+	public void serialize(Gender gender, JsonGenerator jsonGenerator, SerializerProvider serializerProvider)
+			throws IOException {
+		jsonGenerator.writeStartObject();
+		jsonGenerator.writeFieldName("gender");
+		jsonGenerator.writeString(gender.getName());
+		jsonGenerator.writeEndObject();
+	}
+
 }
 
 class GenderDeserializer extends StdDeserializer<Gender> {
 
-    protected GenderDeserializer() {
-        super(Gender.class);
-    }
+	protected GenderDeserializer() {
+		super(Gender.class);
+	}
 
-    @Override
-    public Gender deserialize(JsonParser jsonParser, DeserializationContext deserializationContext) throws IOException {
-        String name = jsonParser.getValueAsString();
+	@Override
+	public Gender deserialize(JsonParser jsonParser, DeserializationContext deserializationContext) throws IOException {
+		String name = jsonParser.getValueAsString();
 
-        for (Gender gender : Gender.values()) {
-            if (name.equals(gender.getName())) {
-                return gender;
-            }
-        }
+		for (Gender gender : Gender.values()) {
+			if (name.equals(gender.getName())) {
+				return gender;
+			}
+		}
 
-        return null;
-    }
+		return null;
+	}
+
 }
-
