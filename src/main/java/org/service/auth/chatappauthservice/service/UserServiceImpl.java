@@ -54,7 +54,7 @@ public class UserServiceImpl implements UserService {
 
 		List<String> refreshTokens = refreshTokensFromDb == null ? new ArrayList<>()
 				: new ArrayList<>(List.of(refreshTokensFromDb)).stream()
-					.filter(token -> !authTokenService.isTokenExpired(token, TokenType.REFRESH_TOKEN))
+					.filter(token -> authTokenService.isTokenValid(token, TokenType.REFRESH_TOKEN))
 					.collect(Collectors.toList());
 
 		refreshTokens.add(refreshToken);

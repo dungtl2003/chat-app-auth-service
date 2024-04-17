@@ -6,6 +6,8 @@ import io.jsonwebtoken.JwtParser;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.service.auth.chatappauthservice.entity.User;
 import org.service.auth.chatappauthservice.entity.enums.TokenType;
 import org.springframework.beans.factory.annotation.Value;
@@ -16,6 +18,8 @@ import java.util.Date;
 
 @Service
 public class JwtAuthTokenService implements AuthTokenService {
+
+	private static final Logger logger = LogManager.getLogger(JwtAuthTokenService.class);
 
 	private static final long ACCESS_EXPIRATION = 2 * 60 * 60 * 1000; // 2 hours
 
@@ -61,23 +65,23 @@ public class JwtAuthTokenService implements AuthTokenService {
 	}
 
 	@Override
-	public boolean isTokenExpired(String jwtToken, TokenType type) {
-		try {
-			String secretKey;
-			switch (type) {
-				case ACCESS_TOKEN -> secretKey = secretAccessKey;
-				case REFRESH_TOKEN -> secretKey = secretRefreshKey;
-				default -> throw new RuntimeException("Invalid token type");
-			}
-			JwtParser parser = getParser(secretKey);
-			parser.parseSignedClaims(jwtToken);
-		}
-		catch (ExpiredJwtException eje) {
-			return true;
-		}
+    public boolean isTokenValid(String jwtToken, TokenType type) {
+        try {
+            String secretKey;
+            switch (type) {
+                case ACCESS_TOKEN -> secretKey = secretAccessKey;
+                case REFRESH_TOKEN -> secretKey = secretRefreshKey;
+                default -> throw new RuntimeException("Invalid token type");
+            }
+            JwtParser parser = getParser(secretKey);
+            parser.parseSignedClaims(jwtToken);
+        } catch (Exception e) {
+            logger.debug(STR."Token is not valid, reason: \{e.getMessage()}");
+            return false;
+        }
 
-		return false;
-	}
+        return true;
+    }
 
 	private Claims extractAllClaims(String jwtToken, String secretKey) throws ExpiredJwtException {
 		JwtParser parser = getParser(secretKey);

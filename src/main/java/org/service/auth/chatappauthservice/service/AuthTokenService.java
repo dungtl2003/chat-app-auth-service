@@ -9,6 +9,6 @@ public interface AuthTokenService {
 
 	public String createRefreshToken(User user);
 
-	public boolean isTokenExpired(String token, TokenType type);
+	public boolean isTokenValid(String token, TokenType type);
 
 }
