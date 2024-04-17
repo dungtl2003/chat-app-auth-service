@@ -1,12 +1,14 @@
 package org.service.auth.chatappauthservice;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.service.auth.chatappauthservice.entity.User;
+import org.service.auth.chatappauthservice.service.AuthTokenService;
 import org.service.auth.chatappauthservice.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -16,7 +18,6 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 
@@ -35,6 +36,8 @@ class ChatAppAuthServiceApplicationTests {
 
 	private static String authenticateUrl;
 
+	private static String authorizationUrl;
+
 	@LocalServerPort
 	private static int port;
 
@@ -44,11 +47,20 @@ class ChatAppAuthServiceApplicationTests {
 	@Autowired
 	private UserService userService;
 
+	@Autowired
+	private AuthTokenService authTokenService;
+
 	@BeforeAll
     public static void setup() {
         authenticateUrl = STR."http://localhost:\{port}/api/v1/auth/login";
+        authorizationUrl = STR."http://localhost:\{port}/api/v1/auth/authorize";
         tempUsers = getSampleUserFromJson();
     }
+
+	public static JsonNode convertStringToJson(String msg) throws JsonProcessingException {
+		ObjectMapper mapper = new ObjectMapper();
+		return mapper.readTree(msg);
+	}
 
 	private static String buildAuthenticateJsonBodyRequest(User user) throws JsonProcessingException {
 		ObjectMapper mapper = JsonMapper.builder().findAndAddModules().build();
@@ -97,13 +109,18 @@ class ChatAppAuthServiceApplicationTests {
 		try {
 			addTempUsers();
 
-			mockMvc
+			String responseBody = mockMvc
 				.perform(MockMvcRequestBuilders.post(authenticateUrl)
 					.contentType(MediaType.APPLICATION_JSON)
 					.content(buildAuthenticateJsonBodyRequest(randomUser)))
 				.andExpect(MockMvcResultMatchers.status().isOk())
-				.andExpect(MockMvcResultMatchers.header().exists(HttpHeaders.AUTHORIZATION))
-				.andExpect(MockMvcResultMatchers.header().exists(HttpHeaders.SET_COOKIE));
+				.andExpect(MockMvcResultMatchers.header().exists(HttpHeaders.SET_COOKIE))
+				.andReturn()
+				.getResponse()
+				.getContentAsString();
+
+			JsonNode jsonBody = convertStringToJson(responseBody);
+			assertNotNull(jsonBody.get("access_token"));
 		}
 		catch (Exception e) {
 			fail(e.getMessage());
@@ -113,31 +130,31 @@ class ChatAppAuthServiceApplicationTests {
 		}
 	}
 
-	@Test
-	public void testAccessTokenShouldHaveRightFormat() {
-		int size = tempUsers.size();
-		User randomUser = tempUsers.get((int) (Math.random() * size));
-
-		try {
-			addTempUsers();
-
-			MvcResult result = mockMvc
-				.perform(MockMvcRequestBuilders.post(authenticateUrl)
-					.contentType(MediaType.APPLICATION_JSON)
-					.content(buildAuthenticateJsonBodyRequest(randomUser)))
-				.andReturn();
-
-			String accessToken = result.getResponse().getHeader(HttpHeaders.AUTHORIZATION);
-			assertNotNull(accessToken);
-			assertEquals(accessToken.indexOf("Bearer"), 0);
-		}
-		catch (Exception e) {
-			fail(e.getMessage());
-		}
-		finally {
-			removeTempUsers();
-		}
-	}
+	// @Test
+	// public void testAccessTokenShouldHaveRightFormat() {
+	// int size = tempUsers.size();
+	// User randomUser = tempUsers.get((int) (Math.random() * size));
+	//
+	// try {
+	// addTempUsers();
+	//
+	// MvcResult result = mockMvc
+	// .perform(MockMvcRequestBuilders.post(authenticateUrl)
+	// .contentType(MediaType.APPLICATION_JSON)
+	// .content(buildAuthenticateJsonBodyRequest(randomUser)))
+	// .andReturn();
+	//
+	// String accessToken = result.getResponse().getHeader(HttpHeaders.AUTHORIZATION);
+	// assertNotNull(accessToken);
+	// assertEquals(accessToken.indexOf("Bearer"), 0);
+	// }
+	// catch (Exception e) {
+	// fail(e.getMessage());
+	// }
+	// finally {
+	// removeTempUsers();
+	// }
+	// }
 
 	@Test
 	public void testAuthenticateNonExistedUserRequestShouldGet404NotFound() {
@@ -196,5 +213,75 @@ class ChatAppAuthServiceApplicationTests {
 			fail(e.getMessage());
 		}
 	}
+
+	@Test
+	public void testAuthorizeWithoutTokenShouldGet401UnauthorizedWithMissingCredentialMessage() {
+		try {
+			String body = mockMvc.perform(MockMvcRequestBuilders.get(authorizationUrl))
+				.andExpect(MockMvcResultMatchers.status().isUnauthorized())
+				.andReturn()
+				.getResponse()
+				.getContentAsString();
+
+			JsonNode bodyJson = convertStringToJson(body);
+			assertEquals("Missing credential", bodyJson.get("message").asText());
+		}
+		catch (Exception e) {
+			fail(e.getMessage());
+		}
+	}
+
+	@Test
+	public void testAuthorizeWithWrongTokenFormatShouldGet401UnauthorizedWithInvalidFormatMessage() {
+		try {
+			String body = mockMvc.perform(MockMvcRequestBuilders.get(authorizationUrl).header("authorization", "abcd"))
+				.andExpect(MockMvcResultMatchers.status().isUnauthorized())
+				.andReturn()
+				.getResponse()
+				.getContentAsString();
+
+			JsonNode bodyJson = convertStringToJson(body);
+			assertEquals("Invalid format", bodyJson.get("message").asText());
+		}
+		catch (Exception e) {
+			fail(e.getMessage());
+		}
+	}
+
+	@Test
+	public void testAuthorizeWithInvalidTokenShouldGet401UnauthorizedWithInvalidTokenMessage() {
+		try {
+			String body = mockMvc
+				.perform(MockMvcRequestBuilders.get(authorizationUrl).header("authorization", "Bearer faketokenhehehe"))
+				.andExpect(MockMvcResultMatchers.status().isUnauthorized())
+				.andReturn()
+				.getResponse()
+				.getContentAsString();
+
+			JsonNode bodyJson = convertStringToJson(body);
+			assertEquals("Invalid token", bodyJson.get("message").asText());
+		}
+		catch (Exception e) {
+			fail(e.getMessage());
+		}
+	}
+
+	@Test
+    public void testAuthorizeWithValidTokenShouldGet200WithAuthorizedMessage() {
+        String validToken = authTokenService.createAccessToken(tempUsers.getFirst());
+        try {
+            String body = mockMvc
+                    .perform(MockMvcRequestBuilders
+                            .get(authorizationUrl)
+                            .header("authorization", STR."Bearer \{validToken}"))
+                    .andExpect(MockMvcResultMatchers.status().isUnauthorized())
+                    .andReturn().getResponse().getContentAsString();
+
+            JsonNode bodyJson = convertStringToJson(body);
+            assertEquals("Authorized", bodyJson.get("message").asText());
+        } catch (Exception e) {
+            fail(e.getMessage());
+        }
+    }
 
 }
