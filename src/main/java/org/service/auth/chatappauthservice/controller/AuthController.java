@@ -8,6 +8,7 @@ import org.service.auth.chatappauthservice.exception.client.InvalidUserException
 import org.service.auth.chatappauthservice.exception.client.UserNotFoundException;
 import org.service.auth.chatappauthservice.response.AuthenticationResponse;
 import org.service.auth.chatappauthservice.response.AuthorizationResponse;
+import org.service.auth.chatappauthservice.response.RefreshResponse;
 import org.service.auth.chatappauthservice.service.AuthService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -33,6 +34,13 @@ public class AuthController {
     public ResponseEntity<AuthorizationResponse> authorize(@RequestHeader Map<String, String> headers) {
         logger.info(STR."Received headers: \{headers}");
         return authService.authorize(headers);
+    }
+
+	// TODO: do later
+	@GetMapping("/refresh")
+    public ResponseEntity<RefreshResponse> refresh(@CookieValue("jwt") String jwtToken) {
+        logger.info(STR."Received cookie: \{jwtToken}");
+        return authService.refresh(null);
     }
 
 }
