@@ -1,20 +1,20 @@
 package org.service.auth.chatappauthservice.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import lombok.AllArgsConstructor;
 import org.service.auth.chatappauthservice.entity.User;
 import org.service.auth.chatappauthservice.entity.enums.TokenType;
 import org.service.auth.chatappauthservice.exception.client.InvalidUserException;
 import org.service.auth.chatappauthservice.exception.client.UserNotFoundException;
 import org.service.auth.chatappauthservice.response.AuthenticationResponse;
 import org.service.auth.chatappauthservice.response.AuthorizationResponse;
+import org.service.auth.chatappauthservice.response.RefreshResponse;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RequestHeader;
 
 import java.util.Map;
 
-@AllArgsConstructor
 @Service
 public class AuthServiceImpl implements AuthService {
 
@@ -22,36 +22,44 @@ public class AuthServiceImpl implements AuthService {
 
 	private final AuthTokenService authTokenService;
 
-	@Override
-	public ResponseEntity<AuthenticationResponse> login(JsonNode request)
-			throws UserNotFoundException, InvalidUserException {
-		JsonNode jsonUser = request.get("payload").get("user");
-		String email = jsonUser.get("email").asText();
-		String password = jsonUser.get("password").asText();
+	@Value("${info.app.version}")
+	private int apiVersion;
 
-		User user = userService.getValidUser(email, password);
-
-		String accessToken = authTokenService.createAccessToken(user);
-		String refreshToken = authTokenService.createRefreshToken(user);
-
-		userService.updateUserRefreshTokens(user, refreshToken);
-
-		AuthenticationResponse responseBody = AuthenticationResponse.builder().accessToken(accessToken).build();
-
-		HttpHeaders headers = new HttpHeaders();
-		headers.setContentType(MediaType.APPLICATION_JSON);
-
-		ResponseCookie cookie = ResponseCookie.from("jwt", refreshToken)
-			// .secure(true) //TODO: add this when you have https
-			.maxAge(7 * 24 * 60 * 60) // same as the refresh token
-			.httpOnly(true)
-			.path("/refresh")
-			.build();
-
-		headers.add(HttpHeaders.SET_COOKIE, cookie.toString());
-
-		return new ResponseEntity<>(responseBody, headers, HttpStatus.OK);
+	public AuthServiceImpl(UserService userService, AuthTokenService authTokenService) {
+		this.userService = userService;
+		this.authTokenService = authTokenService;
 	}
+
+	@Override
+    public ResponseEntity<AuthenticationResponse> login(JsonNode request)
+            throws UserNotFoundException, InvalidUserException {
+        JsonNode jsonUser = request.get("payload").get("user");
+        String email = jsonUser.get("email").asText();
+        String password = jsonUser.get("password").asText();
+
+        User user = userService.getValidUser(email, password);
+
+        String accessToken = authTokenService.createAccessToken(user);
+        String refreshToken = authTokenService.createRefreshToken(user);
+
+        userService.updateUserRefreshTokens(user, refreshToken);
+
+        AuthenticationResponse responseBody = AuthenticationResponse.builder().accessToken(accessToken).build();
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        ResponseCookie cookie = ResponseCookie.from("jwt", refreshToken)
+                // .secure(true) //TODO: add this when you have https
+                .maxAge(7 * 24 * 60 * 60) // same as the refresh token
+                .httpOnly(true)
+                .path(STR."/api/v\{apiVersion}/auth/refresh")
+                .build();
+
+        headers.add(HttpHeaders.SET_COOKIE, cookie.toString());
+
+        return new ResponseEntity<>(responseBody, headers, HttpStatus.OK);
+    }
 
 	@Override
 	public ResponseEntity<AuthorizationResponse> authorize(@RequestHeader Map<String, String> headers) {
@@ -72,7 +80,12 @@ public class AuthServiceImpl implements AuthService {
 		}
 
 		AuthorizationResponse response = AuthorizationResponse.builder().message("Authorized").build();
-		return new ResponseEntity<>(response, HttpStatus.UNAUTHORIZED);
+		return new ResponseEntity<>(response, HttpStatus.OK);
+	}
+
+	@Override
+	public ResponseEntity<RefreshResponse> refresh(Map<String, String> cookies) {
+		return new ResponseEntity<>(HttpStatus.OK);
 	}
 
 }

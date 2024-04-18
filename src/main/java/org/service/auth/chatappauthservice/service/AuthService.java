@@ -5,6 +5,7 @@ import org.service.auth.chatappauthservice.exception.client.InvalidUserException
 import org.service.auth.chatappauthservice.exception.client.UserNotFoundException;
 import org.service.auth.chatappauthservice.response.AuthenticationResponse;
 import org.service.auth.chatappauthservice.response.AuthorizationResponse;
+import org.service.auth.chatappauthservice.response.RefreshResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -17,5 +18,7 @@ public interface AuthService {
 			throws UserNotFoundException, InvalidUserException;
 
 	ResponseEntity<AuthorizationResponse> authorize(@RequestHeader Map<String, String> headers);
+
+	ResponseEntity<RefreshResponse> refresh(@RequestHeader Map<String, String> cookies);
 
 }

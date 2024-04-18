@@ -14,9 +14,8 @@ management:
 info:
   app:
     name: "authentication and authorization service"
-    description: "Huy ngu vl"
-    metadata:
-      method: "insert_user"
+    description: "api for chat app's auth"
+    version: 1
 
 spring:
   config:

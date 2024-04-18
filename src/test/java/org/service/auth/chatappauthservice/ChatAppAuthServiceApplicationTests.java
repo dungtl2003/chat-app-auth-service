@@ -274,7 +274,7 @@ class ChatAppAuthServiceApplicationTests {
                     .perform(MockMvcRequestBuilders
                             .get(authorizationUrl)
                             .header("authorization", STR."Bearer \{validToken}"))
-                    .andExpect(MockMvcResultMatchers.status().isUnauthorized())
+                    .andExpect(MockMvcResultMatchers.status().isOk())
                     .andReturn().getResponse().getContentAsString();
 
             JsonNode bodyJson = convertStringToJson(body);
