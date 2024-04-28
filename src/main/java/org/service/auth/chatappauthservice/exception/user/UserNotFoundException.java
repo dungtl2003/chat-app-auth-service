@@ -1,4 +1,4 @@
-package org.service.auth.chatappauthservice.exception.client;
+package org.service.auth.chatappauthservice.exception.user;
 
 public class UserNotFoundException extends RuntimeException {
 

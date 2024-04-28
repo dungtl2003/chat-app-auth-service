@@ -1,4 +1,4 @@
-package org.service.auth.chatappauthservice.exception.client;
+package org.service.auth.chatappauthservice.exception.user;
 
 import org.service.auth.chatappauthservice.exception.ErrorResponse;
 import org.springframework.http.HttpStatus;
