@@ -3,16 +3,13 @@ package org.service.auth.chatappauthservice.service;
 import lombok.AllArgsConstructor;
 import lombok.NonNull;
 import org.service.auth.chatappauthservice.entity.User;
-import org.service.auth.chatappauthservice.entity.enums.TokenType;
-import org.service.auth.chatappauthservice.exception.client.InvalidUserException;
-import org.service.auth.chatappauthservice.exception.client.UserNotFoundException;
+import org.service.auth.chatappauthservice.exception.user.InvalidUserException;
+import org.service.auth.chatappauthservice.exception.user.UserNotFoundException;
 import org.service.auth.chatappauthservice.repository.UserRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Arrays;
 
 @AllArgsConstructor
 @Service
@@ -22,7 +19,16 @@ public class UserServiceImpl implements UserService {
 
 	private final PasswordEncoder passwordEncoder;
 
-	private final AuthTokenService authTokenService;
+	@Override
+	public void add(User user) {
+		user.setPassword(passwordEncoder.encode(user.getPassword()));
+		userRepository.save(user);
+	}
+
+	@Override
+	public void deleteUserById(long id) {
+		userRepository.deleteById(id);
+	}
 
 	@Override
 	public User getValidUser(@NonNull String email, @NonNull String password)
@@ -37,36 +43,40 @@ public class UserServiceImpl implements UserService {
 	}
 
 	@Override
-	public void add(@NonNull User user) {
-		user.setPassword(passwordEncoder.encode(user.getPassword()));
-		userRepository.save(user);
-	}
+	public void addRefreshToken(long userId, String refreshToken) throws UserNotFoundException {
+		User user = getUserById(userId);
 
-	@Override
-	public void delete(@NonNull Long userId) {
-		userRepository.deleteById(userId);
-	}
-
-	@Override
-	public void updateUserRefreshTokens(User user, String refreshToken) {
-		// Remove expired refresh tokens
 		String[] refreshTokensFromDb = user.getRefreshTokens();
+		String[] refreshTokens = refreshTokensFromDb != null
+				? Arrays.copyOf(refreshTokensFromDb, refreshTokensFromDb.length + 1) : new String[1];
 
-		List<String> refreshTokens = refreshTokensFromDb == null ? new ArrayList<>()
-				: new ArrayList<>(List.of(refreshTokensFromDb)).stream()
-					.filter(token -> !authTokenService.isTokenExpired(token, TokenType.REFRESH_TOKEN))
-					.collect(Collectors.toList());
-
-		refreshTokens.add(refreshToken);
-
-		user.setRefreshTokens(refreshTokens.toArray(new String[0]));
+		refreshTokens[refreshTokens.length - 1] = refreshToken;
+		user.setRefreshTokens(refreshTokens);
 		userRepository.save(user);
+	}
+
+	@Override
+	public void updateUserRefreshTokens(long userId, String[] refreshTokens) throws UserNotFoundException {
+		User user = getUserById(userId);
+		user.setRefreshTokens(refreshTokens);
+		userRepository.save(user);
+	}
+
+	@Override
+	public String[] getUserRefreshTokens(long userId) throws UserNotFoundException {
+		return getUserById(userId).getRefreshTokens();
 	}
 
 	private User getUserByEmail(String email) throws UserNotFoundException {
         return userRepository
                 .findByEmail(email)
                 .orElseThrow(() -> new UserNotFoundException(STR."User with email \{email} does not exist"));
+    }
+
+	private User getUserById(Long id) throws UserNotFoundException {
+        return userRepository
+                .findById(id)
+                .orElseThrow(() -> new UserNotFoundException(STR."User with id \{id} does not exist"));
     }
 
 	private boolean isValid(String email, String password, User user) {

@@ -14,9 +14,8 @@ management:
 info:
   app:
     name: "authentication and authorization service"
-    description: "Huy ngu vl"
-    metadata:
-      method: "insert_user"
+    description: "api for chat app's auth"
+    version: 1
 
 spring:
   config:
@@ -31,7 +30,7 @@ spring:
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
-      ddl-auto: none # create-drop if you want to recreate the table script (do not use create-drop in prod)
+      ddl-auto: none # create-drop if you want to recreate the table script (use none in prod)
       show-sql: false
       database: postgresql
     open-in-view: false # https://stackoverflow.com/questions/30549489/what-is-this-spring-jpa-open-in-view-true-property-in-spring-boot
