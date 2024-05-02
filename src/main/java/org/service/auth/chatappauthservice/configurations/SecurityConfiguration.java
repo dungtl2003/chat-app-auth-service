@@ -11,7 +11,8 @@ import org.springframework.security.web.SecurityFilterChain;
 @EnableWebSecurity
 public class SecurityConfiguration {
 
-	private static final String[] WHITE_LIST = { "/api/v1/auth/**" };
+	private static final String[] WHITE_LIST = { "/api/v1/auth/**", "/v3/api-docs", "/v3/api-docs/**", "/swagger-ui/**",
+			"/swagger-ui.html" };
 
 	@Bean
 	public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {

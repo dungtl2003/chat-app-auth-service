@@ -133,6 +133,14 @@
             <artifactId>postgresql</artifactId>
             <version>42.7.2</version>
         </dependency>
+
+        <!-- Open Api -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>2.5.0</version>
+        </dependency>
+
     </dependencies>
 
     <build>
