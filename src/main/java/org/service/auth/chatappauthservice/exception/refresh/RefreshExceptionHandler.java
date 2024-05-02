@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 @ControllerAdvice
 public class RefreshExceptionHandler {
 
-	@ResponseStatus(value = HttpStatus.BAD_REQUEST, reason = "Missing refresh token")
+	@ResponseStatus(value = HttpStatus.BAD_REQUEST)
 	@ExceptionHandler
 	public ResponseEntity<ErrorResponse> handleException(MissingRefreshTokenException exception) {
 		ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), exception.getMessage(),
