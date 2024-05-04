@@ -439,59 +439,66 @@ class ChatAppAuthServiceApplicationTests {
 	}
 
 	@Test
-	public void testDetectReusedValidRefreshTokenShouldGet401UnauthorizedAndInvalidateAllDevices() {
-		String firstRefreshToken = authTokenService.createRefreshToken(new UserDTOMapper().apply(tempUsers.getFirst()));
-		String[] refreshTokens = new String[1];
-		refreshTokens[0] = firstRefreshToken;
-		tempUsers.getFirst().setRefreshTokens(refreshTokens);
+    public void testDetectReusedValidRefreshTokenShouldGet401UnauthorizedAndInvalidateAllDevices() {
+        String firstRefreshToken = authTokenService.createRefreshToken(new UserDTOMapper().apply(tempUsers.getFirst()));
+        String[] refreshTokens = new String[1];
+        refreshTokens[0] = firstRefreshToken;
+        tempUsers.getFirst().setRefreshTokens(refreshTokens);
 
-		try {
-			addTempUsers();
+        try {
+            addTempUsers();
 
-			// normal user sends request with the first token (not used) should be fine
-			Cookie firstRTCookie = new Cookie("refresh_token", firstRefreshToken);
-			firstRTCookie.setMaxAge(7 * 24 * 60 * 60);
-			String secondRefreshToken = Objects
-				.requireNonNull(mockMvc.perform(MockMvcRequestBuilders.get(REFRESH_URL).cookie(firstRTCookie))
-					.andExpect(MockMvcResultMatchers.status().isOk())
-					.andReturn()
-					.getResponse()
-					.getCookie("refresh_token"))
-				.getValue();
+            // normal user sends request with the first token (not used) should be fine
+            System.out.println(STR."Time: \{System.currentTimeMillis()}");
+            Cookie firstRTCookie = new Cookie("refresh_token", firstRefreshToken);
+            firstRTCookie.setMaxAge(7 * 24 * 60 * 60);
+            String secondRefreshToken = Objects
+                    .requireNonNull(mockMvc.perform(MockMvcRequestBuilders.get(REFRESH_URL).cookie(firstRTCookie))
+                            .andExpect(MockMvcResultMatchers.status().isOk())
+                            .andReturn()
+                            .getResponse()
+                            .getCookie("refresh_token"))
+                    .getValue();
 
-			// normal user sends next request with new refresh token should work normally
-			Cookie secondRTCookie = new Cookie("refresh_token", secondRefreshToken);
-			secondRTCookie.setMaxAge(7 * 24 * 60 * 60);
-			String thirdRefreshToken = Objects
-				.requireNonNull(mockMvc.perform(MockMvcRequestBuilders.get(REFRESH_URL).cookie(secondRTCookie))
-					.andExpect(MockMvcResultMatchers.status().isOk())
-					.andReturn()
-					.getResponse()
-					.getCookie("refresh_token"))
-				.getValue();
+            // normal user sends next request with new refresh token should work normally
+            Thread.sleep(1000);
+            System.out.println(STR."Time: \{System.currentTimeMillis()}");
+            Cookie secondRTCookie = new Cookie("refresh_token", secondRefreshToken);
+            secondRTCookie.setMaxAge(7 * 24 * 60 * 60);
+            String thirdRefreshToken = Objects
+                    .requireNonNull(mockMvc.perform(MockMvcRequestBuilders.get(REFRESH_URL).cookie(secondRTCookie))
+                            .andExpect(MockMvcResultMatchers.status().isOk())
+                            .andReturn()
+                            .getResponse()
+                            .getCookie("refresh_token"))
+                    .getValue();
 
-			// hacker tries to reuse the second token
-			mockMvc.perform(MockMvcRequestBuilders.get(REFRESH_URL).cookie(secondRTCookie))
-				.andExpect(MockMvcResultMatchers.status().isUnauthorized())
-				.andReturn();
+            // hacker tries to reuse the second token
+            Thread.sleep(1000);
+            System.out.println(STR."Time: \{System.currentTimeMillis()}");
+            mockMvc.perform(MockMvcRequestBuilders.get(REFRESH_URL).cookie(secondRTCookie))
+                    .andExpect(MockMvcResultMatchers.status().isUnauthorized())
+                    .andReturn();
 
-			// now, no tokens should work
-			Cookie thirdRTCookie = new Cookie("refresh_token", thirdRefreshToken);
-			thirdRTCookie.setMaxAge(7 * 24 * 60 * 60);
-			mockMvc.perform(MockMvcRequestBuilders.get(REFRESH_URL).cookie(thirdRTCookie))
-				.andExpect(MockMvcResultMatchers.status().isUnauthorized())
-				.andReturn();
+            // now, no tokens should work
+            Thread.sleep(1000);
+            System.out.println(STR."Time: \{System.currentTimeMillis()}");
+            Cookie thirdRTCookie = new Cookie("refresh_token", thirdRefreshToken);
+            thirdRTCookie.setMaxAge(7 * 24 * 60 * 60);
+            mockMvc.perform(MockMvcRequestBuilders.get(REFRESH_URL).cookie(thirdRTCookie))
+                    .andExpect(MockMvcResultMatchers.status().isUnauthorized())
+                    .andReturn();
 
-			mockMvc.perform(MockMvcRequestBuilders.get(REFRESH_URL).cookie(firstRTCookie))
-				.andExpect(MockMvcResultMatchers.status().isUnauthorized())
-				.andReturn();
-		}
-		catch (Exception e) {
-			fail(e.getMessage());
-		}
-		finally {
-			removeTempUsers();
-		}
-	}
+            Thread.sleep(1000);
+            System.out.println(STR."Time: \{System.currentTimeMillis()}");
+            mockMvc.perform(MockMvcRequestBuilders.get(REFRESH_URL).cookie(firstRTCookie))
+                    .andExpect(MockMvcResultMatchers.status().isUnauthorized())
+                    .andReturn();
+        } catch (Exception e) {
+            fail(e.getMessage());
+        } finally {
+            removeTempUsers();
+        }
+    }
 
 }
