@@ -113,7 +113,7 @@ class ChatAppAuthServiceApplicationTests {
 
 		String[] refreshTokens = new String[numberOfTokens];
 		for (int i = 0; i < numberOfTokens; i++) {
-			refreshTokens[i] = authTokenService.createToken(new UserDTOMapper().apply(user),
+			refreshTokens[i] = authTokenService.createAccessToken(new UserDTOMapper().apply(user),
 					minExp + Math.round(Math.random() * (maxExp - minExp)));
 		}
 
@@ -295,7 +295,7 @@ class ChatAppAuthServiceApplicationTests {
 
 	@Test
     public void testAuthorizeWithExpiredTokenShouldGet401UnauthorizedWithInvalidTokenMessage() {
-        String expiredToken = authTokenService.createToken(new UserDTOMapper().apply(tempUsers.getFirst()), 1);
+        String expiredToken = authTokenService.createAccessToken(new UserDTOMapper().apply(tempUsers.getFirst()), 1);
         try {
             String body = mockMvc
                     .perform(MockMvcRequestBuilders.get(authorizationUrl).header("authorization", STR."Bearer \{expiredToken}"))
