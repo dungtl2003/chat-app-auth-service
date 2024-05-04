@@ -11,7 +11,6 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 @ControllerAdvice
 public class DatabaseExceptionHandler {
 
-	@ResponseStatus(HttpStatus.SERVICE_UNAVAILABLE)
 	@ExceptionHandler
 	public ResponseEntity<ErrorResponse> handleException(PSQLException exception) {
 		ErrorResponse error = new ErrorResponse(HttpStatus.SERVICE_UNAVAILABLE.value(),

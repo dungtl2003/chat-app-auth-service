@@ -1,5 +1,6 @@
 package org.service.auth.chatappauthservice.exception.user;
 
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.service.auth.chatappauthservice.exception.ErrorResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -10,7 +11,6 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 @ControllerAdvice
 public class UserExceptionHandler {
 
-	@ResponseStatus(HttpStatus.NOT_FOUND)
 	@ExceptionHandler
 	public ResponseEntity<ErrorResponse> handleException(UserNotFoundException exception) {
 		ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), exception.getMessage(),

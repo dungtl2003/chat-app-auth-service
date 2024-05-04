@@ -1,7 +1,3 @@
-local:
-  server:
-    port: 8080
-
 management:
   endpoints:
     web:
@@ -34,6 +30,8 @@ spring:
       show-sql: false
       database: postgresql
     open-in-view: false # https://stackoverflow.com/questions/30549489/what-is-this-spring-jpa-open-in-view-true-property-in-spring-boot
+  profiles:
+    active: @spring.profiles.active@
 
 # Logging
 # The current logger is log4j2
@@ -57,3 +55,8 @@ logging:
 
 # Lazy initialization
 # spring.main.lazy-initialization=true
+
+
+
+
+
