@@ -1,0 +1,17 @@
+server:
+    port: 8081 # For testing only
+spring:
+  config:
+    activate:
+      on-profile: prod
+open-api:
+  version: v1.0.0
+  server:
+    url: "http://localhost:${server.port}" # For testing only
+    description: prod
+
+# Spring doc
+#
+springdoc:
+  show-actuator: true
+  paths-to-match: /actuator/health, /actuator/info

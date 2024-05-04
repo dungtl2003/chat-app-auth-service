@@ -43,10 +43,10 @@ Verify right hook directory:
 git rev-parse --git-path hooks
 ```
 
-### Run tests
+### Run tests in dev environment
 
 ```shell
-./mvnw clean verify
+./mvnw clean verify -P dev
 ```
 
 ### Run format
