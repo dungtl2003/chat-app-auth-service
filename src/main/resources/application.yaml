@@ -1,6 +1,5 @@
-local:
-  server:
-    port: 8080
+server:
+  port: ${PORT}
 
 management:
   endpoints:
@@ -18,15 +17,17 @@ info:
     version: 1
 
 spring:
-  config:
-    import: secrets.yaml
+  security:
+    user:
+      name: admin
+      password: $2a$12$pLQ8WLGUq5xXAcE52ZHJcuHK.EAypoWFxQ6n.L/.iK4Skcp0El4eO
   output:
     ansi:
       enabled: always # color terminal output
   datasource:
-    url: ${postgresql.driver}/${postgresql.host}:${postgresql.port}/${postgresql.database}?sslmode=require&sslcert=${postgresql.root-cert}
-    username: ${postgresql.user}
-    password: ${postgresql.password}
+    url: ${DB_DRIVER}/${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=require&sslcert=${DB_ROOT_CERT}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
