@@ -91,3 +91,4 @@ out/
 *.log
 secrets.*
 .env
+02_auth_secret.yaml
