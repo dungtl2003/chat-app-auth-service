@@ -7,10 +7,6 @@ FROM eclipse-temurin:21-jdk-alpine@sha256:ebfc28d35b192c55509e3c7cc597d91136528f
 ARG JAR_FILE=target/*.jar
 COPY --from=compile project/${JAR_FILE} application.jar
 RUN java -Djarmode=layertools -jar application.jar extract
-RUN ls -la application
-RUN ls -la dependencies
-RUN ls -la spring-boot-loader
-RUN ls -la snapshot-dependencies
 
 FROM eclipse-temurin:21-jdk-alpine@sha256:ebfc28d35b192c55509e3c7cc597d91136528f1a9d3261965b44663af9eb4b4b AS final
 LABEL authors="ilikeblue"
