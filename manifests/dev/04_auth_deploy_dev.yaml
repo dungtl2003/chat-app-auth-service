@@ -1,14 +1,14 @@
 apiVersion: apps/v1
 kind: Deployment
-metadata: 
+metadata:
   name: auth-deployment
-  namespace: chat-app
-  labels: 
+  namespace: chat-app-dev
+  labels:
     app: auth
-spec: 
+spec:
   replicas: 5
   selector:
-    matchLabels: 
+    matchLabels:
       app: auth
   strategy:
     rollingUpdate:
@@ -22,7 +22,7 @@ spec:
       restartPolicy: Always
       containers:
         - name: auth
-          image: ilikeblue/chat-app-auth-service:v0.2
+          image: ilikeblue/chat-app-auth-service:v0.2.3
           ports:
             - containerPort: 8080
               protocol: TCP
@@ -31,3 +31,8 @@ spec:
                 name: auth-configmap
             - secretRef:
                 name: auth-secret
+          env:
+            - name: MY_POD_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
