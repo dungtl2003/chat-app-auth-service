@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 
 import java.util.Arrays;
 import java.util.Map;
+import java.util.Objects;
 
 @Service
 public class AuthServiceImpl implements AuthService {
@@ -55,7 +56,10 @@ public class AuthServiceImpl implements AuthService {
 
 		userService.addRefreshToken(user.getUserId(), refreshToken);
 
-		AuthenticationResponse responseBody = AuthenticationResponse.builder().accessToken(accessToken).build();
+		AuthenticationResponse responseBody = AuthenticationResponse.builder()
+			.podIP(Objects.equals(System.getenv("ENVIRONMENT"), "development") ? System.getenv("MY_POD_ID") : null)
+			.accessToken(accessToken)
+			.build();
 
 		HttpHeaders headers = new HttpHeaders();
 		headers.setContentType(MediaType.APPLICATION_JSON);
@@ -80,7 +84,10 @@ public class AuthServiceImpl implements AuthService {
 			throw new InvalidTokenException("Invalid token");
 		}
 
-		AuthorizationResponse response = AuthorizationResponse.builder().message("Authorized").build();
+		AuthorizationResponse response = AuthorizationResponse.builder()
+			.podIP(Objects.equals(System.getenv("ENVIRONMENT"), "development") ? System.getenv("MY_POD_ID") : null)
+			.message("Authorized")
+			.build();
 		return new ResponseEntity<>(response, HttpStatus.OK);
 	}
 
@@ -147,7 +154,10 @@ public class AuthServiceImpl implements AuthService {
 
 		userService.addRefreshToken(user.userId(), newRefreshToken);
 
-		RefreshResponse response = RefreshResponse.builder().accessToken(newAccessToken).build();
+		RefreshResponse response = RefreshResponse.builder()
+			.podIP(Objects.equals(System.getenv("ENVIRONMENT"), "development") ? System.getenv("MY_POD_ID") : null)
+			.accessToken(newAccessToken)
+			.build();
 
 		HttpHeaders headers = new HttpHeaders();
 		headers.setContentType(MediaType.APPLICATION_JSON);
