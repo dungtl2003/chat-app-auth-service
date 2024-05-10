@@ -34,7 +34,8 @@ public class AuthController {
 	private final AuthService authService;
 
 	@PostMapping("/login")
-    public ResponseEntity<AuthenticationResponse> authenticate(@RequestBody JsonNode request) throws UserNotFoundException, InvalidUserException {
+    public ResponseEntity<AuthenticationResponse> authenticate(@RequestBody JsonNode request)
+            throws UserNotFoundException, InvalidUserException {
         logger.info(STR."Received request: \{request}");
         return authService.login(request);
     }
@@ -55,8 +56,8 @@ public class AuthController {
         Map<String, String> cookies = new HashMap<>();
 
         if (rawCookies != null) {
-            Arrays.stream(rawCookies).forEach(rawCookie ->
-                    cookies.merge(rawCookie.getName(), rawCookie.getValue(), (before, after) -> after));
+            Arrays.stream(rawCookies).forEach(
+                    rawCookie -> cookies.merge(rawCookie.getName(), rawCookie.getValue(), (before, after) -> after));
         }
 
         logger.info(STR."Received cookies: \{cookies}");

@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: auth-configmap
+  namespace: chat-app-dev
+  labels:
+    app: auth
+data:
+  ENVIRONMENT: development
+  DB_DRIVER: jdbc:postgresql:/
+  DB_HOST: ep-wild-king-a1aep8nl.ap-southeast-1.aws.neon.tech
+  DB_NAME: user_management
+  DB_PORT: "5432"
+  DB_ROOT_CERT: /etc/ssl/certs/ca-certificates.crt
+  PORT: "8080"
+  ACCESS_JWT_LIFESPAN_MS: "7200000"
+  REFRESH_JWT_LIFESPAN_MS: "604800000"

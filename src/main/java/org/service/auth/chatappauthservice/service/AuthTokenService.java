@@ -29,12 +29,20 @@ public interface AuthTokenService {
 	String createRefreshToken(UserDTO user);
 
 	/**
-	 * Create and return access token, same as {@link #createAccessToken(UserDTO)} or
-	 * {@link #createRefreshToken(UserDTO)} but with custom expiration time.
+	 * Create and return access token, same as {@link #createAccessToken(UserDTO)} but
+	 * with custom expiration time.
 	 * @param expiration The token's expiration date in milliseconds.
 	 * @return The user's access token.
 	 */
-	String createToken(UserDTO user, long expiration);
+	String createAccessToken(UserDTO user, long expiration);
+
+	/**
+	 * Create and return refresh token, same as {@link #createRefreshToken(UserDTO)} but
+	 * with custom expiration time.
+	 * @param expiration The token's expiration date in milliseconds.
+	 * @return The user's refresh token.
+	 */
+	String createRefreshToken(UserDTO user, long expiration);
 
 	/**
 	 * Check the state of the given token.
