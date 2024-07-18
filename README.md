@@ -7,6 +7,8 @@ The following was discovered as part of building this project:
 * The original package name 'org.service.auth.chat-app-authentication-service' is invalid and this project uses '
   org.service.auth.chatappauthservice' instead.
 
+---
+
 # Getting Started
 
 ### Reference Documentation
@@ -43,14 +45,27 @@ Verify right hook directory:
 git rev-parse --git-path hooks
 ```
 
-### Run tests
+---
 
-```shell
-./mvnw clean verify
-```
+# Environment variables
+
+In order to run the project using the below command, you have to have `.env` file in your root directory.<br>
+File must contain:
+`ACCESS_JWT_LIFESPAN_MS`, `ACCESS_JWT_SECRET`, `BCRYPT_STRENGTH`, `DB_DRIVER`, `DB_HOST`, `DB_NAME`, `DB_PASSWORD`, `DB_PORT`, `DB_ROOT_CERT`, `DB_USER`, `PORT`, `REFRESH_JWT_LIFESPAN_MS`, `REFRESH_JWT_SECRET`.<br>
+File format must be: `KEY=VALUE`, one line for each pair.
+
+---
+
+# Commands
 
 ### Run format
 
 ```shell
-./mvnw spring-javaformat:apply
+./mvnw_wrapper.sh spring-javaformat:apply
+```
+
+### Run tests
+
+```shell
+./mvnw_wrapper.sh clean verify
 ```

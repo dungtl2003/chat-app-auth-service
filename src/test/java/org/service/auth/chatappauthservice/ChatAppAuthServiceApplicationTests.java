@@ -17,7 +17,6 @@ import org.service.auth.chatappauthservice.utils.UserDTOMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -38,16 +37,28 @@ import static org.junit.jupiter.api.Assertions.*;
 @AutoConfigureMockMvc
 class ChatAppAuthServiceApplicationTests {
 
+	private static final int PORT = Integer.parseInt(System.getenv("PORT"));
+
+	private static final String VERSION = "v1";
+
+	private static final String DOMAIN = "localhost";
+
+	private static final String API_URL;
+
+	private static final String AUTHENTICATE_URL;
+
+	private static final String REFRESH_URL;
+
+	private static final String AUTHORIZATION_URL;
+
 	private static List<User> tempUsers;
 
-	private static String authenticateUrl;
-
-	private static String authorizationUrl;
-
-	private static String refreshUrl;
-
-	@LocalServerPort
-	private static int port;
+	static {
+        API_URL = STR."http://\{DOMAIN}:\{PORT}/api/\{VERSION}/auth";
+        AUTHENTICATE_URL = STR."\{API_URL}/login";
+        AUTHORIZATION_URL = STR."\{API_URL}/authorize";
+        REFRESH_URL = STR."\{API_URL}/refresh";
+    }
 
 	@Autowired
 	private MockMvc mockMvc;
@@ -59,12 +70,9 @@ class ChatAppAuthServiceApplicationTests {
 	private AuthTokenService authTokenService;
 
 	@BeforeAll
-    public static void setup() {
-        authenticateUrl = STR."http://localhost:\{port}/api/v1/auth/login";
-        authorizationUrl = STR."http://localhost:\{port}/api/v1/auth/authorize";
-        refreshUrl = STR."http://localhost:\{port}/api/v1/auth/refresh";
-        tempUsers = getSampleUserFromJson();
-    }
+	public static void setup() {
+		tempUsers = getSampleUserFromJson();
+	}
 
 	public static JsonNode convertStringToJson(String msg) throws JsonProcessingException {
 		ObjectMapper mapper = new ObjectMapper();
@@ -113,7 +121,7 @@ class ChatAppAuthServiceApplicationTests {
 
 		String[] refreshTokens = new String[numberOfTokens];
 		for (int i = 0; i < numberOfTokens; i++) {
-			refreshTokens[i] = authTokenService.createToken(new UserDTOMapper().apply(user),
+			refreshTokens[i] = authTokenService.createRefreshToken(new UserDTOMapper().apply(user),
 					minExp + Math.round(Math.random() * (maxExp - minExp)));
 		}
 
@@ -137,7 +145,7 @@ class ChatAppAuthServiceApplicationTests {
 			addTempUsers();
 
 			String responseBody = mockMvc
-				.perform(MockMvcRequestBuilders.post(authenticateUrl)
+				.perform(MockMvcRequestBuilders.post(AUTHENTICATE_URL)
 					.contentType(MediaType.APPLICATION_JSON)
 					.content(buildAuthenticateJsonBodyRequest(randomUser)))
 				.andExpect(MockMvcResultMatchers.status().isOk())
@@ -190,7 +198,7 @@ class ChatAppAuthServiceApplicationTests {
 
 		try {
 			mockMvc
-				.perform(MockMvcRequestBuilders.post(authenticateUrl)
+				.perform(MockMvcRequestBuilders.post(AUTHENTICATE_URL)
 					.contentType(MediaType.APPLICATION_JSON)
 					.content(buildAuthenticateJsonBodyRequest(randomUser)))
 				.andExpect(MockMvcResultMatchers.status().isNotFound());
@@ -211,7 +219,7 @@ class ChatAppAuthServiceApplicationTests {
 			randomUser.setPassword("fakepassword"); // change password to invalid one
 
 			mockMvc
-				.perform(MockMvcRequestBuilders.post(authenticateUrl)
+				.perform(MockMvcRequestBuilders.post(AUTHENTICATE_URL)
 					.contentType(MediaType.APPLICATION_JSON)
 					.content(buildAuthenticateJsonBodyRequest(randomUser)))
 				.andExpect(MockMvcResultMatchers.status().isUnprocessableEntity());
@@ -227,13 +235,13 @@ class ChatAppAuthServiceApplicationTests {
 	@Test
 	public void testAccessAuthenticateApiWithWrongHttpMethodShouldGet405MethodNotAllowed() {
 		try {
-			mockMvc.perform(MockMvcRequestBuilders.get(authenticateUrl))
+			mockMvc.perform(MockMvcRequestBuilders.get(AUTHENTICATE_URL))
 				.andExpect(MockMvcResultMatchers.status().isMethodNotAllowed());
 
-			mockMvc.perform(MockMvcRequestBuilders.patch(authenticateUrl))
+			mockMvc.perform(MockMvcRequestBuilders.patch(AUTHENTICATE_URL))
 				.andExpect(MockMvcResultMatchers.status().isMethodNotAllowed());
 
-			mockMvc.perform(MockMvcRequestBuilders.put(authenticateUrl))
+			mockMvc.perform(MockMvcRequestBuilders.put(AUTHENTICATE_URL))
 				.andExpect(MockMvcResultMatchers.status().isMethodNotAllowed());
 		}
 		catch (Exception e) {
@@ -244,7 +252,7 @@ class ChatAppAuthServiceApplicationTests {
 	@Test
 	public void testAuthorizeWithoutTokenShouldGet401UnauthorizedWithMissingCredentialMessage() {
 		try {
-			String body = mockMvc.perform(MockMvcRequestBuilders.get(authorizationUrl))
+			String body = mockMvc.perform(MockMvcRequestBuilders.get(AUTHORIZATION_URL))
 				.andExpect(MockMvcResultMatchers.status().isUnauthorized())
 				.andReturn()
 				.getResponse()
@@ -261,7 +269,7 @@ class ChatAppAuthServiceApplicationTests {
 	@Test
 	public void testAuthorizeWithWrongTokenFormatShouldGet401UnauthorizedWithInvalidFormatMessage() {
 		try {
-			String body = mockMvc.perform(MockMvcRequestBuilders.get(authorizationUrl).header("authorization", "abcd"))
+			String body = mockMvc.perform(MockMvcRequestBuilders.get(AUTHORIZATION_URL).header("authorization", "abcd"))
 				.andExpect(MockMvcResultMatchers.status().isUnauthorized())
 				.andReturn()
 				.getResponse()
@@ -280,7 +288,7 @@ class ChatAppAuthServiceApplicationTests {
         String fakeToken = "fakeheader.fakepayload.signature";
         try {
             String body = mockMvc
-                    .perform(MockMvcRequestBuilders.get(authorizationUrl).header("authorization", STR."Bearer \{fakeToken}"))
+                    .perform(MockMvcRequestBuilders.get(AUTHORIZATION_URL).header("authorization", STR."Bearer \{fakeToken}"))
                     .andExpect(MockMvcResultMatchers.status().isUnauthorized())
                     .andReturn()
                     .getResponse()
@@ -295,10 +303,10 @@ class ChatAppAuthServiceApplicationTests {
 
 	@Test
     public void testAuthorizeWithExpiredTokenShouldGet401UnauthorizedWithInvalidTokenMessage() {
-        String expiredToken = authTokenService.createToken(new UserDTOMapper().apply(tempUsers.getFirst()), 1);
+        String expiredToken = authTokenService.createAccessToken(new UserDTOMapper().apply(tempUsers.getFirst()), 1);
         try {
             String body = mockMvc
-                    .perform(MockMvcRequestBuilders.get(authorizationUrl).header("authorization", STR."Bearer \{expiredToken}"))
+                    .perform(MockMvcRequestBuilders.get(AUTHORIZATION_URL).header("authorization", STR."Bearer \{expiredToken}"))
                     .andExpect(MockMvcResultMatchers.status().isUnauthorized())
                     .andReturn()
                     .getResponse()
@@ -317,7 +325,7 @@ class ChatAppAuthServiceApplicationTests {
         try {
             String body = mockMvc
                     .perform(MockMvcRequestBuilders
-                            .get(authorizationUrl)
+                            .get(AUTHORIZATION_URL)
                             .header("authorization", STR."Bearer \{validToken}"))
                     .andExpect(MockMvcResultMatchers.status().isOk())
                     .andReturn().getResponse().getContentAsString();
@@ -332,7 +340,7 @@ class ChatAppAuthServiceApplicationTests {
 	@Test
 	public void testRefreshWithoutRefreshTokenShouldGet400BadRequestWithMissingRefreshTokenMessage() {
 		try {
-			String body = mockMvc.perform(MockMvcRequestBuilders.get(refreshUrl))
+			String body = mockMvc.perform(MockMvcRequestBuilders.get(REFRESH_URL))
 				.andExpect(MockMvcResultMatchers.status().isBadRequest())
 				.andReturn()
 				.getResponse()
@@ -353,7 +361,7 @@ class ChatAppAuthServiceApplicationTests {
 		cookie.setMaxAge(7 * 24 * 60 * 60);
 
 		try {
-			String body = mockMvc.perform(MockMvcRequestBuilders.get(refreshUrl).cookie(cookie))
+			String body = mockMvc.perform(MockMvcRequestBuilders.get(REFRESH_URL).cookie(cookie))
 				.andExpect(MockMvcResultMatchers.status().isUnauthorized())
 				.andReturn()
 				.getResponse()
@@ -378,7 +386,7 @@ class ChatAppAuthServiceApplicationTests {
 		try {
 			addTempUsers();
 
-			String body = mockMvc.perform(MockMvcRequestBuilders.get(refreshUrl).cookie(cookie))
+			String body = mockMvc.perform(MockMvcRequestBuilders.get(REFRESH_URL).cookie(cookie))
 				.andExpect(MockMvcResultMatchers.status().isUnauthorized())
 				.andReturn()
 				.getResponse()
@@ -408,7 +416,7 @@ class ChatAppAuthServiceApplicationTests {
 		try {
 			addTempUsers();
 
-			MockHttpServletResponse response = mockMvc.perform(MockMvcRequestBuilders.get(refreshUrl).cookie(cookie))
+			MockHttpServletResponse response = mockMvc.perform(MockMvcRequestBuilders.get(REFRESH_URL).cookie(cookie))
 				.andExpect(MockMvcResultMatchers.status().isOk())
 				.andExpect(MockMvcResultMatchers.header().exists(HttpHeaders.SET_COOKIE))
 				.andReturn()
@@ -444,7 +452,7 @@ class ChatAppAuthServiceApplicationTests {
 			Cookie firstRTCookie = new Cookie("refresh_token", firstRefreshToken);
 			firstRTCookie.setMaxAge(7 * 24 * 60 * 60);
 			String secondRefreshToken = Objects
-				.requireNonNull(mockMvc.perform(MockMvcRequestBuilders.get(refreshUrl).cookie(firstRTCookie))
+				.requireNonNull(mockMvc.perform(MockMvcRequestBuilders.get(REFRESH_URL).cookie(firstRTCookie))
 					.andExpect(MockMvcResultMatchers.status().isOk())
 					.andReturn()
 					.getResponse()
@@ -452,10 +460,11 @@ class ChatAppAuthServiceApplicationTests {
 				.getValue();
 
 			// normal user sends next request with new refresh token should work normally
+			Thread.sleep(1000);
 			Cookie secondRTCookie = new Cookie("refresh_token", secondRefreshToken);
 			secondRTCookie.setMaxAge(7 * 24 * 60 * 60);
 			String thirdRefreshToken = Objects
-				.requireNonNull(mockMvc.perform(MockMvcRequestBuilders.get(refreshUrl).cookie(secondRTCookie))
+				.requireNonNull(mockMvc.perform(MockMvcRequestBuilders.get(REFRESH_URL).cookie(secondRTCookie))
 					.andExpect(MockMvcResultMatchers.status().isOk())
 					.andReturn()
 					.getResponse()
@@ -463,18 +472,21 @@ class ChatAppAuthServiceApplicationTests {
 				.getValue();
 
 			// hacker tries to reuse the second token
-			mockMvc.perform(MockMvcRequestBuilders.get(refreshUrl).cookie(secondRTCookie))
+			Thread.sleep(1000);
+			mockMvc.perform(MockMvcRequestBuilders.get(REFRESH_URL).cookie(secondRTCookie))
 				.andExpect(MockMvcResultMatchers.status().isUnauthorized())
 				.andReturn();
 
 			// now, no tokens should work
+			Thread.sleep(1000);
 			Cookie thirdRTCookie = new Cookie("refresh_token", thirdRefreshToken);
 			thirdRTCookie.setMaxAge(7 * 24 * 60 * 60);
-			mockMvc.perform(MockMvcRequestBuilders.get(refreshUrl).cookie(thirdRTCookie))
+			mockMvc.perform(MockMvcRequestBuilders.get(REFRESH_URL).cookie(thirdRTCookie))
 				.andExpect(MockMvcResultMatchers.status().isUnauthorized())
 				.andReturn();
 
-			mockMvc.perform(MockMvcRequestBuilders.get(refreshUrl).cookie(firstRTCookie))
+			Thread.sleep(1000);
+			mockMvc.perform(MockMvcRequestBuilders.get(REFRESH_URL).cookie(firstRTCookie))
 				.andExpect(MockMvcResultMatchers.status().isUnauthorized())
 				.andReturn();
 		}

@@ -1,0 +1,10 @@
+.dockerignore
+**/*.log
+Dockerfile
+.git
+.gitignore
+target/
+.idea/
+.git-hooks
+.env
+secrets.*
