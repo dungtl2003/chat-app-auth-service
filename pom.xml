@@ -99,7 +99,6 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-log4j2</artifactId>
         </dependency>
-        <!-- Supports Spring boot profile -->
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-spring-boot</artifactId>
@@ -143,20 +142,6 @@
 
     </dependencies>
 
-    <profiles>
-        <profile>
-            <id>dev</id>
-            <properties>
-                <spring.profiles.active>dev</spring.profiles.active>
-            </properties>
-        </profile>
-        <profile>
-            <id>prod</id>
-            <properties>
-                <spring.profiles.active>prod</spring.profiles.active>
-            </properties>
-        </profile>
-    </profiles>
     <build>
         <plugins>
             <plugin>
