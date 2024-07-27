@@ -36,6 +36,17 @@ spring:
       database: postgresql
     open-in-view: false # https://stackoverflow.com/questions/30549489/what-is-this-spring-jpa-open-in-view-true-property-in-spring-boot
 
+# Open-api
+#
+open-api:
+  version: v1.0.0
+  server:
+    url: "http://localhost:${PORT}" # For testing only
+    description: prod
+springdoc:
+  show-actuator: true
+  paths-to-match: /actuator/health, /actuator/info, /api/**
+
 # Logging
 # The current logger is log4j2
 # The default log4j2 config file is resources/log4j2-spring.xml
