@@ -55,8 +55,8 @@ public class AuthController implements AuthApi {
         Map<String, String> cookies = new HashMap<>();
 
         if (rawCookies != null) {
-            Arrays.stream(rawCookies).forEach(rawCookie ->
-                    cookies.merge(rawCookie.getName(), rawCookie.getValue(), (before, after) -> after));
+            Arrays.stream(rawCookies).forEach(
+                    rawCookie -> cookies.merge(rawCookie.getName(), rawCookie.getValue(), (before, after) -> after));
         }
 
         logger.info(STR."Received cookies: \{cookies}");
