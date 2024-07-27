@@ -71,7 +71,7 @@ environment variables [here](#-list-of-available-environment-variables):<br>
 run the development server:
 
 ```shell
-./mvnw_wrapper.sh exec:java (only if you have set `MAVEN_OPTS` in `.env` file. See more in [here](#-list-of-available-environment-variables))
+./mvnw_wrapper.sh exec:java # (only if you have set `MAVEN_OPTS` in `.env` file. See more in [here](#-list-of-available-environment-variables))
 ```
 
 or you can run this command if you have docker compose:
