@@ -17,7 +17,7 @@ import java.io.IOException;
 @JsonDeserialize(using = RoleDeserializer.class)
 public enum Role {
 
-	ADMIN("admin"), USER("user"),;
+	ADMIN("ADMIN"), USER("USER"),;
 
 	private final String name;
 

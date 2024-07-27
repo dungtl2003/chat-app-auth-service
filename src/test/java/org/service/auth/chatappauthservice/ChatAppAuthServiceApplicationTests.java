@@ -179,7 +179,8 @@ class ChatAppAuthServiceApplicationTests {
 	// .content(buildAuthenticateJsonBodyRequest(randomUser)))
 	// .andReturn();
 	//
-	// String accessToken = result.getResponse().getHeader(HttpHeaders.AUTHORIZATION);
+	// String accessToken =
+	// result.getResponse().getHeader(HttpHeaders.AUTHORIZATION);
 	// assertNotNull(accessToken);
 	// assertEquals(accessToken.indexOf("Bearer"), 0);
 	// }
@@ -288,7 +289,8 @@ class ChatAppAuthServiceApplicationTests {
         String fakeToken = "fakeheader.fakepayload.signature";
         try {
             String body = mockMvc
-                    .perform(MockMvcRequestBuilders.get(AUTHORIZATION_URL).header("authorization", STR."Bearer \{fakeToken}"))
+                    .perform(MockMvcRequestBuilders.get(AUTHORIZATION_URL).header("authorization",
+                            STR."Bearer \{fakeToken}"))
                     .andExpect(MockMvcResultMatchers.status().isUnauthorized())
                     .andReturn()
                     .getResponse()
@@ -306,7 +308,8 @@ class ChatAppAuthServiceApplicationTests {
         String expiredToken = authTokenService.createAccessToken(new UserDTOMapper().apply(tempUsers.getFirst()), 1);
         try {
             String body = mockMvc
-                    .perform(MockMvcRequestBuilders.get(AUTHORIZATION_URL).header("authorization", STR."Bearer \{expiredToken}"))
+                    .perform(MockMvcRequestBuilders.get(AUTHORIZATION_URL).header("authorization",
+                            STR."Bearer \{expiredToken}"))
                     .andExpect(MockMvcResultMatchers.status().isUnauthorized())
                     .andReturn()
                     .getResponse()

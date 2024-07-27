@@ -4,7 +4,7 @@ services:
     image: ilikeblue/chat-app-auth-service:v0.1
     container_name: auth-test
     ports:
-      - "8080:8080"
+      - "8020:8020"
     env_file:
       - path: ./.env
         required: true

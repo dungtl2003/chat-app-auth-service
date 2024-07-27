@@ -6,7 +6,6 @@ import org.service.auth.chatappauthservice.entity.enums.Role;
 
 import java.util.stream.Stream;
 
-@Converter(autoApply = true)
 public class RoleConverter implements AttributeConverter<Role, String> {
 
 	@Override

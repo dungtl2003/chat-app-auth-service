@@ -6,7 +6,6 @@ import org.service.auth.chatappauthservice.entity.enums.Gender;
 
 import java.util.stream.Stream;
 
-@Converter(autoApply = true)
 public class GenderConverter implements AttributeConverter<Gender, String> {
 
 	@Override

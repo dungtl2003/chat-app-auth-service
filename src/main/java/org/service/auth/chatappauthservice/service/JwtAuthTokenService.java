@@ -68,7 +68,7 @@ public class JwtAuthTokenService implements AuthTokenService {
 			.subject(String.valueOf(user.userId()))
 			.add("email", user.email())
 			.add("username", user.username())
-			.add("role", user.role())
+			.add("role", user.role().getName())
 			.issuedAt(createdAt)
 			.expiration(expireAt)
 			.and()

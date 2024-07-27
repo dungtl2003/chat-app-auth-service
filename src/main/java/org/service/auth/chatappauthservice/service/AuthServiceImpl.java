@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.service.auth.chatappauthservice.DTO.UserDTO;
 import org.service.auth.chatappauthservice.entity.User;
+import org.service.auth.chatappauthservice.entity.enums.Role;
 import org.service.auth.chatappauthservice.entity.enums.TokenState;
 import org.service.auth.chatappauthservice.entity.enums.TokenType;
 import org.service.auth.chatappauthservice.exception.authorize.InvalidAuthorizationHeaderException;
@@ -91,9 +92,11 @@ public class AuthServiceImpl implements AuthService {
 		return new ResponseEntity<>(response, HttpStatus.OK);
 	}
 
-	// TODO: hacker keeps sending this "valid" token and the user need to login again each
+	// TODO: hacker keeps sending this "valid" token and the user need to login
+	// again each
 	// time he/she need to refresh tokens
-	// SOLUTION 1: if the token is expired, even if it seems like being hacked, the server
+	// SOLUTION 1: if the token is expired, even if it seems like being hacked, the
+	// server
 	// just ignores
 	@Override
 	public ResponseEntity<RefreshResponse> refresh(Map<String, String> cookies)
@@ -112,7 +115,7 @@ public class AuthServiceImpl implements AuthService {
 
 		// just in case the token is expired
 		Map<String, String> body = authTokenService.parseBody(refreshToken);
-		long userId = Long.parseLong(body.get("sub"));
+		String userId = body.get("sub");
 
 		// get user's all current active refresh tokens
 		String[] refreshTokens = userService.getUserRefreshTokens(userId);
@@ -145,8 +148,8 @@ public class AuthServiceImpl implements AuthService {
 				TokenType.REFRESH_TOKEN);
 		String username = authTokenService.extractClaim(refreshToken, claims -> claims.get("username", String.class),
 				TokenType.REFRESH_TOKEN);
-		String role = authTokenService.extractClaim(refreshToken, claims -> claims.get("role", String.class),
-				TokenType.REFRESH_TOKEN);
+		Role role = Role.valueOf(authTokenService.extractClaim(refreshToken, claims -> claims.get("role", String.class),
+				TokenType.REFRESH_TOKEN));
 		UserDTO user = new UserDTO(userId, email, username, role);
 
 		String newAccessToken = authTokenService.createAccessToken(user);

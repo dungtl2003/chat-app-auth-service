@@ -26,7 +26,7 @@ public class UserServiceImpl implements UserService {
 	}
 
 	@Override
-	public void deleteUserById(long id) {
+	public void deleteUserById(String id) {
 		userRepository.deleteById(id);
 	}
 
@@ -43,12 +43,11 @@ public class UserServiceImpl implements UserService {
 	}
 
 	@Override
-	public void addRefreshToken(long userId, String refreshToken) throws UserNotFoundException {
+	public void addRefreshToken(String userId, String refreshToken) throws UserNotFoundException {
 		User user = getUserById(userId);
 
 		String[] refreshTokensFromDb = user.getRefreshTokens();
-		String[] refreshTokens = refreshTokensFromDb != null
-				? Arrays.copyOf(refreshTokensFromDb, refreshTokensFromDb.length + 1) : new String[1];
+		String[] refreshTokens = Arrays.copyOf(refreshTokensFromDb, refreshTokensFromDb.length + 1);
 
 		refreshTokens[refreshTokens.length - 1] = refreshToken;
 		user.setRefreshTokens(refreshTokens);
@@ -56,14 +55,14 @@ public class UserServiceImpl implements UserService {
 	}
 
 	@Override
-	public void updateUserRefreshTokens(long userId, String[] refreshTokens) throws UserNotFoundException {
+	public void updateUserRefreshTokens(String userId, String[] refreshTokens) throws UserNotFoundException {
 		User user = getUserById(userId);
 		user.setRefreshTokens(refreshTokens);
 		userRepository.save(user);
 	}
 
 	@Override
-	public String[] getUserRefreshTokens(long userId) throws UserNotFoundException {
+	public String[] getUserRefreshTokens(String userId) throws UserNotFoundException {
 		return getUserById(userId).getRefreshTokens();
 	}
 
@@ -73,7 +72,7 @@ public class UserServiceImpl implements UserService {
                 .orElseThrow(() -> new UserNotFoundException(STR."User with email \{email} does not exist"));
     }
 
-	private User getUserById(Long id) throws UserNotFoundException {
+	private User getUserById(String id) throws UserNotFoundException {
         return userRepository
                 .findById(id)
                 .orElseThrow(() -> new UserNotFoundException(STR."User with id \{id} does not exist"));

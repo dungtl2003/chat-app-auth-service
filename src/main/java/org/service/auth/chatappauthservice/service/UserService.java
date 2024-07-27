@@ -9,14 +9,14 @@ public interface UserService {
 
 	void add(User user);
 
-	void deleteUserById(long id);
+	void deleteUserById(String id);
 
 	User getValidUser(String email, String password) throws UserNotFoundException, InvalidUserException;
 
-	void addRefreshToken(long userId, String refreshToken);
+	void addRefreshToken(String userId, String refreshToken);
 
-	void updateUserRefreshTokens(long userId, String[] refreshTokens);
+	void updateUserRefreshTokens(String userId, String[] refreshTokens);
 
-	String[] getUserRefreshTokens(long userId) throws EntityNotFoundException;
+	String[] getUserRefreshTokens(String userId) throws EntityNotFoundException;
 
 }

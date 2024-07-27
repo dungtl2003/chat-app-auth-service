@@ -6,10 +6,10 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.ColumnTransformer;
+import org.hibernate.annotations.JdbcType;
+import org.hibernate.dialect.PostgreSQLEnumJdbcType;
 import org.service.auth.chatappauthservice.entity.enums.Gender;
 import org.service.auth.chatappauthservice.entity.enums.Role;
-import org.service.auth.chatappauthservice.utils.PrivacyConverter;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -19,12 +19,13 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "users")
+@Table(name = "user")
 public class User implements Cloneable {
 
 	@Id
-	@JsonAlias({ "user_id" })
-	private Long userId;
+	@JsonAlias({ "id" })
+	@Column(name = "id")
+	private String userId;
 
 	@Column(nullable = false, unique = true, columnDefinition = "text")
 	private String email;
@@ -35,52 +36,62 @@ public class User implements Cloneable {
 	@Column(nullable = false, columnDefinition = "text")
 	private String password;
 
-	@Column(nullable = false, columnDefinition = "text")
+	@Column(name = "first_name", nullable = false, columnDefinition = "text")
 	@JsonAlias({ "first_name" })
 	private String firstName;
 
-	@Column(nullable = false, columnDefinition = "text")
+	@Column(name = "last_name", nullable = false, columnDefinition = "text")
 	@JsonAlias({ "last_name" })
 	private String lastName;
 
 	@Column(nullable = false)
 	private LocalDate birthday;
 
-	@Column(nullable = false, columnDefinition = "text")
+	@Column(nullable = false)
+	@Enumerated(EnumType.STRING)
+	@JdbcType(PostgreSQLEnumJdbcType.class)
 	private Gender gender;
 
-	@Column(nullable = false, columnDefinition = "text")
+	@Column(nullable = false)
+	@Enumerated(EnumType.STRING)
+	@JdbcType(PostgreSQLEnumJdbcType.class)
 	private Role role;
 
-	@Column(nullable = false, columnDefinition = "text")
+	@Column(name = "phone_number", nullable = false, columnDefinition = "text")
 	@JsonAlias({ "phone_number" })
 	private String phoneNumber;
 
-	@Convert(converter = PrivacyConverter.class)
-	@Column(columnDefinition = "json")
-	@ColumnTransformer(write = "?::json")
+	@Column(nullable = true, columnDefinition = "text")
 	private String privacy;
 
-	@Column(nullable = false)
+	@Column(name = "is_active", nullable = false)
 	@JsonAlias({ "is_active" })
 	private Boolean isActive;
 
-	@Column(columnDefinition = "text")
-	@JsonAlias({ "avatar_location" })
-	private String avatarLocation;
+	@Column(name = "last_active_at", nullable = false)
+	@JsonAlias({ "last_active_at" })
+	@Builder.Default
+	private LocalDateTime lastActiveAt = LocalDateTime.now();
 
-	@Column(columnDefinition = "text[]")
+	@Column(name = "avatar_url", nullable = true, columnDefinition = "text")
+	@JsonAlias({ "avatar_url" })
+	private String avatarUrl;
+
+	@Column(name = "refresh_tokens", nullable = false, columnDefinition = "text[]")
 	@JsonAlias({ "refresh_tokens" })
-	private String[] refreshTokens;
+	@Builder.Default
+	private String[] refreshTokens = new String[0];
 
-	@Column(nullable = false)
+	@Column(name = "created_at", nullable = false)
 	@JsonAlias({ "created_at" })
 	@Builder.Default
 	private LocalDateTime createdAt = LocalDateTime.now();
 
+	@Column(name = "updated_at", nullable = true)
 	@JsonAlias({ "updated_at" })
 	private LocalDateTime updatedAt;
 
+	@Column(name = "deleted_at", nullable = true)
 	@JsonAlias({ "deleted_at" })
 	private LocalDateTime deletedAt;
 

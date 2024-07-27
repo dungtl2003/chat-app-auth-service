@@ -17,7 +17,7 @@ import java.io.IOException;
 @JsonDeserialize(using = GenderDeserializer.class)
 public enum Gender {
 
-	MALE("male"), FEMALE("female"), OTHER("other"),;
+	MALE("MALE"), FEMALE("FEMALE"),;
 
 	private final String name;
 

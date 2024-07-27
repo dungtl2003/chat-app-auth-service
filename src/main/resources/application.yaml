@@ -34,6 +34,9 @@ spring:
       ddl-auto: none # create-drop if you want to recreate the table script (use none in prod)
       show-sql: false
       database: postgresql
+    properties:
+      hibernate:
+        default_schema: public
     open-in-view: false # https://stackoverflow.com/questions/30549489/what-is-this-spring-jpa-open-in-view-true-property-in-spring-boot
 
 # Logging
