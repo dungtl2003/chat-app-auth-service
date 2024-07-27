@@ -22,7 +22,7 @@ import org.springframework.context.annotation.Profile;
 		servers = { @Server(description = "${open-api.server.description}", url = "${open-api.server.url}") })
 @SecuritySchemes(value = { @SecurityScheme(name = "authorization",
 		description = "Enter the token with the `Bearer ` prefix, e.g. \"Bearer abcde12345\"", scheme = "bearer",
-		in = SecuritySchemeIn.HEADER, type = SecuritySchemeType.APIKEY, bearerFormat = "JWT")})
+		in = SecuritySchemeIn.HEADER, type = SecuritySchemeType.APIKEY, bearerFormat = "JWT") })
 @Configuration
 public class OpenApiConfiguration {
 
