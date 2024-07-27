@@ -9,63 +9,97 @@ The following was discovered as part of building this project:
 
 ---
 
-# Getting Started
+# About project
 
-### Reference Documentation
+this is a chat app's service that supports authentication and authorization
 
-For further reference, please consider the following sections:
+# Table of content
 
-* [Official Apache Maven documentation](https://maven.apache.org/guides/index.html)
-* [Spring Boot Maven Plugin Reference Guide](https://docs.spring.io/spring-boot/docs/3.2.3/maven-plugin/reference/html/)
-* [Create an OCI image](https://docs.spring.io/spring-boot/docs/3.2.3/maven-plugin/reference/html/#build-image)
-* [Spring Web](https://docs.spring.io/spring-boot/docs/3.2.3/reference/htmlsingle/index.html#web)
+[prerequisites](#-prerequisites)<br>
+[setup](#-setup)<br>
+[getting started](#-getting-started)<br>
+[run test](#-run-test)<br>
+[database schema](#-database-schema)<br>
+[deployment (comming soon)](#-deploy)<br>
 
-### Guides
+## ⇁ Prerequisites
 
-The following guides illustrate how to use some features concretely:
+you must have npm installed<br>
+jdk's required version: 21<br>
+database of your choice<br>
 
-* [Building a RESTful Web Service](https://spring.io/guides/gs/rest-service/)
-* [Serving Web Content with Spring MVC](https://spring.io/guides/gs/serving-web-content/)
-* [Building REST services with Spring](https://spring.io/guides/tutorials/rest/)
+## ⇁ Setup
 
-### Requirements
-
-- jdk 21
-- npx
-
-### Config git hooks
+first, clone this project<br>
+next, config git hooks<br>
 
 ```shell
 git config core.hooksPath '.git-hooks'
 ```
 
-Verify right hook directory:
+verify right hook directory:
 
 ```shell
 git rev-parse --git-path hooks
 ```
 
----
+you need to have `.env` file in root project, in the file you need `key=value` each line. See list of required
+environment variables [here](#-list-of-available-environment-variables):<br>
 
-# Environment variables
+## ⇁ List of available environment variables
 
-In order to run the project using the below command, you have to have `.env` file in your root directory.<br>
-File must contain:
-`ACCESS_JWT_LIFESPAN_MS`, `ACCESS_JWT_SECRET`, `BCRYPT_STRENGTH`, `DB_DRIVER`, `DB_HOST`, `DB_NAME`, `DB_PASSWORD`, `DB_PORT`, `DB_ROOT_CERT`, `DB_USER`, `PORT`, `REFRESH_JWT_LIFESPAN_MS`, `REFRESH_JWT_SECRET`.<br>
-File format must be: `KEY=VALUE`, one line for each pair.
+| Variable                | Required | Purpose                                                                                                                   |
+|-------------------------|----------|---------------------------------------------------------------------------------------------------------------------------|
+| ENVIRONMENT             | NO       | can be `development` or `production`                                                                                      |
+| DB_DRIVER               | YES      | for example, postgresql driver will be `jdbc:postgresql:/`                                                                |
+| DB_HOST                 | YES      | host name                                                                                                                 |
+| DB_NAME                 | YES      | database schema name                                                                                                      |
+| DB_PORT                 | YES      | for example, postgresql will be `5432`                                                                                    |
+| DB_ROOT_CERT            | YES      | for example, linux will be `/etc/ssl/certs/ca-certificates.crt`                                                           |
+| PORT                    | YES      | server's port                                                                                                             |
+| ACCESS_JWT_LIFESPAN_MS  | YES      | duration of access token in millisecond                                                                                   |
+| REFRESH_JWT_LIFESPAN_MS | YES      | duration of refresh token in millisecond                                                                                  |
+| DB_USER                 | YES      | database user                                                                                                             |
+| DB_PASSWORD             | YES      | password of database user                                                                                                 |
+| REFRESH_JWT_SECRET      | YES      | secret to en/decrypt refresh token                                                                                        |
+| ACCESS_JWT_SECRET       | YES      | secret to en/decrypt access token                                                                                         |
+| BCRYPT_STRENGTH         | YES      | this service will en/decrypt token using `bcrypt`, you can define how strong you want this algorithm to be. Example: `12` |
+| MAVEN_OPTS              | NO       | set this to `--enable-preview` to run on terminal                                                                         |
 
----
+## ⇁ Getting Started
 
-# Commands
+run the development server:
 
-### Run format
+```shell
+./mvnw_wrapper.sh exec:java (only if you have set `MAVEN_OPTS` in `.env` file. See more in [here](#-list-of-available-environment-variables))
+```
+
+or you can run this command if you have docker compose:
+
+```shell
+docker compose up
+```
+
+and turn the service down with:
+
+```shell
+docker compose down
+```
+
+if you change the code, then run this first to format the code:
 
 ```shell
 ./mvnw_wrapper.sh spring-javaformat:apply
 ```
 
-### Run tests
+## ⇁ Run test
 
 ```shell
 ./mvnw_wrapper.sh clean verify
 ```
+
+## ⇁ Database schema
+
+![Schema](./assets/db_schema.png)
+
+## ⇁ Deploy
