@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.service.auth.chatappauthservice.constants.StatusMessage;
 import org.service.auth.chatappauthservice.entity.User;
 import org.service.auth.chatappauthservice.constants.TokenState;
 import org.service.auth.chatappauthservice.constants.TokenType;
@@ -262,7 +263,7 @@ class ChatAppAuthServiceApplicationTests {
 				.getContentAsString();
 
 			JsonNode bodyJson = convertStringToJson(body);
-			assertEquals("Missing credential", bodyJson.get("message").asText());
+			assertEquals(StatusMessage.MISSING_CREDENTIAL, bodyJson.get("message").asText());
 		}
 		catch (Exception e) {
 			fail(e.getMessage());
@@ -279,7 +280,7 @@ class ChatAppAuthServiceApplicationTests {
 				.getContentAsString();
 
 			JsonNode bodyJson = convertStringToJson(body);
-			assertEquals("Invalid format", bodyJson.get("message").asText());
+			assertEquals(StatusMessage.INVALID_FORMAT, bodyJson.get("message").asText());
 		}
 		catch (Exception e) {
 			fail(e.getMessage());
@@ -300,7 +301,8 @@ class ChatAppAuthServiceApplicationTests {
                     .getContentAsString();
 
             JsonNode bodyJson = convertStringToJson(body);
-            assertEquals("Invalid token", bodyJson.get("message").asText());
+            assertEquals(StatusMessage.INVALID_TOKEN,
+                    bodyJson.get("message").asText());
         } catch (Exception e) {
             fail(e.getMessage());
         }
@@ -323,7 +325,8 @@ class ChatAppAuthServiceApplicationTests {
                     .getContentAsString();
 
             JsonNode bodyJson = convertStringToJson(body);
-            assertEquals("Invalid token", bodyJson.get("message").asText());
+            assertEquals(StatusMessage.INVALID_TOKEN,
+                    bodyJson.get("message").asText());
         } catch (Exception e) {
             fail(e.getMessage());
         }
@@ -345,7 +348,8 @@ class ChatAppAuthServiceApplicationTests {
                     .andReturn().getResponse().getContentAsString();
 
             JsonNode bodyJson = convertStringToJson(body);
-            assertEquals("Authorized", bodyJson.get("message").asText());
+            assertEquals(StatusMessage.AUTHORIZED,
+                    bodyJson.get("message").asText());
         } catch (Exception e) {
             fail(e.getMessage());
         }
@@ -361,7 +365,7 @@ class ChatAppAuthServiceApplicationTests {
 				.getContentAsString();
 
 			JsonNode bodyJson = convertStringToJson(body);
-			assertEquals("Missing refresh token", bodyJson.get("message").asText());
+			assertEquals(StatusMessage.MISSING_RT, bodyJson.get("message").asText());
 		}
 		catch (Exception e) {
 			fail(e.getMessage());
@@ -382,7 +386,7 @@ class ChatAppAuthServiceApplicationTests {
 				.getContentAsString();
 
 			JsonNode bodyJson = convertStringToJson(body);
-			assertEquals("Invalid refresh token", bodyJson.get("message").asText());
+			assertEquals(StatusMessage.INVALID_RT, bodyJson.get("message").asText());
 		}
 		catch (Exception e) {
 			fail(e.getMessage());
@@ -407,7 +411,7 @@ class ChatAppAuthServiceApplicationTests {
 				.getContentAsString();
 
 			JsonNode bodyJson = convertStringToJson(body);
-			assertEquals("Token is expired", bodyJson.get("message").asText());
+			assertEquals(StatusMessage.TOKEN_EXPIRED, bodyJson.get("message").asText());
 		}
 		catch (Exception e) {
 			fail(e.getMessage());

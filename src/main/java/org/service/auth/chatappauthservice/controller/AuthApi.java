@@ -56,10 +56,11 @@ public interface AuthApi {
 
 	@Operation(summary = "Check user's access token validation",
 			responses = {
-					@ApiResponse(responseCode = "200", description = "Authorized",
+					@ApiResponse(responseCode = "200", description = StatusMessage.AUTHORIZED,
 							content = @Content(mediaType = "application/json")),
 					@ApiResponse(responseCode = "401",
-							description = "Missing access token | Invalid authorization header | Invalid token",
+							description = StatusMessage.MISSING_CREDENTIAL + " | " + StatusMessage.INVALID_FORMAT
+									+ " | " + StatusMessage.INVALID_TOKEN,
 							content = @Content(schema = @Schema(implementation = ErrorResponse.class),
 									mediaType = "application/json")) },
 			security = @SecurityRequirement(name = "authorization"))
@@ -68,13 +69,12 @@ public interface AuthApi {
 			throws MissingAccessTokenException, InvalidAuthorizationHeaderException, InvalidTokenException;
 
 	@Operation(summary = "Refresh user's token",
-			responses = {
-					@ApiResponse(responseCode = "200", description = "Success",
-							content = @Content(mediaType = "application/json")),
-					@ApiResponse(responseCode = "400", description = "Missing refresh token",
+			responses = { @ApiResponse(responseCode = "200", content = @Content(mediaType = "application/json")),
+					@ApiResponse(responseCode = "400", description = StatusMessage.MISSING_RT,
 							content = @Content(schema = @Schema(implementation = ErrorResponse.class),
 									mediaType = "application/json")),
-					@ApiResponse(responseCode = "401", description = "Invalid token | Expired token",
+					@ApiResponse(responseCode = "401",
+							description = StatusMessage.INVALID_TOKEN + " | " + StatusMessage.TOKEN_EXPIRED,
 							content = @Content(schema = @Schema(implementation = ErrorResponse.class),
 									mediaType = "application/json")) },
 			security = @SecurityRequirement(name = "refresh_token"))
