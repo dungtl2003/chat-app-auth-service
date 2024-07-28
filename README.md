@@ -4,7 +4,8 @@ PLEASE DO NOT USE "EXTENDS" KEYWORD
 
 The following was discovered as part of building this project:
 
-* The original package name 'org.service.auth.chat-app-authentication-service' is invalid and this project uses '
+* The original package name 'org.service.auth.chat-app-authentication-service'
+  is invalid and this project uses '
   org.service.auth.chatappauthservice' instead.
 
 ---
@@ -43,27 +44,37 @@ verify right hook directory:
 git rev-parse --git-path hooks
 ```
 
-you need to have `.env` file in root project, in the file you need `key=value` each line. See list of required
+you need to have `.env` file in root project, in the file you need `key=value`
+each line. See list of required
 environment variables [here](#-list-of-available-environment-variables):<br>
 
 ## ⇁ List of available environment variables
 
+# Environment variables
+
 | Variable                | Required | Purpose                                                                                                                   |
 |-------------------------|----------|---------------------------------------------------------------------------------------------------------------------------|
-| ENVIRONMENT             | NO       | can be `development` or `production`                                                                                      |
+| ENVIRONMENT             | NO       | can be `development` or `production`. Default: `development`                                                              |
+| DATABASE                | YES      | your chosen database. For example: `postgresql`                                                                           |
+| DRIVER_CLASS_NAME       | YES      | example for postgresql: `org.postgresql.Driver`                                                                           |                                                                          
 | DB_DRIVER               | YES      | for example, postgresql driver will be `jdbc:postgresql:/`                                                                |
 | DB_HOST                 | YES      | host name                                                                                                                 |
 | DB_NAME                 | YES      | database schema name                                                                                                      |
 | DB_PORT                 | YES      | for example, postgresql will be `5432`                                                                                    |
 | DB_ROOT_CERT            | YES      | for example, linux will be `/etc/ssl/certs/ca-certificates.crt`                                                           |
+| USERNAME                | YES      | admin username (for whole system control)                                                                                 |
+| PASSWORD                | YES      | admin password. Notice that the password must be encrypted by bcrypt with correct configuration, not raw password         |
 | PORT                    | YES      | server's port                                                                                                             |
-| ACCESS_JWT_LIFESPAN_MS  | YES      | duration of access token in millisecond                                                                                   |
-| REFRESH_JWT_LIFESPAN_MS | YES      | duration of refresh token in millisecond                                                                                  |
+| PROTOCOL                | YES      | can be `http` or `https`                                                                                                  |
+| DOMAIN                  | YES      | your domain name                                                                                                          |
+| ACCESS_JWT_LIFESPAN_MS  | NO       | duration of access token in millisecond. Default: `600000` ms                                                             |
+| REFRESH_JWT_LIFESPAN_MS | NO       | duration of refresh token in millisecond. Default: `86400000` ms                                                          |
 | DB_USER                 | YES      | database user                                                                                                             |
 | DB_PASSWORD             | YES      | password of database user                                                                                                 |
 | REFRESH_JWT_SECRET      | YES      | secret to en/decrypt refresh token                                                                                        |
 | ACCESS_JWT_SECRET       | YES      | secret to en/decrypt access token                                                                                         |
-| BCRYPT_STRENGTH         | YES      | this service will en/decrypt token using `bcrypt`, you can define how strong you want this algorithm to be. Example: `12` |
+| BCRYPT_STRENGTH         | NO       | this service will en/decrypt token using `bcrypt`, you can define how strong you want this algorithm to be. Default: `12` |
+| API_VERSION             | YES      | API version. For example: `v1`                                                                                            |                                                                                              
 | MAVEN_OPTS              | NO       | set this to `--enable-preview` to run on terminal                                                                         |
 
 ## ⇁ Getting Started
@@ -91,6 +102,11 @@ if you change the code, then run this first to format the code:
 ```shell
 ./mvnw_wrapper.sh spring-javaformat:apply
 ```
+
+after you run the app, you can go to `/swagger-ui/index.html#/` endpoint to see
+swagger
+
+---
 
 ## ⇁ Run test
 

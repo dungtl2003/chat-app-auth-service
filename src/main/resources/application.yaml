@@ -14,13 +14,13 @@ info:
   app:
     name: "authentication and authorization service"
     description: "api for chat app's auth"
-    version: 1
+    version: ${API_VERSION}
 
 spring:
   security:
     user:
-      name: admin
-      password: $2a$12$pLQ8WLGUq5xXAcE52ZHJcuHK.EAypoWFxQ6n.L/.iK4Skcp0El4eO
+      name: ${USERNAME}
+      password: ${PASSWORD}
   output:
     ansi:
       enabled: always # color terminal output
@@ -28,16 +28,26 @@ spring:
     url: ${DB_DRIVER}/${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=require&sslcert=${DB_ROOT_CERT}
     username: ${DB_USER}
     password: ${DB_PASSWORD}
-    driver-class-name: org.postgresql.Driver
+    driver-class-name: ${DRIVER_CLASS_NAME}
   jpa:
     hibernate:
       ddl-auto: none # create-drop if you want to recreate the table script (use none in prod)
       show-sql: false
-      database: postgresql
+      database: ${DATABASE}
     properties:
       hibernate:
         default_schema: public
     open-in-view: false # https://stackoverflow.com/questions/30549489/what-is-this-spring-jpa-open-in-view-true-property-in-spring-boot
+
+# Open-api
+#
+open-api:
+  version: v1.0.0
+  server:
+    url: "${PROTOCOL}://${DOMAIN}:${PORT}" # For testing only
+springdoc:
+  show-actuator: true
+  paths-to-match: /actuator/health, /actuator/info, /api/**
 
 # Logging
 # The current logger is log4j2

@@ -3,6 +3,7 @@ package org.service.auth.chatappauthservice.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.service.auth.chatappauthservice.DTO.UserDTO;
+import org.service.auth.chatappauthservice.configurations.AppConfiguration;
 import org.service.auth.chatappauthservice.entity.User;
 import org.service.auth.chatappauthservice.entity.enums.Role;
 import org.service.auth.chatappauthservice.entity.enums.TokenState;
@@ -34,12 +35,12 @@ public class AuthServiceImpl implements AuthService {
 
 	private final AuthTokenService authTokenService;
 
-	@Value("${info.app.version}")
-	private int apiVersion;
+	private final AppConfiguration configuration;
 
-	public AuthServiceImpl(UserService userService, AuthTokenService authTokenService) {
+	public AuthServiceImpl(UserService userService, AuthTokenService authTokenService, AppConfiguration configuration) {
 		this.userService = userService;
 		this.authTokenService = authTokenService;
+		this.configuration = configuration;
 	}
 
 	@Override
@@ -57,10 +58,7 @@ public class AuthServiceImpl implements AuthService {
 
 		userService.addRefreshToken(user.getUserId(), refreshToken);
 
-		AuthenticationResponse responseBody = AuthenticationResponse.builder()
-			.podIP(Objects.equals(System.getenv("ENVIRONMENT"), "development") ? System.getenv("MY_POD_ID") : null)
-			.accessToken(accessToken)
-			.build();
+		AuthenticationResponse responseBody = AuthenticationResponse.builder().accessToken(accessToken).build();
 
 		HttpHeaders headers = new HttpHeaders();
 		headers.setContentType(MediaType.APPLICATION_JSON);
@@ -85,10 +83,7 @@ public class AuthServiceImpl implements AuthService {
 			throw new InvalidTokenException("Invalid token");
 		}
 
-		AuthorizationResponse response = AuthorizationResponse.builder()
-			.podIP(Objects.equals(System.getenv("ENVIRONMENT"), "development") ? System.getenv("MY_POD_ID") : null)
-			.message("Authorized")
-			.build();
+		AuthorizationResponse response = AuthorizationResponse.builder().message("Authorized").build();
 		return new ResponseEntity<>(response, HttpStatus.OK);
 	}
 
@@ -157,10 +152,7 @@ public class AuthServiceImpl implements AuthService {
 
 		userService.addRefreshToken(user.userId(), newRefreshToken);
 
-		RefreshResponse response = RefreshResponse.builder()
-			.podIP(Objects.equals(System.getenv("ENVIRONMENT"), "development") ? System.getenv("MY_POD_ID") : null)
-			.accessToken(newAccessToken)
-			.build();
+		RefreshResponse response = RefreshResponse.builder().accessToken(newAccessToken).build();
 
 		HttpHeaders headers = new HttpHeaders();
 		headers.setContentType(MediaType.APPLICATION_JSON);
@@ -174,7 +166,8 @@ public class AuthServiceImpl implements AuthService {
                 // .secure(true) //TODO: add this when you have https
                 .maxAge(7 * 24 * 60 * 60) // same as the refresh token
                 .httpOnly(true)
-                .path(STR."/api/v\{apiVersion}/auth/refresh")
+                .path(STR."/api/\{configuration.getApiVersion()}/auth/refresh")
+                .path(STR."/api/\{configuration.getApiVersion()}/auth/logout")
                 .build();
     }
 

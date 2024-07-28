@@ -9,6 +9,8 @@ import io.jsonwebtoken.security.Keys;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.service.auth.chatappauthservice.DTO.UserDTO;
+import org.service.auth.chatappauthservice.configurations.AppConfiguration;
+import org.service.auth.chatappauthservice.constants.ErrorMessage;
 import org.service.auth.chatappauthservice.entity.enums.TokenState;
 import org.service.auth.chatappauthservice.entity.enums.TokenType;
 import org.springframework.stereotype.Service;
@@ -25,35 +27,30 @@ public class JwtAuthTokenService implements AuthTokenService {
 
 	private static final Logger logger = LogManager.getLogger(JwtAuthTokenService.class);
 
-	private static final long DEFAULT_ACCESS_EXPIRATION = Long.parseLong(System.getenv("ACCESS_JWT_LIFESPAN_MS"));
+	private final AppConfiguration configuration;
 
-	private static final long DEFAULT_REFRESH_EXPIRATION = Long.parseLong(System.getenv("REFRESH_JWT_LIFESPAN_MS"));
-
-	private static final String SECRET_ACCESS_KEY = System.getenv("ACCESS_JWT_SECRET");
-
-	private static final String SECRET_REFRESH_KEY = System.getenv("REFRESH_JWT_SECRET");
-
-	public JwtAuthTokenService() {
+	public JwtAuthTokenService(AppConfiguration configuration) {
+		this.configuration = configuration;
 	}
 
 	@Override
 	public String createAccessToken(UserDTO user) {
-		return createToken(user, SECRET_ACCESS_KEY, DEFAULT_ACCESS_EXPIRATION);
+		return createToken(user, configuration.getSecretAT(), configuration.getATLifespanInMs());
 	}
 
 	@Override
 	public String createRefreshToken(UserDTO user) {
-		return createToken(user, SECRET_REFRESH_KEY, DEFAULT_REFRESH_EXPIRATION);
+		return createToken(user, configuration.getSecretRT(), configuration.getRTLifespanInMs());
 	}
 
 	@Override
 	public String createAccessToken(UserDTO user, long expiration) {
-		return createToken(user, SECRET_ACCESS_KEY, expiration);
+		return createToken(user, configuration.getSecretAT(), expiration);
 	}
 
 	@Override
 	public String createRefreshToken(UserDTO user, long expiration) {
-		return createToken(user, SECRET_REFRESH_KEY, expiration);
+		return createToken(user, configuration.getSecretRT(), expiration);
 	}
 
 	private String createToken(UserDTO user, String secretKey, long expiration) {
@@ -77,28 +74,31 @@ public class JwtAuthTokenService implements AuthTokenService {
 	}
 
 	@Override
-    public TokenState checkTokenState(String jwtToken, TokenType type) {
-        try {
-            String secretKey;
-            switch (type) {
-                case ACCESS_TOKEN -> secretKey = SECRET_ACCESS_KEY;
-                case REFRESH_TOKEN -> secretKey = SECRET_REFRESH_KEY;
-                default -> throw new RuntimeException("Invalid token type");
-            }
-            JwtParser parser = getParser(secretKey);
-            parser.parseSignedClaims(jwtToken);
-        } catch (ExpiredJwtException eje) {
-            logger.debug("Token is expired");
-            return TokenState.EXPIRED;
-        } catch (JwtException je) {
-            logger.debug("Token is invalid");
-            return TokenState.INVALID;
-        } catch (Exception e) {
-            throw new RuntimeException(STR."Unhandled exception: \{e.getMessage()}");
-        }
+	public TokenState checkTokenState(String jwtToken, TokenType type) {
+		try {
+			String secretKey;
+			switch (type) {
+				case ACCESS_TOKEN -> secretKey = configuration.getSecretAT();
+				case REFRESH_TOKEN -> secretKey = configuration.getSecretRT();
+				default -> throw new RuntimeException(ErrorMessage.INVALID_TOKEN_TYPE);
+			}
+			JwtParser parser = getParser(secretKey);
+			parser.parseSignedClaims(jwtToken);
+		}
+		catch (ExpiredJwtException eje) {
+			logger.debug("Token is expired");
+			return TokenState.EXPIRED;
+		}
+		catch (JwtException je) {
+			logger.debug("Token is invalid");
+			return TokenState.INVALID;
+		}
+		catch (Exception e) {
+			throw new RuntimeException(ErrorMessage.UNHANDLED_EXCEPTION);
+		}
 
-        return TokenState.VALID;
-    }
+		return TokenState.VALID;
+	}
 
 	private Claims extractAllClaims(String jwtToken, JwtParser parser) throws ExpiredJwtException {
 		return parser.parseSignedClaims(jwtToken).getPayload();
@@ -108,8 +108,8 @@ public class JwtAuthTokenService implements AuthTokenService {
 	public <T> T extractClaim(String jwtToken, Function<Claims, T> claimsResolver, TokenType type) throws JwtException {
 		String secretKey;
 		switch (type) {
-			case ACCESS_TOKEN -> secretKey = SECRET_ACCESS_KEY;
-			case REFRESH_TOKEN -> secretKey = SECRET_REFRESH_KEY;
+			case ACCESS_TOKEN -> secretKey = configuration.getSecretAT();
+			case REFRESH_TOKEN -> secretKey = configuration.getSecretRT();
 			default -> throw new RuntimeException("Invalid token type");
 		}
 		JwtParser parser = getParser(secretKey);

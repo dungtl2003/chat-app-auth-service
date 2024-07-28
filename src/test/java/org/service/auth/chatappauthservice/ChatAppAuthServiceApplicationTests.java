@@ -37,9 +37,11 @@ import static org.junit.jupiter.api.Assertions.*;
 @AutoConfigureMockMvc
 class ChatAppAuthServiceApplicationTests {
 
-	private static final int PORT = Integer.parseInt(System.getenv("PORT"));
+	private static final int PORT = 8020;
 
 	private static final String VERSION = "v1";
+
+	private static final String PROTOCOL = "http";
 
 	private static final String DOMAIN = "localhost";
 
@@ -54,7 +56,7 @@ class ChatAppAuthServiceApplicationTests {
 	private static List<User> tempUsers;
 
 	static {
-        API_URL = STR."http://\{DOMAIN}:\{PORT}/api/\{VERSION}/auth";
+        API_URL = STR."\{PROTOCOL}://\{DOMAIN}:\{PORT}/api/\{VERSION}/auth";
         AUTHENTICATE_URL = STR."\{API_URL}/login";
         AUTHORIZATION_URL = STR."\{API_URL}/authorize";
         REFRESH_URL = STR."\{API_URL}/refresh";
@@ -289,8 +291,9 @@ class ChatAppAuthServiceApplicationTests {
         String fakeToken = "fakeheader.fakepayload.signature";
         try {
             String body = mockMvc
-                    .perform(MockMvcRequestBuilders.get(AUTHORIZATION_URL).header("authorization",
-                            STR."Bearer \{fakeToken}"))
+                    .perform(MockMvcRequestBuilders.get(AUTHORIZATION_URL)
+                            .header("authorization",
+                                    STR."Bearer \{fakeToken}"))
                     .andExpect(MockMvcResultMatchers.status().isUnauthorized())
                     .andReturn()
                     .getResponse()
@@ -305,11 +308,15 @@ class ChatAppAuthServiceApplicationTests {
 
 	@Test
     public void testAuthorizeWithExpiredTokenShouldGet401UnauthorizedWithInvalidTokenMessage() {
-        String expiredToken = authTokenService.createAccessToken(new UserDTOMapper().apply(tempUsers.getFirst()), 1);
+        String
+                expiredToken =
+                authTokenService.createAccessToken(new UserDTOMapper().apply(
+                        tempUsers.getFirst()), 1);
         try {
             String body = mockMvc
-                    .perform(MockMvcRequestBuilders.get(AUTHORIZATION_URL).header("authorization",
-                            STR."Bearer \{expiredToken}"))
+                    .perform(MockMvcRequestBuilders.get(AUTHORIZATION_URL)
+                            .header("authorization",
+                                    STR."Bearer \{expiredToken}"))
                     .andExpect(MockMvcResultMatchers.status().isUnauthorized())
                     .andReturn()
                     .getResponse()
@@ -324,12 +331,16 @@ class ChatAppAuthServiceApplicationTests {
 
 	@Test
     public void testAuthorizeWithValidTokenShouldGet200OkWithAuthorizedMessage() {
-        String validToken = authTokenService.createAccessToken(new UserDTOMapper().apply(tempUsers.getFirst()));
+        String
+                validToken =
+                authTokenService.createAccessToken(new UserDTOMapper().apply(
+                        tempUsers.getFirst()));
         try {
             String body = mockMvc
                     .perform(MockMvcRequestBuilders
                             .get(AUTHORIZATION_URL)
-                            .header("authorization", STR."Bearer \{validToken}"))
+                            .header("authorization",
+                                    STR."Bearer \{validToken}"))
                     .andExpect(MockMvcResultMatchers.status().isOk())
                     .andReturn().getResponse().getContentAsString();
 

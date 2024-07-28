@@ -27,20 +27,20 @@ import java.util.Map;
 @RestController
 @AllArgsConstructor
 @RequestMapping("/api/v1/auth")
-public class AuthController {
+public class AuthController implements AuthApi {
 
 	private static final Logger logger = LogManager.getLogger(AuthController.class);
 
 	private final AuthService authService;
 
-	@PostMapping("/login")
+	@Override
     public ResponseEntity<AuthenticationResponse> authenticate(@RequestBody JsonNode request)
             throws UserNotFoundException, InvalidUserException {
         logger.info(STR."Received request: \{request}");
         return authService.login(request);
     }
 
-	@GetMapping("/authorize")
+	@Override
     public ResponseEntity<AuthorizationResponse> authorize(@RequestHeader Map<String, String> headers)
             throws MissingAccessTokenException, InvalidAuthorizationHeaderException,
             InvalidTokenException {
@@ -48,7 +48,7 @@ public class AuthController {
         return authService.authorize(headers);
     }
 
-	@GetMapping("/refresh")
+	@Override
     public ResponseEntity<RefreshResponse> refresh(HttpServletRequest request)
             throws MissingRefreshTokenException, InvalidTokenException,
             JsonProcessingException {
