@@ -4,8 +4,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import org.service.auth.chatappauthservice.DTO.UserDTO;
-import org.service.auth.chatappauthservice.entity.enums.TokenState;
-import org.service.auth.chatappauthservice.entity.enums.TokenType;
+import org.service.auth.chatappauthservice.constants.TokenState;
+import org.service.auth.chatappauthservice.constants.TokenType;
 
 import java.util.Map;
 import java.util.function.Function;

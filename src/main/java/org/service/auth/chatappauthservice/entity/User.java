@@ -8,8 +8,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.JdbcType;
 import org.hibernate.dialect.PostgreSQLEnumJdbcType;
-import org.service.auth.chatappauthservice.entity.enums.Gender;
-import org.service.auth.chatappauthservice.entity.enums.Role;
+import org.service.auth.chatappauthservice.constants.Gender;
+import org.service.auth.chatappauthservice.constants.Role;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;

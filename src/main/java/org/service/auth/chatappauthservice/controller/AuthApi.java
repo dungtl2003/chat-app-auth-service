@@ -10,7 +10,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
-import org.service.auth.chatappauthservice.constants.ErrorMessage;
+import org.service.auth.chatappauthservice.constants.StatusMessage;
 import org.service.auth.chatappauthservice.exception.ErrorResponse;
 import org.service.auth.chatappauthservice.exception.authorize.InvalidAuthorizationHeaderException;
 import org.service.auth.chatappauthservice.exception.authorize.MissingAccessTokenException;
@@ -33,10 +33,10 @@ public interface AuthApi {
 	@Operation(summary = "Logs user into the system",
 			responses = { @ApiResponse(responseCode = "200", content = @Content(mediaType = "application/json")),
 					@ApiResponse(responseCode = "404",
-							description = ErrorMessage.EMAIL_NOT_FOUND + " | " + ErrorMessage.ID_NOT_FOUND,
+							description = StatusMessage.EMAIL_NOT_FOUND + " | " + StatusMessage.ID_NOT_FOUND,
 							content = @Content(schema = @Schema(implementation = ErrorResponse.class),
 									mediaType = "application/json")),
-					@ApiResponse(responseCode = "422", description = ErrorMessage.INVALID_EMAIL_PASSWORD,
+					@ApiResponse(responseCode = "422", description = StatusMessage.INVALID_EMAIL_PASSWORD,
 							content = @Content(schema = @Schema(implementation = ErrorResponse.class),
 									mediaType = "application/json")) },
 			requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(required = true,

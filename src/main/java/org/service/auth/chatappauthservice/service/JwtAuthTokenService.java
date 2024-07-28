@@ -6,13 +6,11 @@ import com.fasterxml.jackson.databind.json.JsonMapper;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.service.auth.chatappauthservice.DTO.UserDTO;
 import org.service.auth.chatappauthservice.configurations.AppConfiguration;
-import org.service.auth.chatappauthservice.constants.ErrorMessage;
-import org.service.auth.chatappauthservice.entity.enums.TokenState;
-import org.service.auth.chatappauthservice.entity.enums.TokenType;
+import org.service.auth.chatappauthservice.constants.StatusMessage;
+import org.service.auth.chatappauthservice.constants.TokenState;
+import org.service.auth.chatappauthservice.constants.TokenType;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
@@ -24,8 +22,6 @@ import java.util.function.Function;
 
 @Service
 public class JwtAuthTokenService implements AuthTokenService {
-
-	private static final Logger logger = LogManager.getLogger(JwtAuthTokenService.class);
 
 	private final AppConfiguration configuration;
 
@@ -80,21 +76,19 @@ public class JwtAuthTokenService implements AuthTokenService {
 			switch (type) {
 				case ACCESS_TOKEN -> secretKey = configuration.getSecretAT();
 				case REFRESH_TOKEN -> secretKey = configuration.getSecretRT();
-				default -> throw new RuntimeException(ErrorMessage.INVALID_TOKEN_TYPE);
+				default -> throw new RuntimeException(StatusMessage.INVALID_TOKEN_TYPE);
 			}
 			JwtParser parser = getParser(secretKey);
 			parser.parseSignedClaims(jwtToken);
 		}
 		catch (ExpiredJwtException eje) {
-			logger.debug("Token is expired");
 			return TokenState.EXPIRED;
 		}
 		catch (JwtException je) {
-			logger.debug("Token is invalid");
 			return TokenState.INVALID;
 		}
 		catch (Exception e) {
-			throw new RuntimeException(ErrorMessage.UNHANDLED_EXCEPTION);
+			throw new RuntimeException(StatusMessage.UNHANDLED_EXCEPTION);
 		}
 
 		return TokenState.VALID;

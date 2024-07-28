@@ -2,7 +2,7 @@ package org.service.auth.chatappauthservice.service;
 
 import lombok.AllArgsConstructor;
 import lombok.NonNull;
-import org.service.auth.chatappauthservice.constants.ErrorMessage;
+import org.service.auth.chatappauthservice.constants.StatusMessage;
 import org.service.auth.chatappauthservice.entity.User;
 import org.service.auth.chatappauthservice.exception.user.InvalidUserException;
 import org.service.auth.chatappauthservice.exception.user.UserNotFoundException;
@@ -37,7 +37,7 @@ public class UserServiceImpl implements UserService {
 		User user = getUserByEmail(email);
 
 		if (!isValid(email, password, user)) {
-			throw new InvalidUserException(ErrorMessage.INVALID_EMAIL_PASSWORD);
+			throw new InvalidUserException(StatusMessage.INVALID_EMAIL_PASSWORD);
 		}
 
 		return user;
@@ -69,11 +69,11 @@ public class UserServiceImpl implements UserService {
 
 	private User getUserByEmail(String email) throws UserNotFoundException {
 		return userRepository.findByEmail(email)
-			.orElseThrow(() -> new UserNotFoundException(ErrorMessage.EMAIL_NOT_FOUND));
+			.orElseThrow(() -> new UserNotFoundException(StatusMessage.EMAIL_NOT_FOUND));
 	}
 
 	private User getUserById(String id) throws UserNotFoundException {
-		return userRepository.findById(id).orElseThrow(() -> new UserNotFoundException(ErrorMessage.ID_NOT_FOUND));
+		return userRepository.findById(id).orElseThrow(() -> new UserNotFoundException(StatusMessage.ID_NOT_FOUND));
 	}
 
 	private boolean isValid(String email, String password, User user) {

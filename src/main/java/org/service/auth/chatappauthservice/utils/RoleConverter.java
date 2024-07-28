@@ -1,8 +1,7 @@
 package org.service.auth.chatappauthservice.utils;
 
 import jakarta.persistence.AttributeConverter;
-import jakarta.persistence.Converter;
-import org.service.auth.chatappauthservice.entity.enums.Role;
+import org.service.auth.chatappauthservice.constants.Role;
 
 import java.util.stream.Stream;
 

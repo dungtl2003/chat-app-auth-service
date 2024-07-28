@@ -77,6 +77,9 @@ environment variables [here](#-list-of-available-environment-variables):<br>
 | API_VERSION             | YES      | API version. For example: `v1`                                                                                            |                                                                                              
 | MAVEN_OPTS              | NO       | set this to `--enable-preview` to run on terminal                                                                         |
 
+For the full .env file example, check
+out [this template](./templates/.env.template)
+
 ## ⇁ Getting Started
 
 run the development server:

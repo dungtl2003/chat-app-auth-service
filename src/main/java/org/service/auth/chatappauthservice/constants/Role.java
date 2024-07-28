@@ -1,4 +1,4 @@
-package org.service.auth.chatappauthservice.entity.enums;
+package org.service.auth.chatappauthservice.constants;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;

@@ -29,16 +29,16 @@ public class AppConfiguration {
 
 	public AppConfiguration() {
 		this.environment = System.getenv("ENVIRONMENT") != null ? System.getenv("ENVIRONMENT") : "development";
-		this.serverPort = System.getenv("PORT") != null ? Integer.parseInt(System.getenv("PORT")) : 8020;
+		this.serverPort = Integer.parseInt(System.getenv("PORT"));
 		this.ATLifespanInMs = System.getenv("ACCESS_JWT_LIFESPAN_MS") != null
 				? Long.parseLong(System.getenv("ACCESS_JWT_LIFESPAN_MS")) : 10 * 60 * 1000; // 10
-																							// minutes
+		// minutes
 		this.RTLifespanInMs = System.getenv("REFRESH_JWT_LIFESPAN_MS") != null
 				? Long.parseLong(System.getenv("REFRESH_JWT_LIFESPAN_MS")) : 24 * 60 * 60 * 1000; // 1
-																									// day
+		// day
 		this.bcryptStrength = System.getenv("BCRYPT_STRENGTH") != null
 				? Integer.parseInt(System.getenv("BCRYPT_STRENGTH")) : 12;
-		this.apiVersion = System.getenv("API_VERSION") != null ? System.getenv("API_VERSION") : "v1";
+		this.apiVersion = System.getenv("API_VERSION");
 
 		this.secretAT = System.getenv("ACCESS_JWT_SECRET");
 		this.secretRT = System.getenv("REFRESH_JWT_SECRET");

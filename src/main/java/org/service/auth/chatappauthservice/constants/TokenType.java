@@ -1,4 +1,4 @@
-package org.service.auth.chatappauthservice.entity.enums;
+package org.service.auth.chatappauthservice.constants;
 
 public enum TokenType {
 

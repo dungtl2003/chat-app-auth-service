@@ -4,13 +4,15 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.service.auth.chatappauthservice.DTO.UserDTO;
 import org.service.auth.chatappauthservice.configurations.AppConfiguration;
+import org.service.auth.chatappauthservice.constants.StatusMessage;
 import org.service.auth.chatappauthservice.entity.User;
-import org.service.auth.chatappauthservice.entity.enums.Role;
-import org.service.auth.chatappauthservice.entity.enums.TokenState;
-import org.service.auth.chatappauthservice.entity.enums.TokenType;
+import org.service.auth.chatappauthservice.constants.Role;
+import org.service.auth.chatappauthservice.constants.TokenState;
+import org.service.auth.chatappauthservice.constants.TokenType;
 import org.service.auth.chatappauthservice.exception.authorize.InvalidAuthorizationHeaderException;
 import org.service.auth.chatappauthservice.exception.authorize.MissingAccessTokenException;
 import org.service.auth.chatappauthservice.exception.refresh.MissingRefreshTokenException;
+import org.service.auth.chatappauthservice.exception.refresh.ReusedRefreshTokenException;
 import org.service.auth.chatappauthservice.exception.token.ExpiredTokenException;
 import org.service.auth.chatappauthservice.exception.token.InvalidTokenException;
 import org.service.auth.chatappauthservice.exception.user.InvalidUserException;
@@ -19,14 +21,12 @@ import org.service.auth.chatappauthservice.response.AuthenticationResponse;
 import org.service.auth.chatappauthservice.response.AuthorizationResponse;
 import org.service.auth.chatappauthservice.response.RefreshResponse;
 import org.service.auth.chatappauthservice.utils.UserDTOMapper;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RequestHeader;
 
 import java.util.Arrays;
 import java.util.Map;
-import java.util.Objects;
 
 @Service
 public class AuthServiceImpl implements AuthService {
@@ -71,19 +71,19 @@ public class AuthServiceImpl implements AuthService {
 	public ResponseEntity<AuthorizationResponse> authorize(@RequestHeader Map<String, String> headers)
 			throws InvalidAuthorizationHeaderException, MissingAccessTokenException, InvalidTokenException {
 		if (!headers.containsKey("authorization")) {
-			throw new MissingAccessTokenException("Missing credential");
+			throw new MissingAccessTokenException(StatusMessage.MISSING_CREDENTIAL);
 		}
 
 		if (!headers.get("authorization").startsWith("Bearer ")) {
-			throw new InvalidAuthorizationHeaderException("Invalid format");
+			throw new InvalidAuthorizationHeaderException(StatusMessage.INVALID_FORMAT);
 		}
 
 		String token = headers.get("authorization").substring(7).strip();
 		if (!authTokenService.checkTokenState(token, TokenType.ACCESS_TOKEN).equals(TokenState.VALID)) {
-			throw new InvalidTokenException("Invalid token");
+			throw new InvalidTokenException(StatusMessage.INVALID_TOKEN);
 		}
 
-		AuthorizationResponse response = AuthorizationResponse.builder().message("Authorized").build();
+		AuthorizationResponse response = AuthorizationResponse.builder().message(StatusMessage.AUTHORIZED).build();
 		return new ResponseEntity<>(response, HttpStatus.OK);
 	}
 
@@ -97,7 +97,7 @@ public class AuthServiceImpl implements AuthService {
 	public ResponseEntity<RefreshResponse> refresh(Map<String, String> cookies)
 			throws MissingRefreshTokenException, InvalidTokenException, JsonProcessingException {
 		if (!cookies.containsKey("refresh_token")) {
-			throw new MissingRefreshTokenException("Missing refresh token");
+			throw new MissingRefreshTokenException(StatusMessage.MISSING_RT);
 		}
 
 		String refreshToken = cookies.get("refresh_token");
@@ -105,7 +105,7 @@ public class AuthServiceImpl implements AuthService {
 
 		// header, payload and signature does not match
 		if (state.equals(TokenState.INVALID)) {
-			throw new InvalidTokenException("Invalid refresh token");
+			throw new InvalidTokenException(StatusMessage.INVALID_RT);
 		}
 
 		// just in case the token is expired
@@ -131,11 +131,11 @@ public class AuthServiceImpl implements AuthService {
 		// make this user to log in again in this device because the token is
 		// expired
 		if (state.equals(TokenState.EXPIRED)) {
-			throw new ExpiredTokenException("Token is expired");
+			throw new ExpiredTokenException(StatusMessage.TOKEN_EXPIRED);
 		}
 
 		if (!found) {
-			throw new ExpiredTokenException("Invalid refresh token");
+			throw new ReusedRefreshTokenException(StatusMessage.INVALID_TOKEN);
 		}
 
 		// this token down here must be valid
