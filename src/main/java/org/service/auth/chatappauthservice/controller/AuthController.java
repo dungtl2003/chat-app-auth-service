@@ -34,15 +34,19 @@ public class AuthController implements AuthApi {
 	private final AuthService authService;
 
 	@Override
-    public ResponseEntity<AuthenticationResponse> authenticate(@RequestBody JsonNode request)
+    public ResponseEntity<AuthenticationResponse> authenticate(
+            @RequestBody JsonNode request)
             throws UserNotFoundException, InvalidUserException {
         logger.info(STR."Received request: \{request}");
         return authService.login(request);
     }
 
 	@Override
-    public ResponseEntity<AuthorizationResponse> authorize(@RequestHeader Map<String, String> headers)
-            throws MissingAccessTokenException, InvalidAuthorizationHeaderException,
+    public ResponseEntity<AuthorizationResponse> authorize(
+            @RequestHeader Map<String, String> headers)
+            throws
+            MissingAccessTokenException,
+            InvalidAuthorizationHeaderException,
             InvalidTokenException {
         logger.info(STR."Received headers: \{headers}");
         return authService.authorize(headers);
@@ -57,11 +61,17 @@ public class AuthController implements AuthApi {
 
         if (rawCookies != null) {
             Arrays.stream(rawCookies).forEach(
-                    rawCookie -> cookies.merge(rawCookie.getName(), rawCookie.getValue(), (before, after) -> after));
+                    rawCookie -> cookies.merge(rawCookie.getName(),
+                            rawCookie.getValue(),
+                            (before, after) -> after));
         }
 
         logger.info(STR."Received cookies: \{cookies}");
         return authService.refresh(cookies);
     }
+
+	// public ResponseEntity<String> logout(HttpServletRequest request) {
+	//
+	// }
 
 }

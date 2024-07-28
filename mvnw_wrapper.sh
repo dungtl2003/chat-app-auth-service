@@ -1,6 +1,6 @@
 #!/usr/bin/bash
 
-ENV_FILE="./.env";
+ENV_FILE="./environments/dev/.env";
 
 setup_colors() {
     # Only use colors if connected to a terminal

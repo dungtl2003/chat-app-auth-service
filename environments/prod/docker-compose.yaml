@@ -1,0 +1,12 @@
+services:
+  auth-service:
+    build:
+      context: ../..
+      dockerfile: ./environments/dev/Dockerfile
+    image: ilikeblue/chat-app-auth-service-prod
+    container_name: auth-prod-prod
+    ports:
+      - "80:80"
+    env_file:
+      - path: ./.env
+        required: true
