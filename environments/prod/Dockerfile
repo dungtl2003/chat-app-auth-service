@@ -11,6 +11,7 @@ RUN java -Djarmode=layertools -jar application.jar extract
 FROM eclipse-temurin:21-jdk-alpine@sha256:ebfc28d35b192c55509e3c7cc597d91136528f1a9d3261965b44663af9eb4b4b AS final
 LABEL authors="ilikeblue"
 WORKDIR /app
+RUN mkdir logs
 RUN addgroup --system javauser && \
     adduser --system --shell /bin/false --ingroup javauser javauser
 COPY --from=builder dependencies/ ./

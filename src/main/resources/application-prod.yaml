@@ -1,3 +1,15 @@
 logging:
   level:
-    root: info
+    org:
+      service:
+        auth:
+          chatappauthservice:
+            configurations:
+              AppConfiguration: INFO
+  path: ${LOG_PATH:/app/logs}
+
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false

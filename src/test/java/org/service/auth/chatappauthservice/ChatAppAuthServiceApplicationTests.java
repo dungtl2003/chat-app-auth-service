@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.servlet.http.Cookie;
+import lombok.extern.java.Log;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.service.auth.chatappauthservice.constants.StatusMessage;
@@ -52,6 +53,8 @@ class ChatAppAuthServiceApplicationTests {
 
 	private static final String REFRESH_URL;
 
+	private static final String LOGOUT_URL;
+
 	private static final String AUTHORIZATION_URL;
 
 	private static List<User> tempUsers;
@@ -61,6 +64,7 @@ class ChatAppAuthServiceApplicationTests {
         AUTHENTICATE_URL = STR."\{API_URL}/login";
         AUTHORIZATION_URL = STR."\{API_URL}/authorize";
         REFRESH_URL = STR."\{API_URL}/refresh";
+        LOGOUT_URL = STR."\{API_URL}/logout";
     }
 
 	@Autowired
@@ -356,10 +360,10 @@ class ChatAppAuthServiceApplicationTests {
     }
 
 	@Test
-	public void testRefreshWithoutRefreshTokenShouldGet400BadRequestWithMissingRefreshTokenMessage() {
+	public void testRefreshWithoutRefreshTokenShouldGet401UnauthorizedWithMissingRefreshTokenMessage() {
 		try {
 			String body = mockMvc.perform(MockMvcRequestBuilders.get(REFRESH_URL))
-				.andExpect(MockMvcResultMatchers.status().isBadRequest())
+				.andExpect(MockMvcResultMatchers.status().isUnauthorized())
 				.andReturn()
 				.getResponse()
 				.getContentAsString();
@@ -373,7 +377,7 @@ class ChatAppAuthServiceApplicationTests {
 	}
 
 	@Test
-	public void testRefreshWithInvalidRefreshTokenShouldGet404NotFoundWithInvalidRefreshTokenMessage() {
+	public void testRefreshWithInvalidRefreshTokenShouldGet401UnauthorizedWithInvalidRefreshTokenMessage() {
 		String fakeRefreshToken = "fakeheader.fakepayload.signature";
 		Cookie cookie = new Cookie("refresh_token", fakeRefreshToken);
 		cookie.setMaxAge(7 * 24 * 60 * 60);
@@ -386,7 +390,7 @@ class ChatAppAuthServiceApplicationTests {
 				.getContentAsString();
 
 			JsonNode bodyJson = convertStringToJson(body);
-			assertEquals(StatusMessage.INVALID_RT, bodyJson.get("message").asText());
+			assertEquals(StatusMessage.INVALID_TOKEN, bodyJson.get("message").asText());
 		}
 		catch (Exception e) {
 			fail(e.getMessage());
@@ -507,6 +511,111 @@ class ChatAppAuthServiceApplicationTests {
 			mockMvc.perform(MockMvcRequestBuilders.get(REFRESH_URL).cookie(firstRTCookie))
 				.andExpect(MockMvcResultMatchers.status().isUnauthorized())
 				.andReturn();
+		}
+		catch (Exception e) {
+			fail(e.getMessage());
+		}
+		finally {
+			removeTempUsers();
+		}
+	}
+
+	@Test
+	public void testLogoutRequestWithValidRefreshTokenShouldGet200OkAndCannotReuseRT() {
+		String refreshToken = authTokenService.createRefreshToken(new UserDTOMapper().apply(tempUsers.getFirst()));
+		String[] refreshTokens = new String[1];
+		refreshTokens[0] = refreshToken;
+		tempUsers.getFirst().setRefreshTokens(refreshTokens);
+
+		Cookie cookie = new Cookie("refresh_token", refreshToken);
+		cookie.setMaxAge(7 * 24 * 60 * 60);
+
+		try {
+			addTempUsers();
+
+			Cookie responseCookie = mockMvc.perform(MockMvcRequestBuilders.get(LOGOUT_URL).cookie(cookie))
+				.andExpect(MockMvcResultMatchers.status().isOk())
+				.andReturn()
+				.getResponse()
+				.getCookie("refresh_token");
+			assertNotNull(responseCookie);
+			assertEquals(responseCookie.getMaxAge(), 0);
+
+			String body = mockMvc.perform(MockMvcRequestBuilders.get(REFRESH_URL).cookie(cookie))
+				.andExpect(MockMvcResultMatchers.status().isUnauthorized())
+				.andReturn()
+				.getResponse()
+				.getContentAsString();
+
+			// This should also detect reuse RT
+			JsonNode bodyJson = convertStringToJson(body);
+			assertEquals(StatusMessage.INVALID_TOKEN, bodyJson.get("message").asText());
+		}
+		catch (Exception e) {
+			fail(e.getMessage());
+		}
+		finally {
+			removeTempUsers();
+		}
+	}
+
+	@Test
+	public void testLogoutWithoutRefreshTokenShouldGet401UnauthorizedWithMissingRefreshTokenMessage() {
+		try {
+			String body = mockMvc.perform(MockMvcRequestBuilders.get(LOGOUT_URL))
+				.andExpect(MockMvcResultMatchers.status().isUnauthorized())
+				.andReturn()
+				.getResponse()
+				.getContentAsString();
+
+			JsonNode bodyJson = convertStringToJson(body);
+			assertEquals(StatusMessage.MISSING_RT, bodyJson.get("message").asText());
+		}
+		catch (Exception e) {
+			fail(e.getMessage());
+		}
+	}
+
+	@Test
+	public void testLogoutWithInvalidRefreshTokenShouldGet401UnauthorizedWithInvalidRefreshTokenMessage() {
+		String fakeRefreshToken = "fakeheader.fakepayload.signature";
+		Cookie cookie = new Cookie("refresh_token", fakeRefreshToken);
+		cookie.setMaxAge(7 * 24 * 60 * 60);
+
+		try {
+			String body = mockMvc.perform(MockMvcRequestBuilders.get(LOGOUT_URL).cookie(cookie))
+				.andExpect(MockMvcResultMatchers.status().isUnauthorized())
+				.andReturn()
+				.getResponse()
+				.getContentAsString();
+
+			JsonNode bodyJson = convertStringToJson(body);
+			assertEquals(StatusMessage.INVALID_TOKEN, bodyJson.get("message").asText());
+		}
+		catch (Exception e) {
+			fail(e.getMessage());
+		}
+	}
+
+	@Test
+	public void testLogoutWithExpiredRefreshTokenShouldGet401UnauthorizedWithExpiredMessage() {
+		String[] refreshTokensFamily = createUserRefreshTokensFamily(tempUsers.getFirst(), 1, 1, 1);
+		tempUsers.getFirst().setRefreshTokens(refreshTokensFamily);
+
+		Cookie cookie = new Cookie("refresh_token", refreshTokensFamily[0]);
+		cookie.setMaxAge(7 * 24 * 60 * 60);
+
+		try {
+			addTempUsers();
+
+			String body = mockMvc.perform(MockMvcRequestBuilders.get(LOGOUT_URL).cookie(cookie))
+				.andExpect(MockMvcResultMatchers.status().isUnauthorized())
+				.andReturn()
+				.getResponse()
+				.getContentAsString();
+
+			JsonNode bodyJson = convertStringToJson(body);
+			assertEquals(StatusMessage.TOKEN_EXPIRED, bodyJson.get("message").asText());
 		}
 		catch (Exception e) {
 			fail(e.getMessage());

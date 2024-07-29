@@ -1,15 +1,16 @@
-logging:
-  level:
-    root: debug
-  file:
-    name: false
+#logging:
+#  file: none
 
 # Open-api
 #
 open-api:
   version: v1.0.0
   server:
-    url: "${PROTOCOL}://${DOMAIN}:${PORT}" # For testing only
+    url: "${PROTOCOL}://${DOMAIN}:${PORT}"
 springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
   show-actuator: true
   paths-to-match: /actuator/health, /actuator/info, /api/**

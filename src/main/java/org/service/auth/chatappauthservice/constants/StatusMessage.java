@@ -20,8 +20,6 @@ public final class StatusMessage {
 
 	public static final String MISSING_RT = "Missing refresh token";
 
-	public static final String INVALID_RT = "Invalid refresh token";
-
 	public static final String TOKEN_EXPIRED = "Token is expired";
 
 	public static final String AUTHORIZED = "Authorized";

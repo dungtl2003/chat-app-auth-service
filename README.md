@@ -55,7 +55,7 @@ variables [here](#-list-of-available-environment-variables):<br>
 
 | Variable                | Required | Purpose                                                                                                                   |
 |-------------------------|----------|---------------------------------------------------------------------------------------------------------------------------|
-| SPRING_PROFILES_ACTIVE  | YES      | your environment. For example: `dev`                                                                                      |
+| SPRING_PROFILES_ACTIVE  | YES      | your environment, currently it can be `dev` or `prod`                                                                     |
 | DATABASE                | YES      | your chosen database. For example: `postgresql`                                                                           |
 | DRIVER_CLASS_NAME       | YES      | example for postgresql: `org.postgresql.Driver`                                                                           |                                                                          
 | DB_DRIVER               | YES      | for example, postgresql driver will be `jdbc:postgresql:/`                                                                |
@@ -77,6 +77,7 @@ variables [here](#-list-of-available-environment-variables):<br>
 | BCRYPT_STRENGTH         | NO       | this service will en/decrypt token using `bcrypt`, you can define how strong you want this algorithm to be. Default: `12` |
 | API_VERSION             | YES      | API version. For example: `v1`                                                                                            |                                                                                              
 | MAVEN_OPTS              | NO       | set this to `--enable-preview` to run on terminal                                                                         |
+| LOG_PATH                | NO       | path to log folder. Default for non prod environment is `./logs`, for prod environment is `/app/logs`                     |
 
 For the full .env file example, check
 out [this template](./templates/.env.template)
@@ -115,7 +116,7 @@ docker compose -f environments/dev/docker-compose.yaml down
 ```
 
 after you run the app, you can go to `/swagger-ui/index.html#/` endpoint to see
-swagger (this can only work if `SPRING_PROFILES_ACTIVE=dev,swagger`)
+swagger (this can only work if `SPRING_PROFILES_ACTIVE=dev`)
 
 ### ⇁ Production
 
@@ -136,8 +137,22 @@ docker compose -f environments/prod/docker-compose.yaml down
 
 ## ⇁ Run tests
 
+first, you need to have `.env` file inside `environments/dev` folder. See more
+in [here](#-list-of-available-environment-variables)<br>
+
+### ⇁ Run all tests
+
 ```shell
 ./mvnw_wrapper.sh clean verify
+```
+
+### ⇁ Run test of 1 method in the class
+
+you can do this by running `./mvnw_wrapper.sh test -Dtest=class#method`. For
+example:
+
+```shell
+./mvnw_wrapper.sh test -Dtest=ChatAppAuthServiceApplicationTests#testLogoutRequestWithValidRefreshTokenShouldGet200OkAndCannotReuseRT
 ```
 
 ## ⇁ Database schema
