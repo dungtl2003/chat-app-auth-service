@@ -4,7 +4,7 @@ services:
       context: ../..
       dockerfile: ./environments/prod/Dockerfile
     image: ilikeblue/chat-app-auth-service-prod
-    container_name: auth-prod-prod
+    container_name: auth-prod
     ports:
       - "80:80"
     env_file:

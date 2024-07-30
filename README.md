@@ -77,7 +77,7 @@ variables [here](#-list-of-available-environment-variables):<br>
 | BCRYPT_STRENGTH         | NO       | this service will en/decrypt token using `bcrypt`, you can define how strong you want this algorithm to be. Default: `12` |
 | API_VERSION             | YES      | API version. For example: `v1`                                                                                            |                                                                                              
 | MAVEN_OPTS              | NO       | set this to `--enable-preview` to run on terminal                                                                         |
-| LOG_PATH                | NO       | path to log folder. Default for non prod environment is `./logs`, for prod environment is `/app/logs`                     |
+| LOG_PATH                | NO       | path to log folder                                                                                                        |
 
 For the full .env file example, check
 out [this template](./templates/.env.template)

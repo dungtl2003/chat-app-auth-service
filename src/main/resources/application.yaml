@@ -45,17 +45,23 @@ spring:
 # You can define attributes here to override the value in config file
 #
 logging:
-    org:
-      springframework:
-        web: debug
-        jdbc: debug
-        security: trace
-      hibernate:
-        SQL: debug
-        type:
-          descriptor:
-            sql:
-              BasicBinder: trace
+  level:
+    web: debug
+  org:
+    springframework:
+      web: debug
+      jdbc: debug
+      security: trace
+    hibernate:
+      SQL: debug
+      type:
+        descriptor:
+          sql:
+            BasicBinder: trace
+
+log4j2:
+  Script:
+    enableLanguages: groovy
 
 # Lazy initialization
 # spring.main.lazy-initialization=true

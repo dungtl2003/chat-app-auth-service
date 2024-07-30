@@ -15,18 +15,31 @@
                 <ThresholdFilter level="${sys:CONSOLE_LOG_THRESHOLD:-TRACE}"/>
             </Filters>
         </Console>
-        <RollingFile name="File"
-                     fileName="${sys:LOG_PATH}/application-${date:yyyyMMdd}.log"
-                     filePattern="${sys:LOG_PATH}/$${date:yyyy-MM}/app-%d{yyyy-MM-dd-HH}-%i.log.gz">
-            <PatternLayout pattern="${sys:FILE_LOG_PATTERN}"
-                           charset="${sys:FILE_LOG_CHARSET}"/>
-            <Filters>
-                <ThresholdFilter level="${sys:FILE_LOG_THRESHOLD:-TRACE}"/>
-            </Filters>
-            <Policies>
-                <SizeBasedTriggeringPolicy size="10 MB"/>
-            </Policies>
-        </RollingFile>
+        <ScriptAppenderSelector name="SelectFile">
+            <Script language="groovy"><![CDATA[
+                String logPath = System.getenv("LOG_PATH");
+                if(logPath != null && logPath.length() > 0) {
+                    return "File";
+                } else {
+                    return "Null";
+                }
+            ]]></Script>
+            <AppenderSet>
+                <RollingFile name="File"
+                             fileName="${env:LOG_PATH}/application-${date:yyyyMMdd}.log"
+                             filePattern="${env:LOG_PATH}/$${date:yyyy-MM}/app-%d{yyyy-MM-dd-HH}-%i.log.gz">
+                    <PatternLayout pattern="${sys:FILE_LOG_PATTERN}"
+                                   charset="${sys:FILE_LOG_CHARSET}"/>
+                    <Filters>
+                        <ThresholdFilter level="${sys:FILE_LOG_THRESHOLD:-TRACE}"/>
+                    </Filters>
+                    <Policies>
+                        <SizeBasedTriggeringPolicy size="10 MB"/>
+                    </Policies>
+                </RollingFile>
+                <Null name="Null"/>
+            </AppenderSet>
+        </ScriptAppenderSelector>
     </Appenders>
     <Loggers>
         <Logger name="org.apache.catalina.startup.DigesterFactory"
@@ -45,7 +58,7 @@
                 level="debug"/>
         <Root level="info">
             <AppenderRef ref="Console"/>
-            <AppenderRef ref="File"/>
+            <AppenderRef ref="SelectFile"/>
         </Root>
     </Loggers>
 </Configuration>

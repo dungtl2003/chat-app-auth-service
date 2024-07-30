@@ -104,6 +104,14 @@
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-spring-boot</artifactId>
         </dependency>
+        <!-- https://mvnrepository.com/artifact/org.codehaus.groovy/groovy-all -->
+        <dependency>
+            <groupId>org.codehaus.groovy</groupId>
+            <artifactId>groovy-all</artifactId>
+            <version>3.0.22</version>
+            <type>pom</type>
+        </dependency>
+
 
         <!-- Connects to postgresql database -->
         <dependency>

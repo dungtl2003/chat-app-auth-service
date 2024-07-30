@@ -6,7 +6,6 @@ logging:
           chatappauthservice:
             configurations:
               AppConfiguration: INFO
-  path: ${LOG_PATH:/app/logs}
 
 springdoc:
   api-docs:
