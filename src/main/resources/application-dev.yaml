@@ -1,0 +1,13 @@
+# Open-api
+#
+open-api:
+  version: v1.0.0
+  server:
+    url: "${PROTOCOL}://${DOMAIN}:${PORT}"
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+  show-actuator: true
+  paths-to-match: /actuator/health, /actuator/info, /api/**

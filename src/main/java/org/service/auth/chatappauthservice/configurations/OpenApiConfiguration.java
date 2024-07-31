@@ -22,6 +22,7 @@ import org.springframework.context.annotation.Profile;
 		description = "Enter the token with the `Bearer ` prefix, e.g. \"Bearer abcde12345\"", scheme = "bearer",
 		in = SecuritySchemeIn.HEADER, type = SecuritySchemeType.APIKEY, bearerFormat = "JWT") })
 @Configuration
+@Profile({ "dev" })
 public class OpenApiConfiguration {
 
 	@Bean

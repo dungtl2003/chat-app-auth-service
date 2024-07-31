@@ -15,11 +15,14 @@ import org.service.auth.chatappauthservice.exception.ErrorResponse;
 import org.service.auth.chatappauthservice.exception.authorize.InvalidAuthorizationHeaderException;
 import org.service.auth.chatappauthservice.exception.authorize.MissingAccessTokenException;
 import org.service.auth.chatappauthservice.exception.refresh.MissingRefreshTokenException;
+import org.service.auth.chatappauthservice.exception.refresh.ReusedRefreshTokenException;
+import org.service.auth.chatappauthservice.exception.token.ExpiredTokenException;
 import org.service.auth.chatappauthservice.exception.token.InvalidTokenException;
 import org.service.auth.chatappauthservice.exception.user.InvalidUserException;
 import org.service.auth.chatappauthservice.exception.user.UserNotFoundException;
 import org.service.auth.chatappauthservice.response.AuthenticationResponse;
 import org.service.auth.chatappauthservice.response.AuthorizationResponse;
+import org.service.auth.chatappauthservice.response.LogoutResponse;
 import org.service.auth.chatappauthservice.response.RefreshResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -66,7 +69,8 @@ public interface AuthApi {
 			security = @SecurityRequirement(name = "authorization"))
 	@GetMapping(value = "/authorize")
 	ResponseEntity<AuthorizationResponse> authorize(@RequestHeader Map<String, String> headers)
-			throws MissingAccessTokenException, InvalidAuthorizationHeaderException, InvalidTokenException;
+			throws MissingAccessTokenException, InvalidAuthorizationHeaderException, InvalidTokenException,
+			UserNotFoundException;
 
 	@Operation(summary = "Refresh user's token",
 			responses = { @ApiResponse(responseCode = "200", content = @Content(mediaType = "application/json")),
@@ -80,6 +84,11 @@ public interface AuthApi {
 			security = @SecurityRequirement(name = "refresh_token"))
 	@GetMapping(value = "/refresh")
 	ResponseEntity<RefreshResponse> refresh(HttpServletRequest request)
-			throws MissingRefreshTokenException, InvalidTokenException, JsonProcessingException;
+			throws MissingRefreshTokenException, InvalidTokenException, JsonProcessingException,
+			ReusedRefreshTokenException, UserNotFoundException, ExpiredTokenException;
+
+	@GetMapping(value = "/logout")
+	ResponseEntity<LogoutResponse> logout(HttpServletRequest request)
+			throws InvalidTokenException, ExpiredTokenException, MissingRefreshTokenException, UserNotFoundException;
 
 }

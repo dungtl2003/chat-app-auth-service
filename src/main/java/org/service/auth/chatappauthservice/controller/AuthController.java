@@ -10,11 +10,14 @@ import org.apache.logging.log4j.Logger;
 import org.service.auth.chatappauthservice.exception.authorize.InvalidAuthorizationHeaderException;
 import org.service.auth.chatappauthservice.exception.authorize.MissingAccessTokenException;
 import org.service.auth.chatappauthservice.exception.refresh.MissingRefreshTokenException;
+import org.service.auth.chatappauthservice.exception.refresh.ReusedRefreshTokenException;
+import org.service.auth.chatappauthservice.exception.token.ExpiredTokenException;
 import org.service.auth.chatappauthservice.exception.token.InvalidTokenException;
 import org.service.auth.chatappauthservice.exception.user.InvalidUserException;
 import org.service.auth.chatappauthservice.exception.user.UserNotFoundException;
 import org.service.auth.chatappauthservice.response.AuthenticationResponse;
 import org.service.auth.chatappauthservice.response.AuthorizationResponse;
+import org.service.auth.chatappauthservice.response.LogoutResponse;
 import org.service.auth.chatappauthservice.response.RefreshResponse;
 import org.service.auth.chatappauthservice.service.AuthService;
 import org.springframework.http.ResponseEntity;
@@ -29,39 +32,50 @@ import java.util.Map;
 @RequestMapping("/api/v1/auth")
 public class AuthController implements AuthApi {
 
-	private static final Logger logger = LogManager.getLogger(AuthController.class);
-
 	private final AuthService authService;
 
 	@Override
-    public ResponseEntity<AuthenticationResponse> authenticate(@RequestBody JsonNode request)
-            throws UserNotFoundException, InvalidUserException {
-        logger.info(STR."Received request: \{request}");
-        return authService.login(request);
-    }
+	public ResponseEntity<AuthenticationResponse> authenticate(@RequestBody JsonNode request)
+			throws UserNotFoundException, InvalidUserException {
+		return authService.login(request);
+	}
 
 	@Override
-    public ResponseEntity<AuthorizationResponse> authorize(@RequestHeader Map<String, String> headers)
-            throws MissingAccessTokenException, InvalidAuthorizationHeaderException,
-            InvalidTokenException {
-        logger.info(STR."Received headers: \{headers}");
-        return authService.authorize(headers);
-    }
+	public ResponseEntity<AuthorizationResponse> authorize(@RequestHeader Map<String, String> headers)
+			throws MissingAccessTokenException, InvalidAuthorizationHeaderException, InvalidTokenException,
+			UserNotFoundException {
+		return authService.authorize(headers);
+	}
 
 	@Override
-    public ResponseEntity<RefreshResponse> refresh(HttpServletRequest request)
-            throws MissingRefreshTokenException, InvalidTokenException,
-            JsonProcessingException {
-        Cookie[] rawCookies = request.getCookies();
-        Map<String, String> cookies = new HashMap<>();
+	public ResponseEntity<RefreshResponse> refresh(HttpServletRequest request)
+			throws MissingRefreshTokenException, InvalidTokenException, JsonProcessingException,
+			ReusedRefreshTokenException, UserNotFoundException, ExpiredTokenException {
+		Cookie[] rawCookies = request.getCookies();
+		Map<String, String> cookies = new HashMap<>();
 
-        if (rawCookies != null) {
-            Arrays.stream(rawCookies).forEach(
-                    rawCookie -> cookies.merge(rawCookie.getName(), rawCookie.getValue(), (before, after) -> after));
-        }
+		if (rawCookies != null) {
+			Arrays.stream(rawCookies)
+				.forEach(rawCookie -> cookies.merge(rawCookie.getName(), rawCookie.getValue(),
+						(before, after) -> after));
+		}
 
-        logger.info(STR."Received cookies: \{cookies}");
-        return authService.refresh(cookies);
-    }
+		return authService.refresh(cookies);
+	}
+
+	@Override
+	public ResponseEntity<LogoutResponse> logout(HttpServletRequest request)
+			throws InvalidTokenException, ExpiredTokenException, MissingRefreshTokenException, UserNotFoundException {
+		Cookie[] rawCookies = request.getCookies();
+		Map<String, String> cookies = new HashMap<>();
+
+		if (rawCookies != null) {
+			Arrays.stream(rawCookies)
+				.forEach(rawCookie -> cookies.merge(rawCookie.getName(), rawCookie.getValue(),
+						(before, after) -> after));
+		}
+
+		return authService.logout(cookies);
+	}
 
 }

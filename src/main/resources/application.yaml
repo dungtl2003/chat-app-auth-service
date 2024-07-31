@@ -39,16 +39,6 @@ spring:
         default_schema: public
     open-in-view: false # https://stackoverflow.com/questions/30549489/what-is-this-spring-jpa-open-in-view-true-property-in-spring-boot
 
-# Open-api
-#
-open-api:
-  version: v1.0.0
-  server:
-    url: "${PROTOCOL}://${DOMAIN}:${PORT}" # For testing only
-springdoc:
-  show-actuator: true
-  paths-to-match: /actuator/health, /actuator/info, /api/**
-
 # Logging
 # The current logger is log4j2
 # The default log4j2 config file is resources/log4j2-spring.xml
@@ -56,18 +46,22 @@ springdoc:
 #
 logging:
   level:
-    root: info
-    org:
-      springframework:
-        web: debug
-        jdbc: debug
-        security: trace
-      hibernate:
-        SQL: debug
-        type:
-          descriptor:
-            sql:
-              BasicBinder: trace
+    web: debug
+  org:
+    springframework:
+      web: debug
+      jdbc: debug
+      security: trace
+    hibernate:
+      SQL: debug
+      type:
+        descriptor:
+          sql:
+            BasicBinder: trace
+
+log4j2:
+  Script:
+    enableLanguages: groovy
 
 # Lazy initialization
 # spring.main.lazy-initialization=true

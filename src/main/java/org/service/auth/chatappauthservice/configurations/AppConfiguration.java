@@ -1,6 +1,9 @@
 package org.service.auth.chatappauthservice.configurations;
 
 import lombok.Getter;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.service.auth.chatappauthservice.controller.AuthController;
 import org.service.auth.chatappauthservice.utils.UserDTOMapper;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -27,7 +30,10 @@ public class AppConfiguration {
 
 	private final String secretRT;
 
+	private final Logger logger;
+
 	public AppConfiguration() {
+		this.logger = LogManager.getLogger(AppConfiguration.class);
 		this.environment = System.getenv("ENVIRONMENT") != null ? System.getenv("ENVIRONMENT") : "development";
 		this.serverPort = Integer.parseInt(System.getenv("PORT"));
 		this.ATLifespanInMs = System.getenv("ACCESS_JWT_LIFESPAN_MS") != null

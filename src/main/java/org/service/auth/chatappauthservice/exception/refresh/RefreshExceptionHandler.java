@@ -11,16 +11,8 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 @ControllerAdvice
 public class RefreshExceptionHandler {
 
-	@ExceptionHandler
-	public ResponseEntity<ErrorResponse> handleException(MissingRefreshTokenException exception) {
-		ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), exception.getMessage(),
-				System.currentTimeMillis());
-
-		return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
-	}
-
-	@ExceptionHandler
-	public ResponseEntity<ErrorResponse> handleException(ReusedRefreshTokenException exception) {
+	@ExceptionHandler(value = { MissingRefreshTokenException.class, ReusedRefreshTokenException.class })
+	public ResponseEntity<ErrorResponse> handleException(RuntimeException exception) {
 		ErrorResponse error = new ErrorResponse(HttpStatus.UNAUTHORIZED.value(), exception.getMessage(),
 				System.currentTimeMillis());
 
