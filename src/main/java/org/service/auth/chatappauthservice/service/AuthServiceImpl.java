@@ -27,6 +27,7 @@ import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RequestHeader;
 
+import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.Map;
 
@@ -159,7 +160,7 @@ public class AuthServiceImpl implements AuthService {
                 .debug("[refresh service]: calling auth token service to extract user ID");
         // just in case the token is expired
         Map<String, String> body = authTokenService.parseBody(refreshToken);
-        String userId = body.get("sub");
+        BigInteger userId = BigInteger.valueOf(Long.parseLong(body.get("sub")));
 
         configuration.getLogger()
                 .debug("[refresh service]: calling user service to get user's refresh tokens");
@@ -269,11 +270,12 @@ public class AuthServiceImpl implements AuthService {
         // list
         configuration.getLogger()
                 .debug("[logout service]: calling auth token service to extract user ID from RT");
-        String
+        BigInteger
                 userId =
-                authTokenService.extractClaim(refreshToken,
+                BigInteger.valueOf(Long.parseLong(authTokenService.extractClaim(
+                        refreshToken,
                         Claims::getSubject,
-                        TokenType.REFRESH_TOKEN);
+                        TokenType.REFRESH_TOKEN)));
         configuration.getLogger()
                 .debug(STR."[logout service]: calling user token service to remove used RT: \{refreshToken}");
 

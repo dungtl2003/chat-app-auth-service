@@ -10,6 +10,7 @@ import org.service.auth.chatappauthservice.repository.UserRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.math.BigInteger;
 import java.util.Arrays;
 
 @AllArgsConstructor
@@ -27,7 +28,7 @@ public class UserServiceImpl implements UserService {
 	}
 
 	@Override
-	public void deleteUserById(String id) {
+	public void deleteUserById(BigInteger id) {
 		userRepository.deleteById(id);
 	}
 
@@ -44,7 +45,7 @@ public class UserServiceImpl implements UserService {
 	}
 
 	@Override
-	public void addRefreshToken(String userId, String refreshToken) throws UserNotFoundException {
+	public void addRefreshToken(BigInteger userId, String refreshToken) throws UserNotFoundException {
 		User user = getUserById(userId);
 
 		String[] refreshTokensFromDb = user.getRefreshTokens();
@@ -56,14 +57,14 @@ public class UserServiceImpl implements UserService {
 	}
 
 	@Override
-	public void updateUserRefreshTokens(String userId, String[] refreshTokens) throws UserNotFoundException {
+	public void updateUserRefreshTokens(BigInteger userId, String[] refreshTokens) throws UserNotFoundException {
 		User user = getUserById(userId);
 		user.setRefreshTokens(refreshTokens);
 		userRepository.save(user);
 	}
 
 	@Override
-	public String[] getUserRefreshTokens(String userId) throws UserNotFoundException {
+	public String[] getUserRefreshTokens(BigInteger userId) throws UserNotFoundException {
 		return getUserById(userId).getRefreshTokens();
 	}
 
@@ -72,7 +73,7 @@ public class UserServiceImpl implements UserService {
 			.orElseThrow(() -> new UserNotFoundException(StatusMessage.EMAIL_NOT_FOUND));
 	}
 
-	private User getUserById(String id) throws UserNotFoundException {
+	private User getUserById(BigInteger id) throws UserNotFoundException {
 		return userRepository.findById(id).orElseThrow(() -> new UserNotFoundException(StatusMessage.ID_NOT_FOUND));
 	}
 
