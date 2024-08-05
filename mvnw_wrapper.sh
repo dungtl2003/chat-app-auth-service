@@ -1,6 +1,6 @@
 #!/usr/bin/bash
 
-ENV_FILE="./environments/dev/.env";
+ENV_FILE=${ENV_FILE:-".env"};
 
 setup_colors() {
     # Only use colors if connected to a terminal
@@ -58,10 +58,10 @@ main() {
     setup_colors;
 
     if [ -f ${ENV_FILE} ]; then
-        printf "%senv file found.%s\n" $FMT_BLUE $FMT_RESET;
+        printf "%senv file found: %s.%s\n" $FMT_BLUE $ENV_FILE $FMT_RESET;
         run_cmd_with_envs "$@";
     else
-        printf "%senv file not found.%s\n" $FMT_BLUE $FMT_RESET;
+        printf "%senv file not found: %s.%s\n" $FMT_BLUE $ENV_FILE $FMT_RESET;
         exec_cmd "$@";
     fi
 }
