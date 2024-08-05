@@ -20,5 +20,5 @@ COPY --from=builder application/ ./
 RUN chown -R javauser:javauser /app
 USER javauser
 
-EXPOSE 8020
+EXPOSE 80
 ENTRYPOINT ["java", "--enable-preview", "org.springframework.boot.loader.launch.JarLauncher"]
