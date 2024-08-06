@@ -10,7 +10,9 @@ import org.hibernate.annotations.JdbcType;
 import org.hibernate.dialect.PostgreSQLEnumJdbcType;
 import org.service.auth.chatappauthservice.constants.Gender;
 import org.service.auth.chatappauthservice.constants.Role;
+import org.service.auth.chatappauthservice.constants.UserStatus;
 
+import java.math.BigInteger;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -25,7 +27,7 @@ public class User implements Cloneable {
 	@Id
 	@JsonAlias({ "id" })
 	@Column(name = "id")
-	private String userId;
+	private BigInteger userId;
 
 	@Column(nullable = false, unique = true, columnDefinition = "text")
 	private String email;
@@ -64,9 +66,10 @@ public class User implements Cloneable {
 	@Column(nullable = true, columnDefinition = "text")
 	private String privacy;
 
-	@Column(name = "is_active", nullable = false)
-	@JsonAlias({ "is_active" })
-	private Boolean isActive;
+	@Column(nullable = false)
+	@Enumerated(EnumType.STRING)
+	@JdbcType(PostgreSQLEnumJdbcType.class)
+	private UserStatus status;
 
 	@Column(name = "last_active_at", nullable = false)
 	@JsonAlias({ "last_active_at" })

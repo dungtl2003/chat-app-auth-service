@@ -9,7 +9,7 @@
     "birthday": "2002-08-22",
     "gender": "FEMALE",
     "phone_number": "597-257-5202",
-    "is_active": false,
+    "status": "ONLINE",
     "role": "ADMIN"
   },
   {
@@ -22,7 +22,7 @@
     "birthday": "1990-10-18",
     "gender": "FEMALE",
     "phone_number": "157-306-8030",
-    "is_active": true,
+    "status": "OFFLINE",
     "role": "USER"
   },
   {
@@ -35,7 +35,7 @@
     "birthday": "1994-10-09",
     "gender": "MALE",
     "phone_number": "062-697-6530",
-    "is_active": false,
+    "status": "ONLINE",
     "role": "USER"
   },
   {
@@ -48,7 +48,7 @@
     "birthday": "2013-06-28",
     "gender": "FEMALE",
     "phone_number": "177-045-2505",
-    "is_active": false,
+    "status": "ONLINE",
     "role": "USER"
   },
   {
@@ -61,7 +61,7 @@
     "birthday": "1991-05-17",
     "gender": "MALE",
     "phone_number": "313-354-7741",
-    "is_active": true,
+    "status": "ONLINE",
     "role": "USER"
   }
 ]

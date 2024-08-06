@@ -5,18 +5,20 @@ import org.service.auth.chatappauthservice.entity.User;
 import org.service.auth.chatappauthservice.exception.user.InvalidUserException;
 import org.service.auth.chatappauthservice.exception.user.UserNotFoundException;
 
+import java.math.BigInteger;
+
 public interface UserService {
 
 	void add(User user);
 
-	void deleteUserById(String id);
+	void deleteUserById(BigInteger id);
 
 	User getValidUser(String email, String password) throws UserNotFoundException, InvalidUserException;
 
-	void addRefreshToken(String userId, String refreshToken);
+	void addRefreshToken(BigInteger userId, String refreshToken);
 
-	void updateUserRefreshTokens(String userId, String[] refreshTokens);
+	void updateUserRefreshTokens(BigInteger userId, String[] refreshTokens);
 
-	String[] getUserRefreshTokens(String userId) throws EntityNotFoundException;
+	String[] getUserRefreshTokens(BigInteger userId) throws EntityNotFoundException;
 
 }

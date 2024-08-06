@@ -20,7 +20,6 @@ this is a chat app's service that supports authentication and authorization
 [setup](#-setup)<br>
 [getting started](#-getting-started)<br>
 [run test](#-run-test)<br>
-[database schema](#-database-schema)<br>
 [deployment (comming soon)](#-deploy)<br>
 
 ## ⇁ Prerequisites
@@ -44,8 +43,7 @@ verify right hook directory:
 git rev-parse --git-path hooks
 ```
 
-you need to have `.env` file in `environments` folder (can
-be `environments/dev` or `environment/prod` folder), in the file you
+you need to have `.env` file in root folder, in the file you
 need `key=value` each line. See list of required environment
 variables [here](#-list-of-available-environment-variables):<br>
 
@@ -84,56 +82,37 @@ out [this template](./templates/.env.template)
 
 ## ⇁ Getting Started
 
-### ⇁ First note
-
 if you change the code, then run this first to format the code:
 
 ```shell
-./mvnw_wrapper.sh spring-javaformat:apply
+make clean
 ```
 
-### ⇁ Development
-
-first, you need to have `.env` file inside `environments/dev` folder. See more
+first, you need to have `.env` file inside root folder. See more
 in [here](#-list-of-available-environment-variables)<br>
 
 you can run the development server by this command:
 
 ```shell
-./mvnw_wrapper.sh exec:java # (only if you have set `MAVEN_OPTS` in `.env` file. See more in [here](#-list-of-available-environment-variables))
+make run # (only if you have set `MAVEN_OPTS` in `.env` file. See more in [here](#-list-of-available-environment-variables))
+```
+NOTE: if your `.env` file has different name, add `ENV_FILE` option in the command (this can work to all `make` command). For example:
+```shell
+make run ENV_FILE=.env.dev
 ```
 
-or you can run this command if you have docker compose:
-
+if you want to build docker image, use:
 ```shell
-docker compose -f environments/dev/docker-compose.yaml up
+make build_% # for example: make `build_dev` or make `build_prod`
 ```
 
-and turn the service down with:
-
+then you can run docker with:
 ```shell
-docker compose -f environments/dev/docker-compose.yaml down
+make server_%
 ```
 
 after you run the app, you can go to `/swagger-ui/index.html#/` endpoint to see
 swagger (this can only work if `SPRING_PROFILES_ACTIVE=dev`)
-
-### ⇁ Production
-
-first, you need to have `.env` file inside `environments/prod` folder. See more
-in [here](#-list-of-available-environment-variables)<br>
-
-you can test your production environment by using docker compose:
-
-```shell
-docker compose -f environments/prod/docker-compose.yaml up
-```
-
-and turn the service down with:
-
-```shell
-docker compose -f environments/prod/docker-compose.yaml down
-```
 
 ## ⇁ Run tests
 
@@ -143,7 +122,7 @@ in [here](#-list-of-available-environment-variables)<br>
 ### ⇁ Run all tests
 
 ```shell
-./mvnw_wrapper.sh clean verify
+make test
 ```
 
 ### ⇁ Run test of 1 method in the class
@@ -155,8 +134,6 @@ example:
 ./mvnw_wrapper.sh test -Dtest=ChatAppAuthServiceApplicationTests#testLogoutRequestWithValidRefreshTokenShouldGet200OkAndCannotReuseRT
 ```
 
-## ⇁ Database schema
-
-![Schema](./assets/db_schema.png)
-
 ## ⇁ Deploy
+
+comming soon

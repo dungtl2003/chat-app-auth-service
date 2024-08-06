@@ -91,4 +91,6 @@ out/
 *.log
 secrets.*
 .env
+.env.dev
+.env.prod
 *secret*.yaml
