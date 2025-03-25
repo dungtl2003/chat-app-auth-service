@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	v1 "dungtl2003/chat-app-auth-service/internal/api/v1"
 	"dungtl2003/chat-app-auth-service/internal/config"
 	"dungtl2003/chat-app-auth-service/internal/healthcheck"
 	"dungtl2003/chat-app-auth-service/internal/router"
@@ -41,6 +42,35 @@ func New() *AuthServer {
 			Path:   "/healthcheck",
 			H: func(c *gin.Context) {
 				healthcheck.HealthCheck(c, logger)
+			},
+		},
+		{
+			Method: router.GET,
+			Path:   "/api/v1/authorize",
+			H: func(c *gin.Context) {
+				v1.Authorize(c, logger)
+			},
+		},
+		{
+			Method: router.GET,
+			Path:   "/api/v1/refresh",
+			H: func(c *gin.Context) {
+				v1.Refresh(c, logger)
+			},
+		},
+		{
+			Method: router.GET,
+			Path:   "/api/v1/logout",
+			H: func(c *gin.Context) {
+				v1.Logout(c, logger)
+			},
+		},
+
+		{
+			Method: router.POST,
+			Path:   "/api/v1/login",
+			H: func(c *gin.Context) {
+				v1.Login(c, logger)
 			},
 		},
 	}
