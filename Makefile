@@ -1,9 +1,9 @@
 OUT_DIR = ./bin
 OUT_FILE = $(OUT_DIR)/main
-SRC_FILES = ./cmd/server/main.go $(wildcard ./internal/**/*.go)
+SRC_FILES = ./cmd/server/main.go $(shell find ./internal/ -name '*.go')
 
 .PHONY: run
-run: $(OUT_FILE)
+run: build
 ifdef ENV
 	echo "Running application in $(ENV) environment"
 	ENV_FILE=.env.$(ENV) ./scripts/run.sh $(OUT_FILE)
@@ -16,6 +16,7 @@ endif
 build: $(OUT_FILE)
 
 $(OUT_FILE): $(SRC_FILES)
+	@echo "$(SRC_FILES)"
 	@echo "Building application"
 	@mkdir -p $(OUT_DIR)
 	go build -o $(OUT_FILE) $<

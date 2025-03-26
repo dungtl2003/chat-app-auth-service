@@ -1,6 +1,9 @@
 package helper
 
-import "log/slog"
+import (
+	"fmt"
+	"log/slog"
+)
 
 // LoggerWrapper is a wrapper around slog.Logger, which is a structured logger. It is used to log messages in the application. If the logger is nil, the log messages will not be printed.
 type LoggerWrapper struct {
@@ -30,4 +33,28 @@ func (l LoggerWrapper) Debug(msg string, args ...any) {
 		return
 	}
 	l.Logger.Debug(msg, args...)
+}
+
+func (l LoggerWrapper) Infof(msg string, args ...any) {
+	if l.Logger == nil {
+		return
+	}
+	formattedMsg := fmt.Sprintf(msg, args...)
+	l.Logger.Info(formattedMsg)
+}
+
+func (l LoggerWrapper) Errorf(msg string, args ...any) {
+	if l.Logger == nil {
+		return
+	}
+	formattedMsg := fmt.Sprintf(msg, args...)
+	l.Logger.Error(formattedMsg)
+}
+
+func (l LoggerWrapper) Debugf(msg string, args ...any) {
+	if l.Logger == nil {
+		return
+	}
+	formattedMsg := fmt.Sprintf(msg, args...)
+	l.Logger.Debug(formattedMsg)
 }

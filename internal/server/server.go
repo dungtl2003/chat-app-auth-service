@@ -5,6 +5,8 @@ import (
 	v1 "dungtl2003/chat-app-auth-service/internal/api/v1"
 	"dungtl2003/chat-app-auth-service/internal/config"
 	"dungtl2003/chat-app-auth-service/internal/healthcheck"
+	"dungtl2003/chat-app-auth-service/internal/helper"
+	"dungtl2003/chat-app-auth-service/internal/httpclient"
 	"dungtl2003/chat-app-auth-service/internal/router"
 	"fmt"
 	"log"
@@ -32,8 +34,11 @@ func New() *AuthServer {
 	log.Printf("Configuration: %s\n", config)
 	logger := config.LogConfig.Logger
 
-	// log.Println("Creating validator")
-	// validator := helper.NewValidator()
+	log.Println("Creating validator")
+	validator := helper.NewValidator()
+
+	log.Println("Creating http client")
+	client := httpclient.New()
 
 	log.Println("Creating router")
 	handlers := []router.Handler{
@@ -70,7 +75,7 @@ func New() *AuthServer {
 			Method: router.POST,
 			Path:   "/api/v1/login",
 			H: func(c *gin.Context) {
-				v1.Login(c, logger)
+				v1.Login(c, logger, validator, client, config.UserServiceAuthEndpoint, *config.JwtTokenConfig, config.DomainName)
 			},
 		},
 	}

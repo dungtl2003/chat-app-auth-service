@@ -36,7 +36,8 @@ func NewWithConfig(config *http.Client) *HttpClient {
 	}
 }
 
-func (h *HttpClient) ReadResponse(resp *http.Response) ([]byte, error) {
+// ReadResponse will consume the response and return a slice of byte or error.
+func ReadResponse(resp *http.Response) ([]byte, error) {
 	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {

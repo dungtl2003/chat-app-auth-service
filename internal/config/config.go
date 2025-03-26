@@ -15,11 +15,30 @@ type LogConfig struct {
 	Logger *slog.Logger
 }
 
+type JwtTokenConfig struct {
+	JwtSecret    string
+	ATDurationMs int64
+	RTDurationMs int64
+}
+
+func (t *JwtTokenConfig) String() string {
+	parts := []string{
+		fmt.Sprintf("JWT_SECRET: %s", t.JwtSecret),
+		fmt.Sprintf("AT_DURATION_MS: %d", t.ATDurationMs),
+		fmt.Sprintf("RT_DURATION_MS: %d", t.RTDurationMs),
+	}
+
+	return fmt.Sprintf("JwtTokenConfig{%s}", strings.Join(parts, ", "))
+}
+
 type Config struct {
-	ServerPort int
-	Env        string
-	ApiVersion string
-	LogConfig  *LogConfig
+	ServerPort              int
+	Env                     string
+	ApiVersion              string
+	LogConfig               *LogConfig
+	UserServiceAuthEndpoint string
+	JwtTokenConfig          *JwtTokenConfig
+	DomainName              string
 }
 
 // New returns a new Config instance. Call Load() to set the configuration values.
@@ -42,11 +61,19 @@ func (c *Config) String() string {
 		logConfigPart = fmt.Sprintf("%s", c.LogConfig)
 	}
 
+	jwtTokenConfigPart := "nil"
+	if c.JwtTokenConfig != nil {
+		jwtTokenConfigPart = fmt.Sprintf("%s", c.JwtTokenConfig)
+	}
+
 	parts := []string{
 		fmt.Sprintf("SERVER_PORT: %d", c.ServerPort),
 		fmt.Sprintf("LOGGER: %s", logConfigPart),
 		fmt.Sprintf("ENV: %s", c.Env),
 		fmt.Sprintf("API_VERSION: %s", c.ApiVersion),
+		fmt.Sprintf("USER_SERVICE_AUTH_ENDPOINT: %s", c.UserServiceAuthEndpoint),
+		fmt.Sprintf("JWT: %s", jwtTokenConfigPart),
+		fmt.Sprintf("DOMAIN_NAME: %s", c.DomainName),
 	}
 
 	return fmt.Sprintf("Config{%s}", strings.Join(parts, ", "))
@@ -58,6 +85,73 @@ func (c *Config) Load() {
 	c.setApiVersion()
 	c.setServerPort()
 	c.setLogConfig()
+	c.setUserServiceAuthEndpoint()
+	c.setJwtTokenConfig()
+	c.setDomainName()
+}
+
+func (c *Config) setDomainName() {
+	log.Println("Setting DOMAIN_NAME")
+	domainName, has := os.LookupEnv("DOMAIN_NAME")
+	if !has {
+		log.Println("DOMAIN_NAME not found, setting to localhost")
+		domainName = "localhost"
+	}
+	c.DomainName = domainName
+}
+
+func (c *Config) setJwtTokenConfig() {
+	log.Println("Setting JWT_SECRET, ACCESS_TOKEN_DURATION_MS and REFRESH_TOKEN_DURATION_MS")
+
+	secretKey, has := os.LookupEnv("JWT_SECRET")
+	if !has {
+		log.Fatalln("JWT_SECRET is required")
+	}
+
+	atDurationMsStr, has := os.LookupEnv("ACCESS_TOKEN_DURATION_MS")
+	if !has {
+		log.Println("ACCESS_TOKEN_DURATION_MS not found, setting to 1800000 (30 minutes)")
+		atDurationMsStr = "1800000"
+	}
+	atDurationMs, err := strconv.ParseInt(atDurationMsStr, 10, 64)
+	if err != nil {
+		log.Fatalf("Invalid access token duration: %s", atDurationMsStr)
+	}
+	if atDurationMs < 0 {
+		log.Fatalf("Access token duration must be non-negative")
+	}
+
+	rtDurationMsStr, has := os.LookupEnv("REFRESH_TOKEN_DURATION_MS")
+	if !has {
+		log.Println("REFRESH_TOKEN_DURATION_MS not found, setting to 86400000 (1 day)")
+		rtDurationMsStr = "86400000"
+	}
+	rtDurationMs, err := strconv.ParseInt(rtDurationMsStr, 10, 64)
+	if err != nil {
+		log.Fatalf("Invalid refresh token duration: %s", rtDurationMsStr)
+	}
+	if rtDurationMs < 0 {
+		log.Fatalf("Refresh token duration must be non-negative")
+	}
+
+	tokConfig := &JwtTokenConfig{
+		JwtSecret:    secretKey,
+		RTDurationMs: rtDurationMs,
+		ATDurationMs: atDurationMs,
+	}
+
+	c.JwtTokenConfig = tokConfig
+}
+
+func (c *Config) setUserServiceAuthEndpoint() {
+	log.Println("Setting USER_SERVICE_AUTH_ENDPOINT")
+	userServiceAuthEndpoint, has := os.LookupEnv("USER_SERVICE_AUTH_ENDPOINT")
+	if !has {
+		log.Fatalln("USER_SERVICE_AUTH_ENDPOINT is required")
+	}
+
+	c.UserServiceAuthEndpoint = userServiceAuthEndpoint
+
 }
 
 func (c *Config) setLogConfig() {
