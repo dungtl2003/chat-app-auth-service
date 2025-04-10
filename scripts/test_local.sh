@@ -27,6 +27,7 @@ COST=${COST:-12}
 
 # Test's specific environment variables
 ADMIN_DATABASE_URL=${ADMIN_DATABASE_URL:-"postgresql://admin:testpass123@localhost:6000/chat-app?sslmode=disable"}
+AUTH_URL=${AUTH_URL:-"http://localhost:8400/api/v1"}
 
 command="$1"
 extraArgs="${@:2}"
@@ -67,6 +68,8 @@ function export_envs() {
 
     printf "export ADMIN_DATABASE_URL=%s\n" $ADMIN_DATABASE_URL
     export ADMIN_DATABASE_URL
+    printf "export AUTH_URL=%s\n" $AUTH_URL
+    export AUTH_URL
 }
 
 function main() {

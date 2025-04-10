@@ -19,10 +19,22 @@ type Helper struct {
 	Client    *httpclient.HttpClient
 	UserURL   string
 	DeviceURL string
+	AuthURL   string
 	logger    *slog.Logger
+	JwtSecret string
 }
 
 func NewHelper() *Helper {
+	jwtSecret, bool := os.LookupEnv("JWT_SECRET")
+	if !bool {
+		log.Fatal("JWT_SECRET is not set")
+	}
+
+	authUrl, bool := os.LookupEnv("AUTH_URL")
+	if !bool {
+		log.Fatal("AUTH_URL is not set")
+	}
+
 	userUrl, bool := os.LookupEnv("USER_URL")
 	if !bool {
 		log.Fatal("USER_URL is not set")
@@ -59,6 +71,8 @@ func NewHelper() *Helper {
 		UserURL:   userUrl,
 		DeviceURL: deviceUrl,
 		logger:    logger,
+		AuthURL:   authUrl,
+		JwtSecret: jwtSecret,
 	}
 }
 
