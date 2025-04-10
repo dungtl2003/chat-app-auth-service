@@ -21,7 +21,7 @@ type JwtTokenConfig struct {
 	RTDurationMs int64
 }
 
-func (t *JwtTokenConfig) String() string {
+func (t JwtTokenConfig) String() string {
 	parts := []string{
 		fmt.Sprintf("JWT_SECRET: %s", t.JwtSecret),
 		fmt.Sprintf("AT_DURATION_MS: %d", t.ATDurationMs),
@@ -32,13 +32,14 @@ func (t *JwtTokenConfig) String() string {
 }
 
 type Config struct {
-	ServerPort              int
-	Env                     string
-	ApiVersion              string
-	LogConfig               *LogConfig
-	UserServiceAuthEndpoint string
-	JwtTokenConfig          *JwtTokenConfig
-	DomainName              string
+	ServerPort     int
+	Env            string
+	ApiVersion     string
+	LogConfig      *LogConfig
+	UserURL        string
+	DeviceURL      string
+	JwtTokenConfig *JwtTokenConfig
+	DomainName     string
 }
 
 // New returns a new Config instance. Call Load() to set the configuration values.
@@ -71,7 +72,8 @@ func (c *Config) String() string {
 		fmt.Sprintf("LOGGER: %s", logConfigPart),
 		fmt.Sprintf("ENV: %s", c.Env),
 		fmt.Sprintf("API_VERSION: %s", c.ApiVersion),
-		fmt.Sprintf("USER_SERVICE_AUTH_ENDPOINT: %s", c.UserServiceAuthEndpoint),
+		fmt.Sprintf("USER_URL: %s", c.UserURL),
+		fmt.Sprintf("DEVICE_URL: %s", c.DeviceURL),
 		fmt.Sprintf("JWT: %s", jwtTokenConfigPart),
 		fmt.Sprintf("DOMAIN_NAME: %s", c.DomainName),
 	}
@@ -85,7 +87,8 @@ func (c *Config) Load() {
 	c.setApiVersion()
 	c.setServerPort()
 	c.setLogConfig()
-	c.setUserServiceAuthEndpoint()
+	c.setUserURL()
+	c.setDeviceURL()
 	c.setJwtTokenConfig()
 	c.setDomainName()
 }
@@ -123,8 +126,8 @@ func (c *Config) setJwtTokenConfig() {
 
 	rtDurationMsStr, has := os.LookupEnv("REFRESH_TOKEN_DURATION_MS")
 	if !has {
-		log.Println("REFRESH_TOKEN_DURATION_MS not found, setting to 86400000 (1 day)")
-		rtDurationMsStr = "86400000"
+		log.Println("REFRESH_TOKEN_DURATION_MS not found, setting to 172800000 (2 days)")
+		rtDurationMsStr = "172800000"
 	}
 	rtDurationMs, err := strconv.ParseInt(rtDurationMsStr, 10, 64)
 	if err != nil {
@@ -143,15 +146,24 @@ func (c *Config) setJwtTokenConfig() {
 	c.JwtTokenConfig = tokConfig
 }
 
-func (c *Config) setUserServiceAuthEndpoint() {
-	log.Println("Setting USER_SERVICE_AUTH_ENDPOINT")
-	userServiceAuthEndpoint, has := os.LookupEnv("USER_SERVICE_AUTH_ENDPOINT")
+func (c *Config) setUserURL() {
+	log.Println("Setting USER_URL")
+	userURL, has := os.LookupEnv("USER_URL")
 	if !has {
-		log.Fatalln("USER_SERVICE_AUTH_ENDPOINT is required")
+		log.Fatalln("USER_URL is required")
 	}
 
-	c.UserServiceAuthEndpoint = userServiceAuthEndpoint
+	c.UserURL = userURL
+}
 
+func (c *Config) setDeviceURL() {
+	log.Println("Setting DEVICE_URL")
+	deviceURL, has := os.LookupEnv("DEVICE_URL")
+	if !has {
+		log.Fatalln("DEVICE_URL is required")
+	}
+
+	c.DeviceURL = deviceURL
 }
 
 func (c *Config) setLogConfig() {

@@ -1,13 +1,14 @@
 package v1
 
 import (
-	"dungtl2003/chat-app-auth-service/internal/config"
+	"bytes"
 	"dungtl2003/chat-app-auth-service/internal/helper"
 	"dungtl2003/chat-app-auth-service/internal/httpclient"
 	"dungtl2003/chat-app-auth-service/internal/jwthandler"
 	"dungtl2003/chat-app-auth-service/internal/model"
+	"dungtl2003/chat-app-auth-service/internal/services"
 	"fmt"
-	"log/slog"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
@@ -15,65 +16,102 @@ import (
 type LoginRequestBody struct {
 	Identifier string `json:"identifier" validate:"required"`
 	Password   string `json:"password" validate:"required"`
+	DeviceId   string `json:"device_id" validate:"required"`
 }
 
-func Login(c *gin.Context, logger *slog.Logger, validator *helper.Validator, client *httpclient.HttpClient, authEndpoint string, jwtConfig config.JwtTokenConfig, domainName string) {
-	l := helper.NewLoggerWrapper(logger)
-	var loginRequestBody LoginRequestBody
+func Login(a *services.AuthService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var loginRequestBody LoginRequestBody
 
-	if err := c.ShouldBindJSON(&loginRequestBody); err != nil {
-		l.Errorf("error while binding request body: %v", err)
-		c.AbortWithStatus(400)
-		return
-	}
+		if err := c.ShouldBindJSON(&loginRequestBody); err != nil {
+			a.Logger.Errorf("ShouldBindJSON(): %v", err)
+			c.JSON(400, "invalid body")
+			return
+		}
 
-	l.Debugf("login request body: %#v", loginRequestBody)
-	url := fmt.Sprintf("%s?identifier=%s", authEndpoint, loginRequestBody.Identifier)
-	l.Debugf("sending GET request to %s", url)
-	resp, err := client.Get(url, c.Request.Header)
-	if err != nil {
-		l.Errorf("error when sending GET request: %v", err)
-		c.AbortWithStatus(500)
-		return
-	}
-	if resp.StatusCode != 200 {
-		l.Errorf("error GET request status: %d", resp.StatusCode)
-		c.AbortWithStatus(500)
-		return
-	}
+		deviceId, err := strconv.ParseInt(loginRequestBody.DeviceId, 10, 64)
+		if err != nil {
+			a.Logger.Errorf("invalid device ID: %s", loginRequestBody.DeviceId)
+			c.JSON(400, "invalid device ID")
+			return
+		}
 
-	body, err := httpclient.ReadResponse(resp)
-	if err != nil {
-		l.Errorf("error when reading response: %v", err)
-		c.AbortWithStatus(500)
-		return
-	}
+		a.Logger.Debugf("login request body: %#v", loginRequestBody)
 
-	var user model.ChatUser
-	err = helper.ParseAsJson(body, &user)
-	if err != nil {
-		l.Errorf("error when parsing body: %v", err)
-		c.AbortWithStatus(500)
-		return
-	}
-	l.Debugf("response body from GET request: %#v", user)
+		// get user information
+		url := fmt.Sprintf("%s/auth-info?identifier=%s", a.UserURL, loginRequestBody.Identifier)
+		a.Logger.Debugf("sending GET request to %s", url)
+		resp, err := a.Client.Get(url, c.Request.Header)
+		if err != nil {
+			a.Logger.Errorf("error when sending GET request: %v", err)
+			c.AbortWithStatus(500)
+			return
+		}
+		if resp.StatusCode != 200 {
+			a.Logger.Errorf("error GET request status: %d", resp.StatusCode)
+			c.AbortWithStatus(500)
+			return
+		}
+		body, err := httpclient.ReadResponse(resp)
+		if err != nil {
+			a.Logger.Errorf("ReadResponse(): %v", err)
+			c.AbortWithStatus(500)
+			return
+		}
+		var user model.ChatUser
+		err = helper.ParseAsJson(body, &user)
+		if err != nil {
+			a.Logger.Errorf("ParseAsJson(): %v", err)
+			c.AbortWithStatus(500)
+			return
+		}
+		a.Logger.Debugf("response body from GET request: %#v", user)
 
-	accessToken, err := jwthandler.CreateToken(jwtConfig.JwtSecret, user, jwtConfig.ATDurationMs)
-	if err != nil {
-		l.Errorf("error when creating access token: %v", err)
-		c.AbortWithStatus(500)
-		return
-	}
-	l.Debugf("AT: %s", accessToken)
+		// check password
+		if !a.PasswordManager.IsCorrectPassword(loginRequestBody.Password, user.Password) {
+			a.Logger.Errorf("invalid password")
+			c.JSON(403, "invalid identifier")
+			return
+		}
 
-	refreshToken, err := jwthandler.CreateToken(jwtConfig.JwtSecret, user, jwtConfig.RTDurationMs)
-	if err != nil {
-		l.Errorf("error when creating refresh token: %v", err)
-		c.AbortWithStatus(500)
-		return
-	}
-	l.Debugf("RT: %s", refreshToken)
+		// create tokens
+		accessToken, err := jwthandler.CreateToken(a.JwtConfig.JwtSecret, user, a.JwtConfig.ATDurationMs)
+		if err != nil {
+			a.Logger.Errorf("CreateToken(): error creating access token: %v", err)
+			c.AbortWithStatus(500)
+			return
+		}
+		a.Logger.Debugf("AT: %s", accessToken)
+		refreshToken, err := jwthandler.CreateToken(a.JwtConfig.JwtSecret, user, a.JwtConfig.RTDurationMs)
+		if err != nil {
+			a.Logger.Errorf("CreateToken(): error creating refresh token: %v", err)
+			c.AbortWithStatus(500)
+			return
+		}
+		a.Logger.Debugf("RT: %s", refreshToken)
 
-	c.SetCookie("refresh_token", refreshToken, int(jwtConfig.RTDurationMs/1000), "/api/v1/login", domainName, false, true)
-	c.JSON(200, fmt.Sprintf("access_token: %s", accessToken))
+		// update device's token
+		url = fmt.Sprintf("%s/%d/token", a.DeviceURL, deviceId)
+		a.Logger.Debugf("sending PATCH request to %s", url)
+		payload := fmt.Appendf(nil, `
+		{
+			"token": "%s",
+			"user_id": "%d"	
+		}
+	`, refreshToken, user.Id.Int64())
+		resp, err = a.Client.Patch(url, c.Request.Header, bytes.NewBuffer(payload))
+		if err != nil {
+			a.Logger.Errorf("error when sending PATCH request: %v", err)
+			c.AbortWithStatus(500)
+			return
+		}
+		if resp.StatusCode != 200 {
+			a.Logger.Errorf("error PATCH request status: %d", resp.StatusCode)
+			c.AbortWithStatus(500)
+			return
+		}
+
+		c.SetCookie("refresh_token", refreshToken, int(a.JwtConfig.RTDurationMs/1000), "/", a.DomainName, false, true)
+		c.JSON(200, fmt.Sprintf("access_token: %s", accessToken))
+	}
 }

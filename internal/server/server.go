@@ -7,7 +7,9 @@ import (
 	"dungtl2003/chat-app-auth-service/internal/healthcheck"
 	"dungtl2003/chat-app-auth-service/internal/helper"
 	"dungtl2003/chat-app-auth-service/internal/httpclient"
+	"dungtl2003/chat-app-auth-service/internal/password"
 	"dungtl2003/chat-app-auth-service/internal/router"
+	"dungtl2003/chat-app-auth-service/internal/services"
 	"fmt"
 	"log"
 	"net/http"
@@ -19,7 +21,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type AuthServer struct {
+type Server struct {
 	config *config.Config
 	srv    *http.Server
 }
@@ -27,7 +29,7 @@ type AuthServer struct {
 // New creates a new AuthServer instance. The function will load the configuration
 // and set up all necessary components. Call Run() to start the server. This function
 // will exit the program if there is an error when creating.
-func New() *AuthServer {
+func New() *Server {
 	log.Println("Loading configuration")
 	config := config.New()
 	config.Load()
@@ -39,6 +41,13 @@ func New() *AuthServer {
 
 	log.Println("Creating http client")
 	client := httpclient.New()
+
+	pm, err := password.NewBcryptPasswordManager(12)
+	if err != nil {
+		log.Fatalf("NewBcryptPasswordManager(): %v", err)
+	}
+
+	authService := services.NewAuthService(config.LogConfig.Logger, validator, client, config.UserURL, config.DeviceURL, *config.JwtTokenConfig, config.DomainName, pm)
 
 	log.Println("Creating router")
 	handlers := []router.Handler{
@@ -74,9 +83,7 @@ func New() *AuthServer {
 		{
 			Method: router.POST,
 			Path:   "/api/v1/login",
-			H: func(c *gin.Context) {
-				v1.Login(c, logger, validator, client, config.UserServiceAuthEndpoint, *config.JwtTokenConfig, config.DomainName)
-			},
+			H:      v1.Login(authService),
 		},
 	}
 	r := router.New(logger, handlers...)
@@ -87,7 +94,7 @@ func New() *AuthServer {
 		Handler: r,
 	}
 
-	return &AuthServer{
+	return &Server{
 		config: config,
 		srv:    srv,
 	}
@@ -96,9 +103,10 @@ func New() *AuthServer {
 // Run starts the server. The function will start the server and listen for signals
 // to shut down the server. The function will exit the program if there is an error
 // when starting the server. Call Close() to shut down the server.
-func (s *AuthServer) Run() {
+func (s *Server) Run() {
 	logger := s.config.LogConfig.Logger
 
+	logger.Info("running server")
 	go func() {
 		if err := s.srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			logger.Error("error when starting server", "error", err)
@@ -118,7 +126,7 @@ func (s *AuthServer) Run() {
 // shut down the server. The function will exit the program with status code 0 if
 // the server is shut down successfully. The function will exit the program with
 // status code 1 if there is an error when shutting down the server.
-func (s *AuthServer) Close() {
+func (s *Server) Close() {
 	logger := s.config.LogConfig.Logger
 	logger.Info("shutting down server")
 

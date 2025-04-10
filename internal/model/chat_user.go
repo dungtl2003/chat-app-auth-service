@@ -19,6 +19,8 @@ type ChatUser struct {
 	Username string          `json:"username"`
 	Password string          `json:"password"`
 	Role     UserRole        `json:"role"`
+
+	Devices []Device `json:"devices"`
 }
 
 func IsRole(role string) bool {

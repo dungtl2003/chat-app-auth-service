@@ -1,0 +1,48 @@
+[
+    {
+        "id": "9223372036854775800",
+        "email": "admin@gmail.com",
+        "username": "admin",
+        "password": "adminpassword",
+        "role": "ADMIN"
+    },
+    {
+        "id": "2",
+        "email": "normaluser@gmail.com",
+        "username": "normaluser",
+        "password": "normalpassword",
+        "role": "USER",
+        "devices": [
+            {
+                "id": "1",
+                "device_name": "samsung galaxy A22",
+                "device_type": "phone",
+                "os": "android",
+                "status": "AWAY"
+            },
+            {
+                "id": "2",
+                "device_name": "asus",
+                "device_type": "laptop",
+                "os": "linux",
+                "status": "BUSY"
+            }
+        ]
+    },
+    {
+        "id": "3",
+        "email": "normaluser3@gmail.com",
+        "username": "normaluser3",
+        "password": "normalpassword3",
+        "role": "USER",
+        "devices": [
+            {
+                "id": "3",
+                "device_name": "asus",
+                "device_type": "laptop",
+                "os": "window",
+                "status": "BUSY"
+            }
+        ]
+    }
+]
