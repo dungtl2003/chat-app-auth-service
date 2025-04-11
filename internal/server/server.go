@@ -61,9 +61,7 @@ func New() *Server {
 		{
 			Method: router.GET,
 			Path:   "/api/v1/authorize",
-			H: func(c *gin.Context) {
-				v1.Authorize(c, logger)
-			},
+			H:      v1.Authorize(authService),
 		},
 		{
 			Method: router.GET,

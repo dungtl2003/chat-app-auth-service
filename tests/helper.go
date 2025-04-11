@@ -9,22 +9,33 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	_ "github.com/lib/pq" // postgresql driver support
 )
 
 type Helper struct {
-	Db        *Database
-	Client    *httpclient.HttpClient
-	UserURL   string
-	DeviceURL string
-	AuthURL   string
-	logger    *slog.Logger
-	JwtSecret string
+	Db           *Database
+	Client       *httpclient.HttpClient
+	UserURL      string
+	DeviceURL    string
+	AuthURL      string
+	logger       *slog.Logger
+	JwtSecret    string
+	ATDurationMs int
 }
 
 func NewHelper() *Helper {
+	ATDurationMsStr, bool := os.LookupEnv("ACCESS_TOKEN_DURATION_MS")
+	if !bool {
+		log.Fatal("ACCESS_TOKEN_DURATION_MS is not set")
+	}
+	ATDurationMs, err := strconv.Atoi(ATDurationMsStr)
+	if err != nil || ATDurationMs < 0 {
+		log.Fatal("ACCESS_TOKEN_DURATION_MS must be a non-negative number")
+	}
+
 	jwtSecret, bool := os.LookupEnv("JWT_SECRET")
 	if !bool {
 		log.Fatal("JWT_SECRET is not set")
@@ -66,13 +77,14 @@ func NewHelper() *Helper {
 	})
 
 	return &Helper{
-		Db:        db,
-		Client:    client,
-		UserURL:   userUrl,
-		DeviceURL: deviceUrl,
-		logger:    logger,
-		AuthURL:   authUrl,
-		JwtSecret: jwtSecret,
+		Db:           db,
+		Client:       client,
+		UserURL:      userUrl,
+		DeviceURL:    deviceUrl,
+		logger:       logger,
+		AuthURL:      authUrl,
+		JwtSecret:    jwtSecret,
+		ATDurationMs: ATDurationMs,
 	}
 }
 

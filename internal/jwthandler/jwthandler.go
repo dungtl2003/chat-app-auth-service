@@ -11,15 +11,15 @@ import (
 // CreateToken will create jwt token with claims of user data, and the token is
 // valid for `duration` milliseconds.
 func CreateToken(key string, user model.ChatUser, duration int64) (string, error) {
-	iat := time.Now().UnixMilli()
-	exp := iat + duration
+	iat := time.Now().UTC()
+	exp := iat.Add(time.Duration(duration) * time.Millisecond)
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256,
 		jwt.MapClaims{
 			"sub": user.Username,
 			"iss": "chat-app",
 			"aud": user.Role,
-			"iat": iat,
-			"exp": exp,
+			"iat": iat.Unix(),
+			"exp": exp.Unix(),
 		})
 
 	signedToken, err := token.SignedString([]byte(key))

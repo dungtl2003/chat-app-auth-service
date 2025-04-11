@@ -20,7 +20,8 @@ ENV=${ENV:-"test"}
 USER_URL=${USER_URL:-"http://localhost:8600/api/v1/users"}
 DEVICE_URL=${DEVICE_URL:-"http://localhost:8600/api/v1/devices"}
 JWT_SECRET=${JWT_SECRET:-"secret"}
-ACCESS_TOKEN_DURATION_MS=${ACCESS_TOKEN_DURATION_MS:-1800000}
+# set low for testing expiration, but don't set too low
+ACCESS_TOKEN_DURATION_MS=${ACCESS_TOKEN_DURATION_MS:-5000}
 REFRESH_TOKEN_DURATION_MS=${REFRESH_TOKEN_DURATION_MS:-172800000}
 DOMAIN_NAME=${DOMAIN_NAME:-"localhost"}
 COST=${COST:-12}
