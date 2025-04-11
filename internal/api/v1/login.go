@@ -8,6 +8,7 @@ import (
 	"dungtl2003/chat-app-auth-service/internal/model"
 	"dungtl2003/chat-app-auth-service/internal/services"
 	"fmt"
+	"io"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -47,17 +48,25 @@ func Login(a *services.AuthService) gin.HandlerFunc {
 			c.AbortWithStatus(500)
 			return
 		}
+
 		if resp.StatusCode != 200 {
-			a.Logger.Errorf("error GET request status: %d", resp.StatusCode)
-			c.AbortWithStatus(500)
+			c.Status(resp.StatusCode)
+			_, err = io.Copy(c.Writer, resp.Body)
+			if err != nil {
+				a.Logger.Errorf("Copy(): %v", err)
+				c.AbortWithStatus(500)
+			}
+
 			return
 		}
+
 		body, err := httpclient.ReadResponse(resp)
 		if err != nil {
 			a.Logger.Errorf("ReadResponse(): %v", err)
 			c.AbortWithStatus(500)
 			return
 		}
+
 		var user model.ChatUser
 		err = helper.ParseAsJson(body, &user)
 		if err != nil {
@@ -71,6 +80,7 @@ func Login(a *services.AuthService) gin.HandlerFunc {
 		if !a.PasswordManager.IsCorrectPassword(loginRequestBody.Password, user.Password) {
 			a.Logger.Errorf("invalid password")
 			c.JSON(403, "invalid identifier")
+			c.AbortWithStatus(403)
 			return
 		}
 

@@ -119,17 +119,17 @@ func TestLoginCorrectDataSuccessfully(t *testing.T) {
 	require.NoError(t, err)
 	require.EqualValues(t, role, aud[0])
 
-	// body: "access_token": "%s"
+	// body: "access_token: %s"
 	respBody, err := httpclient.ReadResponse(resp)
 	require.NoError(t, err)
-	accessTokenPrefix := `"access_token": "`
+	accessTokenPrefix := `"access_token: `
 	accessTokenSuffix := `"`
 	accessToken := string(respBody)
 	accessToken = accessToken[len(accessTokenPrefix):]
 	accessToken = accessToken[:len(accessToken)-len(accessTokenSuffix)]
 
 	// validate AT
-	tok, err = jwthandler.DecodeToken(helper.JwtSecret, refreshToken)
+	tok, err = jwthandler.DecodeToken(helper.JwtSecret, accessToken)
 	require.NoError(t, err)
 	sub, err = tok.Claims.GetSubject()
 	require.NoError(t, err)
