@@ -26,6 +26,45 @@ type Helper struct {
 	ATDurationMs int
 }
 
+// SuckDelay is a function that blocks the current goroutine for a specified
+// duration in milliseconds. It uses a busy wait loop to achieve this.
+// Sleep is not used to avoid blocking the entire process.
+func SuckDelay(ms int) {
+	start := time.Now()
+	duration := time.Duration(ms) * time.Millisecond
+	for start.Add(duration).After(time.Now()) {
+	}
+}
+
+func GetRTFromResponse(resp *http.Response) string {
+	if resp == nil {
+		return ""
+	}
+	cookies := resp.Cookies()
+	for _, cookie := range cookies {
+		if cookie.Name == "refresh_token" {
+			return cookie.Value
+		}
+	}
+	return ""
+}
+
+func GetATFromResponse(resp *http.Response) string {
+	if resp == nil {
+		return ""
+	}
+	body, err := httpclient.ReadResponse(resp)
+	if err != nil {
+		return ""
+	}
+	accessTokenPrefix := `"access_token: `
+	accessTokenSuffix := `"`
+	accessToken := string(body)
+	accessToken = accessToken[len(accessTokenPrefix):]
+	accessToken = accessToken[:len(accessToken)-len(accessTokenSuffix)]
+	return accessToken
+}
+
 func NewHelper() *Helper {
 	ATDurationMsStr, bool := os.LookupEnv("ACCESS_TOKEN_DURATION_MS")
 	if !bool {

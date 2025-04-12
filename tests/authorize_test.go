@@ -2,11 +2,9 @@ package tests
 
 import (
 	"bytes"
-	"dungtl2003/chat-app-auth-service/internal/httpclient"
 	"fmt"
 	"net/http"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -82,13 +80,8 @@ func TestAuthorizeWithRealToken(t *testing.T) {
 	require.NoError(t, err)
 	require.EqualValues(t, 200, resp.StatusCode)
 
-	respBody, err := httpclient.ReadResponse(resp)
-	require.NoError(t, err)
-	accessTokenPrefix := `"access_token: `
-	accessTokenSuffix := `"`
-	accessToken := string(respBody)
-	accessToken = accessToken[len(accessTokenPrefix):]
-	accessToken = accessToken[:len(accessToken)-len(accessTokenSuffix)]
+	accessToken := GetATFromResponse(resp)
+	require.NotEmpty(t, accessToken)
 
 	URL = fmt.Sprintf("%s/authorize", helper.AuthURL)
 	header := http.Header{
@@ -98,13 +91,7 @@ func TestAuthorizeWithRealToken(t *testing.T) {
 	require.NoError(t, err)
 	require.EqualValues(t, 200, resp.StatusCode)
 
-	// fmt.Printf("%d\n", duration)
-	// time.Sleep(duration)
-	// idk why we can't use time.Sleep(duration) here
-	start := time.Now()
-	duration := time.Duration(helper.ATDurationMs) * time.Millisecond
-	for start.Add(duration).After(time.Now()) {
-	}
+	SuckDelay(helper.ATDurationMs)
 	header = http.Header{
 		"Authorization": {fmt.Sprintf("Bearer %s", accessToken)},
 	}

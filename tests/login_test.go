@@ -2,7 +2,6 @@ package tests
 
 import (
 	"bytes"
-	"dungtl2003/chat-app-auth-service/internal/httpclient"
 	"dungtl2003/chat-app-auth-service/internal/jwthandler"
 	"fmt"
 	"testing"
@@ -98,16 +97,8 @@ func TestLoginCorrectDataSuccessfully(t *testing.T) {
 	require.EqualValues(t, 200, resp.StatusCode)
 
 	// cookie: "refresh_token": "%s"
-	cookies := resp.Cookies()
-	require.NotEmpty(t, cookies)
-	// we will find the refresh token in the cookie
-	var refreshToken string
-	for _, cookie := range cookies {
-		if cookie.Name == "refresh_token" {
-			refreshToken = cookie.Value
-			break
-		}
-	}
+	refreshToken := GetRTFromResponse(resp)
+	require.NotEmpty(t, refreshToken)
 
 	// validate RT
 	tok, err := jwthandler.DecodeToken(helper.JwtSecret, refreshToken)
@@ -120,13 +111,8 @@ func TestLoginCorrectDataSuccessfully(t *testing.T) {
 	require.EqualValues(t, role, aud[0])
 
 	// body: "access_token: %s"
-	respBody, err := httpclient.ReadResponse(resp)
-	require.NoError(t, err)
-	accessTokenPrefix := `"access_token: `
-	accessTokenSuffix := `"`
-	accessToken := string(respBody)
-	accessToken = accessToken[len(accessTokenPrefix):]
-	accessToken = accessToken[:len(accessToken)-len(accessTokenSuffix)]
+	accessToken := GetATFromResponse(resp)
+	require.NotEmpty(t, accessToken)
 
 	// validate AT
 	tok, err = jwthandler.DecodeToken(helper.JwtSecret, accessToken)

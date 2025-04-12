@@ -26,6 +26,13 @@
                 "device_type": "laptop",
                 "os": "linux",
                 "status": "BUSY"
+            },
+            {
+                "id": "4",
+                "device_name": "iphone 14",
+                "device_type": "phone",
+                "os": "ios",
+                "status": "BUSY"
             }
         ]
     },

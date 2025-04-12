@@ -15,11 +15,12 @@ const (
 )
 
 type Device struct {
-	Id         types.JsonInt64 `json:"id"`
-	DeviceName string          `json:"device_name"`
-	DeviceType string          `json:"device_type"`
-	Os         string          `json:"os"`
-	Status     DeviceStatus    `json:"status"`
+	Id           types.JsonInt64 `json:"id"`
+	DeviceName   string          `json:"device_name"`
+	DeviceType   string          `json:"device_type"`
+	Os           string          `json:"os"`
+	Status       DeviceStatus    `json:"status"`
+	RefreshToken string          `json:"refresh_token"`
 }
 
 func IsDeviceStatus(status string) bool {

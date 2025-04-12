@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 func Authorize(a *services.AuthService) gin.HandlerFunc {
@@ -35,8 +36,14 @@ func Authorize(a *services.AuthService) gin.HandlerFunc {
 		accessTokenString := parts[1]
 		_, err := jwthandler.DecodeToken(a.JwtConfig.JwtSecret, accessTokenString)
 		if err != nil {
-			a.Logger.Errorf("DecodeToken(): %v", err)
-			c.JSON(401, "invalid token")
+			a.Logger.Debugf("DecodeToken(): %v", err)
+
+			if err == jwt.ErrTokenExpired {
+				c.JSON(401, "token expired")
+			} else {
+				c.JSON(401, "invalid token")
+			}
+
 			return
 		}
 

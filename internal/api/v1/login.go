@@ -42,7 +42,7 @@ func Login(a *services.AuthService) gin.HandlerFunc {
 		// get user information
 		url := fmt.Sprintf("%s/auth-info?identifier=%s", a.UserURL, loginRequestBody.Identifier)
 		a.Logger.Debugf("sending GET request to %s", url)
-		resp, err := a.Client.Get(url, c.Request.Header)
+		resp, err := a.Client.Get(url, nil)
 		if err != nil {
 			a.Logger.Errorf("error when sending GET request: %v", err)
 			c.AbortWithStatus(500)
@@ -109,7 +109,7 @@ func Login(a *services.AuthService) gin.HandlerFunc {
 			"user_id": "%d"	
 		}
 	`, refreshToken, user.Id.Int64())
-		resp, err = a.Client.Patch(url, c.Request.Header, bytes.NewBuffer(payload))
+		resp, err = a.Client.Patch(url, nil, bytes.NewBuffer(payload))
 		if err != nil {
 			a.Logger.Errorf("error when sending PATCH request: %v", err)
 			c.AbortWithStatus(500)

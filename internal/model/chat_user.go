@@ -14,11 +14,12 @@ const (
 )
 
 type ChatUser struct {
-	Id       types.JsonInt64 `json:"id"`
-	Email    string          `json:"email"`
-	Username string          `json:"username"`
-	Password string          `json:"password"`
-	Role     UserRole        `json:"role"`
+	Id             types.JsonInt64 `json:"id"`
+	Email          string          `json:"email"`
+	Username       string          `json:"username"`
+	Password       string          `json:"password"`
+	Role           UserRole        `json:"role"`
+	SessionVersion types.JsonInt64 `json:"session_version"`
 
 	Devices []Device `json:"devices"`
 }
