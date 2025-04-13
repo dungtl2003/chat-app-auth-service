@@ -67,7 +67,7 @@ func Refresh(a *services.AuthService) gin.HandlerFunc {
 			return
 		}
 
-		username, err := claims.GetSubject()
+		username, err := claims.GetUsername()
 		if err != nil {
 			a.Logger.Errorf("GetSessVersion(): %v", err)
 			c.AbortWithStatus(500)

@@ -17,8 +17,6 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
-
-	"github.com/gin-gonic/gin"
 )
 
 type Server struct {
@@ -54,9 +52,7 @@ func New() *Server {
 		{
 			Method: router.GET,
 			Path:   "/healthcheck",
-			H: func(c *gin.Context) {
-				healthcheck.HealthCheck(c, logger)
-			},
+			H:      healthcheck.HealthCheck(authService),
 		},
 		{
 			Method: router.GET,
@@ -71,9 +67,7 @@ func New() *Server {
 		{
 			Method: router.GET,
 			Path:   "/api/v1/logout",
-			H: func(c *gin.Context) {
-				v1.Logout(c, logger)
-			},
+			H:      v1.Logout(authService),
 		},
 
 		{

@@ -12,10 +12,15 @@ import (
 type JWTClaim struct {
 	jwt.RegisteredClaims
 	SessVersion types.JsonInt64 `json:"sess_version"`
+	Username    string          `json:"name"`
 }
 
 func (c JWTClaim) GetSessVersion() (int64, error) {
 	return c.SessVersion.Int64(), nil
+}
+
+func (c JWTClaim) GetUsername() (string, error) {
+	return c.Username, nil
 }
 
 // CreateToken will create jwt token with claims of user data, and the token is
@@ -28,21 +33,14 @@ func CreateToken(key string, user model.ChatUser, duration int64) (string, error
 			jwt.RegisteredClaims{
 				IssuedAt:  &jwt.NumericDate{Time: iat},
 				ExpiresAt: &jwt.NumericDate{Time: exp},
-				Subject:   user.Username,
+				Subject:   fmt.Sprint(user.Id.Int64()),
 				Issuer:    "chat-app",
 				Audience:  []string{string(user.Role)},
 			},
 			user.SessionVersion,
+			user.Username,
 		},
 	)
-	// token := jwt.NewWithClaims(jwt.SigningMethodHS256,
-	// 	jwt.MapClaims{
-	// 		"sub":          user.Username,
-	// 		"iss":          "chat-app",
-	// 		"aud":          user.Role,
-	// 		"iat":          iat.Unix(),
-	// 		"exp":          exp.Unix(),
-	// 		"sess_version": user.SessionVersion.Int64(),
 
 	signedToken, err := token.SignedString([]byte(key))
 	return signedToken, err

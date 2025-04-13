@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"dungtl2003/chat-app-auth-service/internal/jwthandler"
 	"fmt"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -78,6 +79,7 @@ func TestLoginCorrectDataSuccessfully(t *testing.T) {
 		require.NoError(t, err)
 	}()
 
+	uid := 2
 	identifier := "normaluser"
 	password := "normalpassword"
 	deviceId := 1
@@ -102,11 +104,14 @@ func TestLoginCorrectDataSuccessfully(t *testing.T) {
 
 	// validate RT
 	tok, err := jwthandler.DecodeToken(helper.JwtSecret, refreshToken)
+	claims := tok.Claims.(*jwthandler.JWTClaim)
 	require.NoError(t, err)
-	sub, err := tok.Claims.GetSubject()
+	subStr, err := claims.GetSubject()
 	require.NoError(t, err)
-	require.EqualValues(t, identifier, sub)
-	aud, err := tok.Claims.GetAudience()
+	sub, err := strconv.Atoi(subStr)
+	require.NoError(t, err)
+	require.EqualValues(t, uid, sub)
+	aud, err := claims.GetAudience()
 	require.NoError(t, err)
 	require.EqualValues(t, role, aud[0])
 
@@ -117,9 +122,11 @@ func TestLoginCorrectDataSuccessfully(t *testing.T) {
 	// validate AT
 	tok, err = jwthandler.DecodeToken(helper.JwtSecret, accessToken)
 	require.NoError(t, err)
-	sub, err = tok.Claims.GetSubject()
+	subStr, err = tok.Claims.GetSubject()
 	require.NoError(t, err)
-	require.EqualValues(t, identifier, sub)
+	sub, err = strconv.Atoi(subStr)
+	require.NoError(t, err)
+	require.EqualValues(t, uid, sub)
 	aud, err = tok.Claims.GetAudience()
 	require.NoError(t, err)
 	require.EqualValues(t, role, aud[0])
