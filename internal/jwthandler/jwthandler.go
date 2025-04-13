@@ -13,6 +13,7 @@ type JWTClaim struct {
 	jwt.RegisteredClaims
 	SessVersion types.JsonInt64 `json:"sess_version"`
 	Username    string          `json:"name"`
+	DeviceId    types.JsonInt64 `json:"device_id"`
 }
 
 func (c JWTClaim) GetSessVersion() (int64, error) {
@@ -23,9 +24,13 @@ func (c JWTClaim) GetUsername() (string, error) {
 	return c.Username, nil
 }
 
+func (c JWTClaim) GetDeviceId() (int64, error) {
+	return c.DeviceId.Int64(), nil
+}
+
 // CreateToken will create jwt token with claims of user data, and the token is
 // valid for `duration` milliseconds.
-func CreateToken(key string, user model.ChatUser, duration int64) (string, error) {
+func CreateToken(key string, user model.ChatUser, duration int64, deviceId int64) (string, error) {
 	iat := time.Now().UTC()
 	exp := iat.Add(time.Duration(duration) * time.Millisecond)
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256,
@@ -39,6 +44,7 @@ func CreateToken(key string, user model.ChatUser, duration int64) (string, error
 			},
 			user.SessionVersion,
 			user.Username,
+			types.NewJsonInt64(deviceId),
 		},
 	)
 

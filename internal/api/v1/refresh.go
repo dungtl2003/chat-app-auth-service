@@ -74,6 +74,13 @@ func Refresh(a *services.AuthService) gin.HandlerFunc {
 			return
 		}
 
+		deviceId, err := claims.GetDeviceId()
+		if err != nil {
+			a.Logger.Errorf("GetDeviceId(): %v", err)
+			c.AbortWithStatus(500)
+			return
+		}
+
 		url := fmt.Sprintf("%s/auth-info?identifier=%s", a.UserURL, username)
 		a.Logger.Debugf("sending GET request to %s", url)
 		resp, err := a.Client.Get(url, nil)
@@ -118,11 +125,14 @@ func Refresh(a *services.AuthService) gin.HandlerFunc {
 		}
 
 		has := false
-		var deviceId int64
 		for _, device := range user.Devices {
 			if device.RefreshToken == refreshTokenStr {
+				if deviceId != device.Id.Int64() {
+					a.Logger.Errorf("the token must be saved in the correct device (expected: %d, actual: %d). It seems like the create token logic is wrong!!!", device.Id.Int64(), deviceId)
+					c.JSON(500, "it seems like the create token logic is wrong!!!")
+					return
+				}
 				has = true
-				deviceId = device.Id.Int64()
 				break
 			}
 		}
@@ -182,7 +192,7 @@ func Refresh(a *services.AuthService) gin.HandlerFunc {
 		}
 
 		// create new tokens
-		newAccessToken, err := jwthandler.CreateToken(a.JwtConfig.JwtSecret, user, a.JwtConfig.ATDurationMs)
+		newAccessToken, err := jwthandler.CreateToken(a.JwtConfig.JwtSecret, user, a.JwtConfig.ATDurationMs, deviceId)
 		if err != nil {
 			a.Logger.Errorf("CreateToken(): error creating access token: %v", err)
 			c.AbortWithStatus(500)
@@ -190,7 +200,7 @@ func Refresh(a *services.AuthService) gin.HandlerFunc {
 		}
 		a.Logger.Debugf("AT: %s", newAccessToken)
 
-		newRefreshToken, err := jwthandler.CreateToken(a.JwtConfig.JwtSecret, user, a.JwtConfig.RTDurationMs)
+		newRefreshToken, err := jwthandler.CreateToken(a.JwtConfig.JwtSecret, user, a.JwtConfig.RTDurationMs, deviceId)
 		if err != nil {
 			a.Logger.Errorf("CreateToken(): error creating refresh token: %v", err)
 			c.AbortWithStatus(500)

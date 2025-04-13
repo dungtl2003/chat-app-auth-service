@@ -78,21 +78,34 @@ func Login(a *services.AuthService) gin.HandlerFunc {
 
 		// check password
 		if !a.PasswordManager.IsCorrectPassword(loginRequestBody.Password, user.Password) {
-			a.Logger.Errorf("invalid password")
-			c.JSON(403, "invalid identifier")
-			c.AbortWithStatus(403)
+			a.Logger.Debug("invalid password")
+			c.JSON(403, "invalid payload")
+			return
+		}
+
+		has := false
+		for _, device := range user.Devices {
+			if device.Id.Int64() == deviceId {
+				has = true
+				break
+			}
+		}
+
+		if !has {
+			a.Logger.Debugf("user with ID %d does not have device with ID %d", user.Id.Int64(), deviceId)
+			c.JSON(403, "invalid payload")
 			return
 		}
 
 		// create tokens
-		accessToken, err := jwthandler.CreateToken(a.JwtConfig.JwtSecret, user, a.JwtConfig.ATDurationMs)
+		accessToken, err := jwthandler.CreateToken(a.JwtConfig.JwtSecret, user, a.JwtConfig.ATDurationMs, deviceId)
 		if err != nil {
 			a.Logger.Errorf("CreateToken(): error creating access token: %v", err)
 			c.AbortWithStatus(500)
 			return
 		}
 		a.Logger.Debugf("AT: %s", accessToken)
-		refreshToken, err := jwthandler.CreateToken(a.JwtConfig.JwtSecret, user, a.JwtConfig.RTDurationMs)
+		refreshToken, err := jwthandler.CreateToken(a.JwtConfig.JwtSecret, user, a.JwtConfig.RTDurationMs, deviceId)
 		if err != nil {
 			a.Logger.Errorf("CreateToken(): error creating refresh token: %v", err)
 			c.AbortWithStatus(500)
@@ -105,10 +118,9 @@ func Login(a *services.AuthService) gin.HandlerFunc {
 		a.Logger.Debugf("sending PATCH request to %s", url)
 		payload := fmt.Appendf(nil, `
 		{
-			"token": "%s",
-			"user_id": "%d"	
+			"token": "%s"
 		}
-	`, refreshToken, user.Id.Int64())
+	`, refreshToken)
 		resp, err = a.Client.Patch(url, nil, bytes.NewBuffer(payload))
 		if err != nil {
 			a.Logger.Errorf("error when sending PATCH request: %v", err)
