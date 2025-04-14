@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
 )
 
 func Logout(a *services.AuthService) gin.HandlerFunc {
@@ -39,13 +38,7 @@ func Logout(a *services.AuthService) gin.HandlerFunc {
 		accessToken, err := jwthandler.DecodeToken(a.JwtConfig.JwtSecret, accessTokenString)
 		if err != nil {
 			a.Logger.Debugf("DecodeToken(): %v", err)
-
-			if err == jwt.ErrTokenExpired {
-				c.JSON(401, "token expired")
-			} else {
-				c.JSON(401, "invalid token")
-			}
-
+			c.JSON(401, "invalid token")
 			return
 		}
 
@@ -77,7 +70,7 @@ func Logout(a *services.AuthService) gin.HandlerFunc {
 			return
 		}
 
-		c.SetCookie("refresh_token", "", 0, "/", a.DomainName, false, true)
+		c.SetCookie("refresh_token", "", -1, "/", a.DomainName, false, true)
 
 		c.JSON(200, "logout successfully")
 		return

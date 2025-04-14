@@ -17,6 +17,7 @@
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 ROOT_DIR="$SCRIPT_DIR/.."
 OPENSSL_CONFIG_FILE=${OPENSSL_CONFIG_FILE:="$ROOT_DIR/etc/openssl.cnf"}
+CERT_DIRS=("$ROOT_DIR/environments/dev/snowflake/ssl" "$ROOT_DIR/environments/dev/user/ssl" "$ROOT_DIR/environments/test/snowflake/ssl" "$ROOT_DIR/environments/test/user/ssl")
 TEST_CERT_DIRS=("$ROOT_DIR/tests/services/snowflake/ssl" "$ROOT_DIR/tests/services/user/ssl")
 
 TEMP_CERT_DIR=$(mktemp -d)
@@ -111,7 +112,7 @@ function init_dirs_if_not_exist() {
 }
 
 function main() {
-    cert_dirs=("${TEST_CERT_DIRS[@]}")
+    cert_dirs=("${CERT_DIRS[@]}")
 
     init_dirs_if_not_exist "${cert_dirs[@]}"
 

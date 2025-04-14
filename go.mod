@@ -1,6 +1,6 @@
 module dungtl2003/chat-app-auth-service
 
-go 1.24.1
+go 1.23.6
 
 require (
 	github.com/gin-gonic/gin v1.10.0

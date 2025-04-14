@@ -126,7 +126,7 @@ ci_%:
 	$(MAKE) clean_image
 
 .PHONY: up_%
-up_%:
+up_%: certs
 	$(info ==================== up docker compose ====================)
 	docker-compose -f compose/docker-compose.$*.yaml up -d
 

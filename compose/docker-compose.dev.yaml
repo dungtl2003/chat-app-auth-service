@@ -1,4 +1,23 @@
 services:
+  auth:
+    container_name: chat-app-auth-service
+    image: ilikeblue/chat-app-auth-service:dev-latest
+    labels:
+      - 'custom.project=chat'
+      - 'custom.service=auth'
+    ports:
+      - "8400:80"
+    env_file:
+      - ../environments/dev/.env.auth
+    networks:
+      - chat-app-user-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/healthcheck"]
+      start_interval: 10s # wait for 10s before starting healthcheck
+      interval: 30s # check every 30s
+      timeout: 5s # timeout after 5s
+      retries: 5 # retry 5 times
+
   user:
     container_name: chat-app-user-service
     image: ilikeblue/chat-app-user-service:dev-latest
@@ -7,24 +26,18 @@ services:
       - 'custom.service=user'
     ports:
       - "8600:80"
-    environment:
-      - DATABASE_URL=postgresql://user_service:user1234@chat-app-db-service:5432/chat-app?sslmode=disable
-      - PORT=80
-      - API_VERSION=v1
-      - LOG_LEVEL=DEBUG
-      - LOG_KIND=TEXT
-      - ID_GENERATOR_ADDR=chat-app-snowflake-service:80
-      - COST=12
+    env_file:
+      - ../environments/dev/.env.user
     volumes:
-      - ../environments/test/user/ssl:/etc/snowflake/ssl/certs:ro
+      - ../environments/dev/user/ssl:/etc/snowflake/ssl/certs:ro
     networks:
       - chat-app-user-network
       - chat-app-db-network
       - chat-app-id-generator-network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:80/healthcheck"]
-      start_interval: 5s # wait for 10s before starting healthcheck
-      interval: 5s # check every 30s
+      start_interval: 10s # wait for 10s before starting healthcheck
+      interval: 30s # check every 30s
       timeout: 5s # timeout after 5s
       retries: 5 # retry 5 times
     depends_on:
@@ -39,11 +52,10 @@ services:
       - 'custom.option=TLS'
     ports:
       - "9000:80"
-    environment:
-      - WORKER_ID=1
-      - CERT_DIR=/etc/certs
+    env_file:
+      - ../environments/dev/.env.snowflake
     volumes:
-      - ../environments/test/snowflake/ssl:/etc/certs:ro 
+      - ../environments/dev/snowflake/ssl:/etc/certs:ro 
     networks:
       - chat-app-id-generator-network
     healthcheck:
@@ -58,10 +70,8 @@ services:
     labels:
       - 'custom.project=chat'
       - 'custom.service=database'
-    environment:
-      - POSTGRES_USER=admin
-      - POSTGRES_PASSWORD=testpass123
-      - POSTGRES_DB=chat-app
+    env_file:
+      - ../environments/dev/.env.pgdb
     ports:
       - "6000:5432"
     volumes:

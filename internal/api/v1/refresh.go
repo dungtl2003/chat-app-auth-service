@@ -12,7 +12,6 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
 )
 
 // Refresh logic flow:
@@ -46,16 +45,9 @@ func Refresh(a *services.AuthService) gin.HandlerFunc {
 		a.Logger.Debugf("decoding token %s", refreshTokenStr)
 		refreshToken, err := jwthandler.DecodeToken(a.JwtConfig.JwtSecret, refreshTokenStr)
 		if err != nil {
-			c.SetCookie("refresh_token", "", 0, "/", a.DomainName, false, true)
-
-			if err != jwt.ErrTokenExpired {
-				a.Logger.Debugf("token expired")
-				c.JSON(401, "token expired")
-			} else {
-				a.Logger.Debugf("DecodeToken(): %v", err)
-				c.JSON(401, "invalid token")
-			}
-
+			a.Logger.Debugf("DecodeToken(): %v", err)
+			c.SetCookie("refresh_token", "", -1, "/", a.DomainName, false, true)
+			c.JSON(401, "invalid token")
 			return
 		}
 
@@ -118,7 +110,7 @@ func Refresh(a *services.AuthService) gin.HandlerFunc {
 		a.Logger.Debugf("response body from GET request: %#v", user)
 
 		if sessionVersion < user.SessionVersion.Int64() {
-			c.SetCookie("refresh_token", "", 0, "/", a.DomainName, false, true)
+			c.SetCookie("refresh_token", "", -1, "/", a.DomainName, false, true)
 			a.Logger.Debugf("invalid session version (expected: %d, got: %d)", user.SessionVersion.Int64(), sessionVersion)
 			c.JSON(401, "invalid session version")
 			return
