@@ -12,21 +12,19 @@ type AuthService struct {
 	Logger          *helper.LoggerWrapper
 	Validator       *helper.Validator
 	Client          *httpclient.HttpClient
-	UserURL         string
-	DeviceURL       string
+	UserServiceURL  string
 	JwtConfig       config.JwtTokenConfig
 	DomainName      string
 	PasswordManager password.PasswordManager
 }
 
-func NewAuthService(logger *slog.Logger, validator *helper.Validator, client *httpclient.HttpClient, userURL string, deviceURL string, jwtConfig config.JwtTokenConfig, domainName string, pm password.PasswordManager) *AuthService {
+func NewAuthService(logger *slog.Logger, validator *helper.Validator, client *httpclient.HttpClient, userServiceURL string, jwtConfig config.JwtTokenConfig, domainName string, pm password.PasswordManager) *AuthService {
 	l := helper.NewLoggerWrapper(logger)
 	return &AuthService{
 		Logger:          &l,
 		Validator:       validator,
 		Client:          client,
-		UserURL:         userURL,
-		DeviceURL:       deviceURL,
+		UserServiceURL:  userServiceURL,
 		JwtConfig:       jwtConfig,
 		DomainName:      domainName,
 		PasswordManager: pm,

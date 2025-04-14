@@ -34,12 +34,11 @@ func (t JwtTokenConfig) String() string {
 type Config struct {
 	ServerPort     int
 	Env            string
-	ApiVersion     string
 	LogConfig      *LogConfig
-	UserURL        string
-	DeviceURL      string
+	UserServiceURL string
 	JwtTokenConfig *JwtTokenConfig
 	DomainName     string
+	Cost           int
 }
 
 // New returns a new Config instance. Call Load() to set the configuration values.
@@ -71,11 +70,10 @@ func (c *Config) String() string {
 		fmt.Sprintf("SERVER_PORT: %d", c.ServerPort),
 		fmt.Sprintf("LOGGER: %s", logConfigPart),
 		fmt.Sprintf("ENV: %s", c.Env),
-		fmt.Sprintf("API_VERSION: %s", c.ApiVersion),
-		fmt.Sprintf("USER_URL: %s", c.UserURL),
-		fmt.Sprintf("DEVICE_URL: %s", c.DeviceURL),
+		fmt.Sprintf("USER_SERVICE_URL: %s", c.UserServiceURL),
 		fmt.Sprintf("JWT: %s", jwtTokenConfigPart),
 		fmt.Sprintf("DOMAIN_NAME: %s", c.DomainName),
+		fmt.Sprintf("COST: %d", c.Cost),
 	}
 
 	return fmt.Sprintf("Config{%s}", strings.Join(parts, ", "))
@@ -84,13 +82,32 @@ func (c *Config) String() string {
 // Load sets the configuration values.
 func (c *Config) Load() {
 	c.setEnv()
-	c.setApiVersion()
 	c.setServerPort()
 	c.setLogConfig()
-	c.setUserURL()
-	c.setDeviceURL()
+	c.setUserServiceURL()
 	c.setJwtTokenConfig()
 	c.setDomainName()
+	c.setCost()
+}
+
+func (c *Config) setCost() {
+	log.Println("Setting COST")
+	costStr, has := os.LookupEnv("COST")
+	if !has {
+		log.Println("COST not found, setting to 12")
+		costStr = "12"
+	}
+
+	cost, err := strconv.Atoi(costStr)
+	if err != nil {
+		log.Fatalf("Invalid cost number: %s", costStr)
+	}
+
+	if cost < 1 || cost > 31 {
+		log.Fatalf("Cost number out of range: %s (4-31)", costStr)
+	}
+
+	c.Cost = cost
 }
 
 func (c *Config) setDomainName() {
@@ -113,8 +130,8 @@ func (c *Config) setJwtTokenConfig() {
 
 	atDurationMsStr, has := os.LookupEnv("ACCESS_TOKEN_DURATION_MS")
 	if !has {
-		log.Println("ACCESS_TOKEN_DURATION_MS not found, setting to 1800000 (30 minutes)")
-		atDurationMsStr = "1800000"
+		log.Println("ACCESS_TOKEN_DURATION_MS not found, setting to 900000 (15 minutes)")
+		atDurationMsStr = "900000"
 	}
 	atDurationMs, err := strconv.ParseInt(atDurationMsStr, 10, 64)
 	if err != nil {
@@ -146,24 +163,14 @@ func (c *Config) setJwtTokenConfig() {
 	c.JwtTokenConfig = tokConfig
 }
 
-func (c *Config) setUserURL() {
-	log.Println("Setting USER_URL")
-	userURL, has := os.LookupEnv("USER_URL")
+func (c *Config) setUserServiceURL() {
+	log.Println("Setting USER_SERVICE_URL")
+	userServiceURL, has := os.LookupEnv("USER_SERVICE_URL")
 	if !has {
 		log.Fatalln("USER_URL is required")
 	}
 
-	c.UserURL = userURL
-}
-
-func (c *Config) setDeviceURL() {
-	log.Println("Setting DEVICE_URL")
-	deviceURL, has := os.LookupEnv("DEVICE_URL")
-	if !has {
-		log.Fatalln("DEVICE_URL is required")
-	}
-
-	c.DeviceURL = deviceURL
+	c.UserServiceURL = userServiceURL
 }
 
 func (c *Config) setLogConfig() {
@@ -217,16 +224,6 @@ func (c *Config) setServerPort() {
 	}
 
 	c.ServerPort = port
-}
-
-func (c *Config) setApiVersion() {
-	log.Println("Setting API_VERSION")
-	apiVersion, has := os.LookupEnv("API_VERSION")
-	if !has {
-		log.Println("API_VERSION not found, setting to v1")
-		apiVersion = "v1"
-	}
-	c.ApiVersion = apiVersion
 }
 
 func (c *Config) setEnv() {

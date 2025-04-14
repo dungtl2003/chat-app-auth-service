@@ -1,4 +1,4 @@
-package v1
+package api
 
 import (
 	"bytes"
@@ -40,7 +40,7 @@ func Login(a *services.AuthService) gin.HandlerFunc {
 		a.Logger.Debugf("login request body: %#v", loginRequestBody)
 
 		// get user information
-		url := fmt.Sprintf("%s/auth-info?identifier=%s", a.UserURL, loginRequestBody.Identifier)
+		url := fmt.Sprintf("%s/users/auth-info?identifier=%s", a.UserServiceURL, loginRequestBody.Identifier)
 		a.Logger.Debugf("sending GET request to %s", url)
 		resp, err := a.Client.Get(url, nil)
 		if err != nil {
@@ -114,7 +114,7 @@ func Login(a *services.AuthService) gin.HandlerFunc {
 		a.Logger.Debugf("RT: %s", refreshToken)
 
 		// update device's token
-		url = fmt.Sprintf("%s/%d/token", a.DeviceURL, deviceId)
+		url = fmt.Sprintf("%s/devices/%d/token", a.UserServiceURL, deviceId)
 		a.Logger.Debugf("sending PATCH request to %s", url)
 		payload := fmt.Appendf(nil, `
 		{

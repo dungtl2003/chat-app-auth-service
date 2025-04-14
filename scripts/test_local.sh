@@ -17,8 +17,7 @@ API_VERSION=${API_VERSION:-"v1"}
 LOG_LEVEL=${LOG_LEVEL:-"DEBUG"}
 LOG_KIND=${LOG_KIND:-"TEXT"}
 ENV=${ENV:-"test"}
-USER_URL=${USER_URL:-"http://localhost:8600/api/v1/users"}
-DEVICE_URL=${DEVICE_URL:-"http://localhost:8600/api/v1/devices"}
+USER_SERVICE_URL=${USER_SERVICE_URL:-"http://localhost:8600"}
 JWT_SECRET=${JWT_SECRET:-"secret"}
 # set low for testing expiration, but don't set too low
 ACCESS_TOKEN_DURATION_MS=${ACCESS_TOKEN_DURATION_MS:-4000}
@@ -28,7 +27,7 @@ COST=${COST:-12}
 
 # Test's specific environment variables
 ADMIN_DATABASE_URL=${ADMIN_DATABASE_URL:-"postgresql://admin:testpass123@localhost:6000/chat-app?sslmode=disable"}
-AUTH_URL=${AUTH_URL:-"http://localhost:8400/api/v1"}
+AUTH_URL=${AUTH_URL:-"http://localhost:8400"}
 
 command="$1"
 extraArgs="${@:2}"
@@ -52,10 +51,8 @@ function export_envs() {
     export LOG_KIND
     printf "export ENV=%s\n" $ENV
     export ENV
-    printf "export USER_URL=%s\n" $USER_URL
-    export USER_URL
-    printf "export DEVICE_URL=%s\n" $DEVICE_URL
-    export DEVICE_URL
+    printf "export USER_SERVICE_URL=%s\n" $USER_SERVICE_URL
+    export USER_SERVICE_URL
     printf "export JWT_SECRET=%s\n" $JWT_SECRET
     export JWT_SECRET
     printf "export ACCESS_TOKEN_DURATION_MS=%s\n" $ACCESS_TOKEN_DURATION_MS

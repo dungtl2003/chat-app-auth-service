@@ -2,7 +2,7 @@ package server
 
 import (
 	"context"
-	v1 "dungtl2003/chat-app-auth-service/internal/api/v1"
+	"dungtl2003/chat-app-auth-service/internal/api"
 	"dungtl2003/chat-app-auth-service/internal/config"
 	"dungtl2003/chat-app-auth-service/internal/healthcheck"
 	"dungtl2003/chat-app-auth-service/internal/helper"
@@ -40,12 +40,12 @@ func New() *Server {
 	log.Println("Creating http client")
 	client := httpclient.New()
 
-	pm, err := password.NewBcryptPasswordManager(12)
+	pm, err := password.NewBcryptPasswordManager(config.Cost)
 	if err != nil {
 		log.Fatalf("NewBcryptPasswordManager(): %v", err)
 	}
 
-	authService := services.NewAuthService(config.LogConfig.Logger, validator, client, config.UserURL, config.DeviceURL, *config.JwtTokenConfig, config.DomainName, pm)
+	authService := services.NewAuthService(config.LogConfig.Logger, validator, client, config.UserServiceURL, *config.JwtTokenConfig, config.DomainName, pm)
 
 	log.Println("Creating router")
 	handlers := []router.Handler{
@@ -56,24 +56,24 @@ func New() *Server {
 		},
 		{
 			Method: router.GET,
-			Path:   "/api/v1/authorize",
-			H:      v1.Authorize(authService),
+			Path:   "/authorize",
+			H:      api.Authorize(authService),
 		},
 		{
 			Method: router.GET,
-			Path:   "/api/v1/refresh",
-			H:      v1.Refresh(authService),
+			Path:   "/refresh",
+			H:      api.Refresh(authService),
 		},
 		{
 			Method: router.GET,
-			Path:   "/api/v1/logout",
-			H:      v1.Logout(authService),
+			Path:   "/logout",
+			H:      api.Logout(authService),
 		},
 
 		{
 			Method: router.POST,
-			Path:   "/api/v1/login",
-			H:      v1.Login(authService),
+			Path:   "/login",
+			H:      api.Login(authService),
 		},
 	}
 	r := router.New(logger, handlers...)

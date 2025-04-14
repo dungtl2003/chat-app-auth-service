@@ -18,8 +18,6 @@ import (
 type Helper struct {
 	Db           *Database
 	Client       *httpclient.HttpClient
-	UserURL      string
-	DeviceURL    string
 	AuthURL      string
 	logger       *slog.Logger
 	JwtSecret    string
@@ -85,16 +83,6 @@ func NewHelper() *Helper {
 		log.Fatal("AUTH_URL is not set")
 	}
 
-	userUrl, bool := os.LookupEnv("USER_URL")
-	if !bool {
-		log.Fatal("USER_URL is not set")
-	}
-
-	deviceUrl, bool := os.LookupEnv("DEVICE_URL")
-	if !bool {
-		log.Fatal("DEVICE_URL is not set")
-	}
-
 	dbUrl, bool := os.LookupEnv("ADMIN_DATABASE_URL")
 	if !bool {
 		log.Fatal("ADMIN_DATABASE_URL is not set")
@@ -118,8 +106,6 @@ func NewHelper() *Helper {
 	return &Helper{
 		Db:           db,
 		Client:       client,
-		UserURL:      userUrl,
-		DeviceURL:    deviceUrl,
 		logger:       logger,
 		AuthURL:      authUrl,
 		JwtSecret:    jwtSecret,

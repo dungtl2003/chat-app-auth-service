@@ -1,16 +1,14 @@
-package v1
+package api
 
 import (
 	"dungtl2003/chat-app-auth-service/internal/jwthandler"
 	"dungtl2003/chat-app-auth-service/internal/services"
-	"fmt"
-	"io"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 )
 
-func Logout(a *services.AuthService) gin.HandlerFunc {
+func Authorize(a *services.AuthService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Bearer <token>
 		authHeader := c.GetHeader("Authorization")
@@ -35,44 +33,14 @@ func Logout(a *services.AuthService) gin.HandlerFunc {
 		}
 
 		accessTokenString := parts[1]
-		accessToken, err := jwthandler.DecodeToken(a.JwtConfig.JwtSecret, accessTokenString)
+		_, err := jwthandler.DecodeToken(a.JwtConfig.JwtSecret, accessTokenString)
 		if err != nil {
 			a.Logger.Debugf("DecodeToken(): %v", err)
 			c.JSON(401, "invalid token")
 			return
 		}
 
-		claims := accessToken.Claims.(*jwthandler.JWTClaim)
-		deviceId, err := claims.GetDeviceId()
-		if err != nil {
-			a.Logger.Debugf("GetDeviceId(): %v", err)
-			c.AbortWithStatus(500)
-			return
-		}
-
-		// update device's token
-		url := fmt.Sprintf("%s/%d/token", a.DeviceURL, deviceId)
-		a.Logger.Debugf("sending DELETE request to %s", url)
-		resp, err := a.Client.Delete(url, nil)
-		if err != nil {
-			a.Logger.Errorf("error when sending DELETE request: %v", err)
-			c.AbortWithStatus(500)
-			return
-		}
-		if resp.StatusCode != 200 {
-			c.Status(resp.StatusCode)
-			_, err = io.Copy(c.Writer, resp.Body)
-			if err != nil {
-				a.Logger.Errorf("Copy(): %v", err)
-				c.AbortWithStatus(500)
-			}
-
-			return
-		}
-
-		c.SetCookie("refresh_token", "", -1, "/", a.DomainName, false, true)
-
-		c.JSON(200, "logout successfully")
+		c.JSON(200, "authorized")
 		return
 	}
 }

@@ -1,4 +1,4 @@
-package v1
+package api
 
 import (
 	"bytes"
@@ -73,7 +73,7 @@ func Refresh(a *services.AuthService) gin.HandlerFunc {
 			return
 		}
 
-		url := fmt.Sprintf("%s/auth-info?identifier=%s", a.UserURL, username)
+		url := fmt.Sprintf("%s/users/auth-info?identifier=%s", a.UserServiceURL, username)
 		a.Logger.Debugf("sending GET request to %s", url)
 		resp, err := a.Client.Get(url, nil)
 		if err != nil {
@@ -132,7 +132,7 @@ func Refresh(a *services.AuthService) gin.HandlerFunc {
 		// HOW CAN YOU USE THIS TOKEN ??!!!!!!
 		if !has {
 			// maybe stolen by someone. Regardless, DELETE ALL!!!!!!!!!
-			url = fmt.Sprintf("%s/tokens?user_id=%d", a.DeviceURL, user.Id.Int64())
+			url = fmt.Sprintf("%s/devices/tokens?user_id=%d", a.UserServiceURL, user.Id.Int64())
 			a.Logger.Debugf("sending DELETE request to %s", url)
 			resp, err := a.Client.Delete(url, nil)
 			if err != nil {
@@ -153,7 +153,7 @@ func Refresh(a *services.AuthService) gin.HandlerFunc {
 			}
 
 			// update session version
-			url = fmt.Sprintf("%s/%d/session", a.UserURL, user.Id.Int64())
+			url = fmt.Sprintf("%s/users/%d/session", a.UserServiceURL, user.Id.Int64())
 			payload := fmt.Appendf(nil, `
 				{
 					"session_version": "increment"
@@ -201,7 +201,7 @@ func Refresh(a *services.AuthService) gin.HandlerFunc {
 		a.Logger.Debugf("RT: %s", newRefreshToken)
 
 		// update device's token
-		url = fmt.Sprintf("%s/%d/token", a.DeviceURL, deviceId)
+		url = fmt.Sprintf("%s/devices/%d/token", a.UserServiceURL, deviceId)
 		payload := fmt.Appendf(nil, `
 			{
 				"token": "%s",
