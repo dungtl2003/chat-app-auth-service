@@ -27,7 +27,7 @@ COST=${COST:-12}
 
 # Test's specific environment variables
 ADMIN_DATABASE_URL=${ADMIN_DATABASE_URL:-"postgresql://admin:testpass123@localhost:6000/chat-app?sslmode=disable"}
-AUTH_URL=${AUTH_URL:-"http://localhost:8400"}
+AUTH_URL=${AUTH_URL:-"http://localhost:8400/auth"}
 
 command="$1"
 extraArgs="${@:2}"

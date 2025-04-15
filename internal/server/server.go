@@ -56,23 +56,23 @@ func New() *Server {
 		},
 		{
 			Method: router.GET,
-			Path:   "/authorize",
+			Path:   "/auth/authorize",
 			H:      api.Authorize(authService),
 		},
 		{
 			Method: router.GET,
-			Path:   "/refresh",
+			Path:   "/auth/refresh",
 			H:      api.Refresh(authService),
 		},
 		{
 			Method: router.GET,
-			Path:   "/logout",
+			Path:   "/auth/logout",
 			H:      api.Logout(authService),
 		},
 
 		{
 			Method: router.POST,
-			Path:   "/login",
+			Path:   "/auth/login",
 			H:      api.Login(authService),
 		},
 	}
