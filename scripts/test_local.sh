@@ -24,6 +24,7 @@ ACCESS_TOKEN_DURATION_MS=${ACCESS_TOKEN_DURATION_MS:-4000}
 REFRESH_TOKEN_DURATION_MS=${REFRESH_TOKEN_DURATION_MS:-6000}
 DOMAIN_NAME=${DOMAIN_NAME:-"localhost"}
 COST=${COST:-12}
+ORIGIN=${ORIGIN:-"http://localhost:5174"}
 
 # Test's specific environment variables
 ADMIN_DATABASE_URL=${ADMIN_DATABASE_URL:-"postgresql://admin:testpass123@localhost:6000/chat-app?sslmode=disable"}
@@ -63,6 +64,8 @@ function export_envs() {
     export DOMAIN_NAME
     printf "export COST=%s\n" $COST
     export COST
+    printf "export ORIGIN=%s\n" $ORIGIN
+    export ORIGIN
 
     printf "export ADMIN_DATABASE_URL=%s\n" $ADMIN_DATABASE_URL
     export ADMIN_DATABASE_URL

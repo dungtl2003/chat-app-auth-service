@@ -39,11 +39,7 @@ type Config struct {
 	JwtTokenConfig *JwtTokenConfig
 	DomainName     string
 	Cost           int
-}
-
-// New returns a new Config instance. Call Load() to set the configuration values.
-func New() *Config {
-	return &Config{}
+	Origins        string
 }
 
 func (l *LogConfig) String() string {
@@ -74,23 +70,65 @@ func (c *Config) String() string {
 		fmt.Sprintf("JWT: %s", jwtTokenConfigPart),
 		fmt.Sprintf("DOMAIN_NAME: %s", c.DomainName),
 		fmt.Sprintf("COST: %d", c.Cost),
+		fmt.Sprintf("ORIGINS: %s", c.Origins),
 	}
 
 	return fmt.Sprintf("Config{%s}", strings.Join(parts, ", "))
 }
 
-// Load sets the configuration values.
-func (c *Config) Load() {
-	c.setEnv()
-	c.setServerPort()
-	c.setLogConfig()
-	c.setUserServiceURL()
-	c.setJwtTokenConfig()
-	c.setDomainName()
-	c.setCost()
+// LoadConfig loads the configuration from env file. It will return Config instance
+// or error if occurs.
+func LoadConfig() (*Config, error) {
+	c := &Config{}
+	err := c.setEnv()
+	if err != nil {
+		return nil, err
+	}
+	err = c.setServerPort()
+	if err != nil {
+		return nil, err
+	}
+	err = c.setLogConfig()
+	if err != nil {
+		return nil, err
+	}
+	err = c.setUserServiceURL()
+	if err != nil {
+		return nil, err
+	}
+	err = c.setJwtTokenConfig()
+	if err != nil {
+		return nil, err
+	}
+	err = c.setDomainName()
+	if err != nil {
+		return nil, err
+	}
+	err = c.setCost()
+	if err != nil {
+		return nil, err
+	}
+	err = c.setOrigins()
+	if err != nil {
+		return nil, err
+	}
+
+	return c, nil
 }
 
-func (c *Config) setCost() {
+func (c *Config) setOrigins() error {
+	log.Println("Setting ORIGINS")
+	origins, has := os.LookupEnv("ORIGINS")
+	if !has {
+		log.Println("ORIGINS not found, setting to empty string")
+		origins = ""
+	}
+
+	c.Origins = strings.TrimSpace(origins)
+	return nil
+}
+
+func (c *Config) setCost() error {
 	log.Println("Setting COST")
 	costStr, has := os.LookupEnv("COST")
 	if !has {
@@ -100,17 +138,18 @@ func (c *Config) setCost() {
 
 	cost, err := strconv.Atoi(costStr)
 	if err != nil {
-		log.Fatalf("Invalid cost number: %s", costStr)
+		return fmt.Errorf("Invalid cost number: %s", costStr)
 	}
 
 	if cost < 1 || cost > 31 {
-		log.Fatalf("Cost number out of range: %s (4-31)", costStr)
+		return fmt.Errorf("Cost number out of range: %s (4-31)", costStr)
 	}
 
 	c.Cost = cost
+	return nil
 }
 
-func (c *Config) setDomainName() {
+func (c *Config) setDomainName() error {
 	log.Println("Setting DOMAIN_NAME")
 	domainName, has := os.LookupEnv("DOMAIN_NAME")
 	if !has {
@@ -118,14 +157,15 @@ func (c *Config) setDomainName() {
 		domainName = "localhost"
 	}
 	c.DomainName = domainName
+	return nil
 }
 
-func (c *Config) setJwtTokenConfig() {
+func (c *Config) setJwtTokenConfig() error {
 	log.Println("Setting JWT_SECRET, ACCESS_TOKEN_DURATION_MS and REFRESH_TOKEN_DURATION_MS")
 
 	secretKey, has := os.LookupEnv("JWT_SECRET")
 	if !has {
-		log.Fatalln("JWT_SECRET is required")
+		return fmt.Errorf("JWT_SECRET is required")
 	}
 
 	atDurationMsStr, has := os.LookupEnv("ACCESS_TOKEN_DURATION_MS")
@@ -135,10 +175,10 @@ func (c *Config) setJwtTokenConfig() {
 	}
 	atDurationMs, err := strconv.ParseInt(atDurationMsStr, 10, 64)
 	if err != nil {
-		log.Fatalf("Invalid access token duration: %s", atDurationMsStr)
+		return fmt.Errorf("Invalid access token duration: %s", atDurationMsStr)
 	}
 	if atDurationMs < 0 {
-		log.Fatalf("Access token duration must be non-negative")
+		return fmt.Errorf("Access token duration must be non-negative")
 	}
 
 	rtDurationMsStr, has := os.LookupEnv("REFRESH_TOKEN_DURATION_MS")
@@ -148,10 +188,10 @@ func (c *Config) setJwtTokenConfig() {
 	}
 	rtDurationMs, err := strconv.ParseInt(rtDurationMsStr, 10, 64)
 	if err != nil {
-		log.Fatalf("Invalid refresh token duration: %s", rtDurationMsStr)
+		return fmt.Errorf("Invalid refresh token duration: %s", rtDurationMsStr)
 	}
 	if rtDurationMs < 0 {
-		log.Fatalf("Refresh token duration must be non-negative")
+		return fmt.Errorf("Refresh token duration must be non-negative")
 	}
 
 	tokConfig := &JwtTokenConfig{
@@ -161,22 +201,30 @@ func (c *Config) setJwtTokenConfig() {
 	}
 
 	c.JwtTokenConfig = tokConfig
+	return nil
 }
 
-func (c *Config) setUserServiceURL() {
+func (c *Config) setUserServiceURL() error {
 	log.Println("Setting USER_SERVICE_URL")
 	userServiceURL, has := os.LookupEnv("USER_SERVICE_URL")
 	if !has {
-		log.Fatalln("USER_URL is required")
+		return fmt.Errorf("USER_SERVICE_URL is required")
 	}
 
 	c.UserServiceURL = userServiceURL
+	return nil
 }
 
-func (c *Config) setLogConfig() {
+func (c *Config) setLogConfig() error {
 	log.Println("Setting LOG_LEVEL and LOG_KIND")
-	logLevel := getLogLevel()
-	logKind := getLogKind()
+	logLevel, err := getLogLevel()
+	if err != nil {
+		return err
+	}
+	logKind, err := getLogKind()
+	if err != nil {
+		return err
+	}
 
 	writer := os.Stdout
 
@@ -204,9 +252,10 @@ func (c *Config) setLogConfig() {
 		Kind:   logKind,
 		Logger: slog.New(handler),
 	}
+	return nil
 }
 
-func (c *Config) setServerPort() {
+func (c *Config) setServerPort() error {
 	log.Println("Setting PORT")
 	portStr, has := os.LookupEnv("PORT")
 	if !has {
@@ -216,17 +265,18 @@ func (c *Config) setServerPort() {
 
 	port, err := strconv.Atoi(portStr)
 	if err != nil {
-		log.Fatalf("Invalid port number: %s", portStr)
+		return fmt.Errorf("Invalid port number: %s", portStr)
 	}
 
 	if port < 1 || port > 65535 {
-		log.Fatalf("Port number out of range: %s (1-65535)", portStr)
+		return fmt.Errorf("Port number out of range: %s (1-65535)", portStr)
 	}
 
 	c.ServerPort = port
+	return nil
 }
 
-func (c *Config) setEnv() {
+func (c *Config) setEnv() error {
 	log.Println("Setting ENV")
 	env, has := os.LookupEnv("ENV")
 	if !has {
@@ -234,30 +284,32 @@ func (c *Config) setEnv() {
 		env = "dev"
 	}
 	c.Env = env
+
+	return nil
 }
 
-func getLogLevel() string {
+func getLogLevel() (string, error) {
 	logLevel, has := os.LookupEnv("LOG_LEVEL")
 	if !has {
 		logLevel = "INFO"
 	}
 
 	if logLevel != "INFO" && logLevel != "DEBUG" && logLevel != "WARN" && logLevel != "ERROR" {
-		log.Fatalf("`LOG_LEVEL=%s` is invalid. It can only be `INFO`, `DEBUG`, `WARN` or `ERROR`\n", logLevel)
+		return "", fmt.Errorf("`LOG_LEVEL=%s` is invalid. It can only be `INFO`, `DEBUG`, `WARN` or `ERROR`\n", logLevel)
 	}
 
-	return logLevel
+	return logLevel, nil
 }
 
-func getLogKind() string {
+func getLogKind() (string, error) {
 	kind, has := os.LookupEnv("LOG_KIND")
 	if !has {
 		kind = "TEXT"
 	}
 
 	if kind != "TEXT" && kind != "JSON" {
-		log.Fatalf("`LOG_KIND=%s` is invalid, it can only be `TEXT` or `JSON`", kind)
+		return "", fmt.Errorf("`LOG_KIND=%s` is invalid, it can only be `TEXT` or `JSON`", kind)
 	}
 
-	return kind
+	return kind, nil
 }

@@ -34,12 +34,12 @@ func isMethodValid(m Method) bool {
 	}
 }
 
-func New(logger *slog.Logger, handlers ...Handler) *gin.Engine {
+func New(origins string, logger *slog.Logger, handlers ...Handler) *gin.Engine {
 	r := gin.New()
 	r.Use(sloggin.New(logger))
 	r.Use(gin.Logger())
 	r.Use(gin.Recovery())
-	r.Use(middleware.CORSMiddleware())
+	r.Use(middleware.CORSMiddleware(origins))
 
 	for _, h := range handlers {
 		if !isMethodValid(h.Method) {

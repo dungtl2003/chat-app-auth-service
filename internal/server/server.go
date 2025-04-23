@@ -29,8 +29,10 @@ type Server struct {
 // will exit the program if there is an error when creating.
 func New() *Server {
 	log.Println("Loading configuration")
-	config := config.New()
-	config.Load()
+	config, err := config.LoadConfig()
+	if err != nil {
+		log.Fatalf("NewConfig(): %v", err)
+	}
 	log.Printf("Configuration: %s\n", config)
 	logger := config.LogConfig.Logger
 
@@ -76,7 +78,7 @@ func New() *Server {
 			H:      api.Login(authService),
 		},
 	}
-	r := router.New(logger, handlers...)
+	r := router.New(config.Origins, logger, handlers...)
 
 	log.Println("Creating server")
 	srv := &http.Server{
