@@ -77,6 +77,11 @@ func New() *Server {
 			Path:   "/auth/login",
 			H:      api.Login(authService),
 		},
+		{
+			Method: router.POST,
+			Path:   "/auth/signup",
+			H:      api.SignUp(authService),
+		},
 	}
 	r := router.New(config.Origins, logger, handlers...)
 

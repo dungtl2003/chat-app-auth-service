@@ -14,19 +14,21 @@ services:
       - LOG_LEVEL=DEBUG
       - LOG_KIND=TEXT
       - ID_GENERATOR_ADDR=chat-app-snowflake-service:80
+      - ID_GENERATOR_CERT_DIR=/etc/chat-app/services/snowflake/ssl/certs
       - COST=12
     volumes:
-      - ../environments/test/user/ssl:/etc/snowflake/ssl/certs:ro
+      - ../environments/test/user/ssl:/etc/chat-app/services/snowflake/ssl/certs:ro
     networks:
       - chat-app-user-network
       - chat-app-db-network
       - chat-app-id-generator-network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:80/healthcheck"]
-      start_interval: 5s # wait for 10s before starting healthcheck
-      interval: 5s # check every 30s
-      timeout: 5s # timeout after 5s
-      retries: 5 # retry 5 times
+      retries: 5
+      start_period: 15s
+      start_interval: 5s
+      interval: 30s
+      timeout: 5s
     depends_on:
       - pgdb
 
@@ -48,9 +50,11 @@ services:
       - chat-app-id-generator-network
     healthcheck:
       test: ["CMD", "/bin/grpc_health_probe", "-addr=:80", "-tls", "-tls-ca-cert=/etc/certs/ca_cert.pem", "-tls-client-cert=/etc/certs/client_cert.pem", "-tls-client-key=/etc/certs/client_key.pem"]
-      interval: 5s
-      timeout: 5s
       retries: 5
+      start_period: 15s
+      start_interval: 5s
+      interval: 30s
+      timeout: 5s
 
   pgdb:
     container_name: chat-app-db-service
@@ -70,9 +74,12 @@ services:
       - chat-app-db-network
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "admin", "-d", "chat-app"]
-      interval: 5s
-      timeout: 5s
       retries: 5
+      start_period: 15s
+      start_interval: 3s
+      interval: 30s
+      timeout: 5s
+
 
 volumes:
   chat-app-db-data:

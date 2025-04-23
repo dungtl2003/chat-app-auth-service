@@ -9,6 +9,7 @@
   - [GET /check](#get-check)
   - [GET /refresh](#get-refresh)
   - [GET /logout](#get-logout)
+  - [POST /signup](#post-signup)
 - [Configuration](#configuration)
 - [Running](#running)
   - [Local](#local)
@@ -57,6 +58,20 @@ Logout a user. The request header should contain the following fields:
 
 - `Authorization`: The access token of the user (Bearer token)
 
+### POST /signup
+
+Sign up and also login a user. The request body should contain the following fields:
+
+- `identifier`: The identifier of the user (email or username)
+- `password`: The password of the user
+- `device_id`: The device id of the user
+
+The response will contain the following fields:
+
+- `access_token`: The access token of the user
+
+This endpoint will also set the `refresh_token` cookie in the response.
+
 ## Configuration
 
 The service can be configured using the following environment variables:
@@ -73,6 +88,7 @@ The service can be configured using the following environment variables:
 | REFRESH_TOKEN_DURATION_MS | The duration of the refresh token in milliseconds | No | 172800000 (2 days) | int | any valid unsigned int |
 | DOMAIN_NAME | The domain name of the service | No | localhost | string | any valid string |
 | COST | The cost of the password bcrypt hashing algorithm | No | 12 | int | any valid unsigned int |
+| ORIGINS | The allowed origins for CORS | No | http://localhost:3000 | string | any valid URL |
 
 ## Running
 
