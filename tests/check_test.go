@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestAuthorizeReturnCorrectStatus(t *testing.T) {
+func TestCheckReturnCorrectStatus(t *testing.T) {
 	helper := NewHelper()
 	err := helper.Snapshot()
 	require.NoError(t, err)
@@ -44,7 +44,7 @@ func TestAuthorizeReturnCorrectStatus(t *testing.T) {
 	for _, tc := range testcases {
 		t.Run(fmt.Sprintf("authHeader: %s, status: %d", tc.authHeader, tc.status), func(t *testing.T) {
 
-			URL := fmt.Sprintf("%s/authorize", helper.AuthURL)
+			URL := fmt.Sprintf("%s/check", helper.AuthURL)
 			header := http.Header{
 				"Authorization": {tc.authHeader},
 			}
@@ -56,7 +56,7 @@ func TestAuthorizeReturnCorrectStatus(t *testing.T) {
 	}
 }
 
-func TestAuthorizeWithRealToken(t *testing.T) {
+func TestCheckWithRealToken(t *testing.T) {
 	helper := NewHelper()
 	err := helper.Snapshot()
 	require.NoError(t, err)
@@ -83,7 +83,7 @@ func TestAuthorizeWithRealToken(t *testing.T) {
 	accessToken := GetATFromResponse(resp)
 	require.NotEmpty(t, accessToken)
 
-	URL = fmt.Sprintf("%s/authorize", helper.AuthURL)
+	URL = fmt.Sprintf("%s/check", helper.AuthURL)
 	header := http.Header{
 		"Authorization": {fmt.Sprintf("Bearer %s", accessToken)},
 	}

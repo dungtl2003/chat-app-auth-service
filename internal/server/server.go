@@ -56,7 +56,7 @@ func New() *Server {
 		},
 		{
 			Method: router.GET,
-			Path:   "/auth/authorize",
+			Path:   "/auth/check",
 			H:      api.Authorize(authService),
 		},
 		{

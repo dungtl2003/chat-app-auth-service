@@ -114,7 +114,7 @@ func Login(a *services.AuthService) gin.HandlerFunc {
 		a.Logger.Debugf("RT: %s", refreshToken)
 
 		// update device's token
-		url = fmt.Sprintf("%s/devices/%d/token", a.UserServiceURL, deviceId)
+		url = fmt.Sprintf("%s/users/%d/devices/%d/token", a.UserServiceURL, user.Id.Int64(), deviceId)
 		a.Logger.Debugf("sending PATCH request to %s", url)
 		payload := fmt.Appendf(nil, `
 		{

@@ -132,7 +132,7 @@ func Refresh(a *services.AuthService) gin.HandlerFunc {
 		// HOW CAN YOU USE THIS TOKEN ??!!!!!!
 		if !has {
 			// maybe stolen by someone. Regardless, DELETE ALL!!!!!!!!!
-			url = fmt.Sprintf("%s/devices/tokens?user_id=%d", a.UserServiceURL, user.Id.Int64())
+			url = fmt.Sprintf("%s/users/%d/devices/tokens", a.UserServiceURL, user.Id.Int64())
 			a.Logger.Debugf("sending DELETE request to %s", url)
 			resp, err := a.Client.Delete(url, nil)
 			if err != nil {
@@ -201,7 +201,7 @@ func Refresh(a *services.AuthService) gin.HandlerFunc {
 		a.Logger.Debugf("RT: %s", newRefreshToken)
 
 		// update device's token
-		url = fmt.Sprintf("%s/devices/%d/token", a.UserServiceURL, deviceId)
+		url = fmt.Sprintf("%s/users/%d/devices/%d/token", a.UserServiceURL, user.Id.Int64(), deviceId)
 		payload := fmt.Appendf(nil, `
 			{
 				"token": "%s",

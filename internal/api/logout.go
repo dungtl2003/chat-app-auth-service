@@ -5,6 +5,8 @@ import (
 	"dungtl2003/chat-app-auth-service/internal/services"
 	"fmt"
 	"io"
+	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -45,13 +47,27 @@ func Logout(a *services.AuthService) gin.HandlerFunc {
 		claims := accessToken.Claims.(*jwthandler.JWTClaim)
 		deviceId, err := claims.GetDeviceId()
 		if err != nil {
-			a.Logger.Debugf("GetDeviceId(): %v", err)
-			c.AbortWithStatus(500)
+			a.Logger.Errorf("GetDeviceId(): %v", err)
+			c.AbortWithStatus(http.StatusInternalServerError)
+			return
+		}
+
+		userIdStr, err := claims.GetSubject()
+		if err != nil {
+			a.Logger.Errorf("GetSubject(): %v", err)
+			c.AbortWithStatus(http.StatusInternalServerError)
+			return
+		}
+
+		userId, err := strconv.ParseInt(userIdStr, 10, 64)
+		if err != nil {
+			a.Logger.Errorf("strconv.ParseInt(): %v", err)
+			c.AbortWithStatus(http.StatusInternalServerError)
 			return
 		}
 
 		// update device's token
-		url := fmt.Sprintf("%s/devices/%d/token", a.UserServiceURL, deviceId)
+		url := fmt.Sprintf("%s/users/%d/devices/%d/token", a.UserServiceURL, userId, deviceId)
 		a.Logger.Debugf("sending DELETE request to %s", url)
 		resp, err := a.Client.Delete(url, nil)
 		if err != nil {

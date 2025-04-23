@@ -11,6 +11,10 @@ OUT_DIR = ./bin
 OUT_FILE = $(OUT_DIR)/main
 SRC_FILES = ./cmd/server/main.go $(shell find ./internal/ -name '*.go')
 
+_BUILD_ARGS_TAG ?= ${GIT_HASH}
+_BUILD_ARGS_RELEASE_TAG ?= latest
+_BUILD_ARGS_DOCKERFILE ?= Dockerfile
+
 .PHONY: test
 test: export TEST_OUT = $(ROOT_DIR)/reports/results
 test: export DB_LOG = $(ROOT_DIR)/reports/db.log

@@ -6,7 +6,7 @@
 - [Endpoints](#endpoints)
   - [GET /healthcheck](#get-healthcheck)
   - [POST /login](#post-login)
-  - [GET /authorize](#get-authorize)
+  - [GET /check](#get-check)
   - [GET /refresh](#get-refresh)
   - [GET /logout](#get-logout)
 - [Configuration](#configuration)
@@ -39,7 +39,7 @@ The response will contain the following fields:
 
 This endpoint will also set the `refresh_token` cookie in the response.
 
-### GET /authorize
+### GET /check
 
 Authorize a user. The request header should contain the following fields:
 
