@@ -1,6 +1,7 @@
 package router
 
 import (
+	"dungtl2003/chat-app-auth-service/internal/middleware"
 	"log"
 	"log/slog"
 
@@ -38,6 +39,7 @@ func New(logger *slog.Logger, handlers ...Handler) *gin.Engine {
 	r.Use(sloggin.New(logger))
 	r.Use(gin.Logger())
 	r.Use(gin.Recovery())
+	r.Use(middleware.CORSMiddleware())
 
 	for _, h := range handlers {
 		if !isMethodValid(h.Method) {
