@@ -39,7 +39,6 @@ type Config struct {
 	JwtTokenConfig *JwtTokenConfig
 	DomainName     string
 	Cost           int
-	Origins        string
 }
 
 func (l *LogConfig) String() string {
@@ -70,7 +69,6 @@ func (c *Config) String() string {
 		fmt.Sprintf("JWT: %s", jwtTokenConfigPart),
 		fmt.Sprintf("DOMAIN_NAME: %s", c.DomainName),
 		fmt.Sprintf("COST: %d", c.Cost),
-		fmt.Sprintf("ORIGINS: %s", c.Origins),
 	}
 
 	return fmt.Sprintf("Config{%s}", strings.Join(parts, ", "))
@@ -108,24 +106,8 @@ func LoadConfig() (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = c.setOrigins()
-	if err != nil {
-		return nil, err
-	}
 
 	return c, nil
-}
-
-func (c *Config) setOrigins() error {
-	log.Println("Setting ORIGINS")
-	origins, has := os.LookupEnv("ORIGINS")
-	if !has {
-		log.Println("ORIGINS not found, setting to empty string")
-		origins = ""
-	}
-
-	c.Origins = strings.TrimSpace(origins)
-	return nil
 }
 
 func (c *Config) setCost() error {

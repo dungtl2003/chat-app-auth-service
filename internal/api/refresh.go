@@ -33,11 +33,13 @@ func Refresh(a *services.AuthService) gin.HandlerFunc {
 		if err != nil {
 			if err == http.ErrNoCookie {
 				a.Logger.Debug("missing refresh token")
-				c.JSON(401, "missing refresh token")
+				c.JSON(http.StatusUnauthorized, gin.H{"error": "Missing refresh token"})
+				c.Abort()
 				return
 			} else {
 				a.Logger.Errorf("Cookie(): %v", err)
-				c.AbortWithStatus(500)
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
+				c.Abort()
 				return
 			}
 		}
@@ -47,7 +49,8 @@ func Refresh(a *services.AuthService) gin.HandlerFunc {
 		if err != nil {
 			a.Logger.Debugf("DecodeToken(): %v", err)
 			c.SetCookie("refresh_token", "", -1, "/", a.DomainName, false, true)
-			c.JSON(401, "invalid token")
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid refresh token"})
+			c.Abort()
 			return
 		}
 
@@ -55,21 +58,24 @@ func Refresh(a *services.AuthService) gin.HandlerFunc {
 		sessionVersion, err := claims.GetSessVersion()
 		if err != nil {
 			a.Logger.Errorf("GetSessVersion(): %v", err)
-			c.AbortWithStatus(500)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
+			c.Abort()
 			return
 		}
 
 		username, err := claims.GetUsername()
 		if err != nil {
 			a.Logger.Errorf("GetSessVersion(): %v", err)
-			c.AbortWithStatus(500)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
+			c.Abort()
 			return
 		}
 
 		deviceId, err := claims.GetDeviceId()
 		if err != nil {
 			a.Logger.Errorf("GetDeviceId(): %v", err)
-			c.AbortWithStatus(500)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
+			c.Abort()
 			return
 		}
 
@@ -78,16 +84,18 @@ func Refresh(a *services.AuthService) gin.HandlerFunc {
 		resp, err := a.Client.Get(url, nil)
 		if err != nil {
 			a.Logger.Errorf("error when sending GET request: %v", err)
-			c.AbortWithStatus(500)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
+			c.Abort()
 			return
 		}
 
-		if resp.StatusCode != 200 {
+		if resp.StatusCode != http.StatusOK {
 			c.Status(resp.StatusCode)
 			_, err = io.Copy(c.Writer, resp.Body)
 			if err != nil {
 				a.Logger.Errorf("Copy(): %v", err)
-				c.AbortWithStatus(500)
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
+				c.Abort()
 			}
 
 			return
@@ -96,7 +104,8 @@ func Refresh(a *services.AuthService) gin.HandlerFunc {
 		body, err := httpclient.ReadResponse(resp)
 		if err != nil {
 			a.Logger.Errorf("ReadResponse(): %v", err)
-			c.AbortWithStatus(500)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
+			c.Abort()
 			return
 		}
 
@@ -104,7 +113,8 @@ func Refresh(a *services.AuthService) gin.HandlerFunc {
 		err = helper.ParseAsJson(body, &user)
 		if err != nil {
 			a.Logger.Errorf("ParseAsJson(): %v", err)
-			c.AbortWithStatus(500)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
+			c.Abort()
 			return
 		}
 		a.Logger.Debugf("response body from GET request: %#v", user)
@@ -112,7 +122,8 @@ func Refresh(a *services.AuthService) gin.HandlerFunc {
 		if sessionVersion < user.SessionVersion.Int64() {
 			c.SetCookie("refresh_token", "", -1, "/", a.DomainName, false, true)
 			a.Logger.Debugf("invalid session version (expected: %d, got: %d)", user.SessionVersion.Int64(), sessionVersion)
-			c.JSON(401, "invalid session version")
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid session version"})
+			c.Abort()
 			return
 		}
 
@@ -121,7 +132,8 @@ func Refresh(a *services.AuthService) gin.HandlerFunc {
 			if device.RefreshToken == refreshTokenStr {
 				if deviceId != device.Id.Int64() {
 					a.Logger.Errorf("the token must be saved in the correct device (expected: %d, actual: %d). It seems like the create token logic is wrong!!!", device.Id.Int64(), deviceId)
-					c.JSON(500, "it seems like the create token logic is wrong!!!")
+					c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
+					c.Abort()
 					return
 				}
 				has = true
@@ -137,16 +149,18 @@ func Refresh(a *services.AuthService) gin.HandlerFunc {
 			resp, err := a.Client.Delete(url, nil)
 			if err != nil {
 				a.Logger.Errorf("error when sending DELETE request: %v", err)
-				c.AbortWithStatus(500)
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
+				c.Abort()
 				return
 			}
 
-			if resp.StatusCode != 200 {
+			if resp.StatusCode != http.StatusOK {
 				c.Status(resp.StatusCode)
 				_, err = io.Copy(c.Writer, resp.Body)
 				if err != nil {
 					a.Logger.Errorf("Copy(): %v", err)
-					c.AbortWithStatus(500)
+					c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
+					c.Abort()
 				}
 
 				return
@@ -163,23 +177,27 @@ func Refresh(a *services.AuthService) gin.HandlerFunc {
 			resp, err = a.Client.Patch(url, nil, bytes.NewBuffer(payload))
 			if err != nil {
 				a.Logger.Errorf("error when sending PATCH request: %v", err)
-				c.AbortWithStatus(500)
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
+				c.Abort()
 				return
 			}
 
-			if resp.StatusCode != 200 {
+			if resp.StatusCode != http.StatusOK {
 				c.Status(resp.StatusCode)
 				_, err = io.Copy(c.Writer, resp.Body)
 				if err != nil {
 					a.Logger.Errorf("Copy(): %v", err)
-					c.AbortWithStatus(500)
+					c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
+					c.Abort()
 				}
 
 				return
 			}
 
 			a.Logger.Debugf("the account might be attacked")
-			c.JSON(401, "the account might be attacked")
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid refresh token"})
+			c.SetCookie("refresh_token", "", -1, "/", a.DomainName, false, true)
+			c.Abort()
 			return
 		}
 
@@ -187,7 +205,8 @@ func Refresh(a *services.AuthService) gin.HandlerFunc {
 		newAccessToken, err := jwthandler.CreateToken(a.JwtConfig.JwtSecret, user, a.JwtConfig.ATDurationMs, deviceId)
 		if err != nil {
 			a.Logger.Errorf("CreateToken(): error creating access token: %v", err)
-			c.AbortWithStatus(500)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
+			c.Abort()
 			return
 		}
 		a.Logger.Debugf("AT: %s", newAccessToken)
@@ -195,7 +214,8 @@ func Refresh(a *services.AuthService) gin.HandlerFunc {
 		newRefreshToken, err := jwthandler.CreateToken(a.JwtConfig.JwtSecret, user, a.JwtConfig.RTDurationMs, deviceId)
 		if err != nil {
 			a.Logger.Errorf("CreateToken(): error creating refresh token: %v", err)
-			c.AbortWithStatus(500)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
+			c.Abort()
 			return
 		}
 		a.Logger.Debugf("RT: %s", newRefreshToken)
@@ -212,15 +232,17 @@ func Refresh(a *services.AuthService) gin.HandlerFunc {
 		resp, err = a.Client.Patch(url, nil, bytes.NewBuffer(payload))
 		if err != nil {
 			a.Logger.Errorf("error when sending PATCH request: %v", err)
-			c.AbortWithStatus(500)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
+			c.Abort()
 			return
 		}
-		if resp.StatusCode != 200 {
+		if resp.StatusCode != http.StatusOK {
 			c.Status(resp.StatusCode)
 			_, err = io.Copy(c.Writer, resp.Body)
 			if err != nil {
 				a.Logger.Errorf("Copy(): %v", err)
-				c.AbortWithStatus(500)
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
+				c.Abort()
 			}
 
 			return
@@ -228,7 +250,7 @@ func Refresh(a *services.AuthService) gin.HandlerFunc {
 
 		// set cookie
 		c.SetCookie("refresh_token", newRefreshToken, int(a.JwtConfig.RTDurationMs/1000), "/", a.DomainName, false, true)
-		c.JSON(200, gin.H{
+		c.JSON(http.StatusOK, gin.H{
 			"access_token": newAccessToken,
 		})
 	}

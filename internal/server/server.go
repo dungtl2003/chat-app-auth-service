@@ -83,7 +83,7 @@ func New() *Server {
 			H:      api.SignUp(authService),
 		},
 	}
-	r := router.New(config.Origins, logger, handlers...)
+	r := router.New(logger, handlers...)
 
 	log.Println("Creating server")
 	srv := &http.Server{
