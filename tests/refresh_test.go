@@ -25,13 +25,15 @@ func TestRefreshShouldWorkAsExpected(t *testing.T) {
 			{
 				"identifier": "%s",
 				"password": "%s",
-				"device_id": "%d"
+				"device": {
+					"id": "%d"
+				}
 			}`, identifier, password, deviceId)
 
 	URL := fmt.Sprintf("%s/login", helper.AuthURL)
 	resp, err := helper.Client.Post(URL, nil, bytes.NewBuffer(payloadJson))
 	require.NoError(t, err)
-	require.EqualValues(t, 200, resp.StatusCode)
+	require.EqualValues(t, http.StatusOK, resp.StatusCode)
 
 	accessToken := GetATFromResponse(resp)
 	require.NotEmpty(t, accessToken)
@@ -89,7 +91,9 @@ func TestRefreshShouldNotWorkWithInvalidToken(t *testing.T) {
 			{
 				"identifier": "%s",
 				"password": "%s",
-				"device_id": "%d"
+				"device": {
+					"id": "%d"
+				}
 			}`, identifier, password, deviceId)
 
 	URL = fmt.Sprintf("%s/login", helper.AuthURL)
@@ -126,13 +130,15 @@ func TestRefreshShouldHaveReuseDetection(t *testing.T) {
 				{
 					"identifier": "%s",
 					"password": "%s",
-					"device_id": "%d"
+					"device": {
+						"id": "%d"
+					}
 				}`, identifier, password, deviceId)
 
 		URL := fmt.Sprintf("%s/login", helper.AuthURL)
 		resp, err := helper.Client.Post(URL, nil, bytes.NewBuffer(payloadJson))
 		require.NoError(t, err)
-		require.EqualValues(t, 200, resp.StatusCode)
+		require.EqualValues(t, http.StatusOK, resp.StatusCode)
 		refreshToken := GetRTFromResponse(resp)
 		require.NotEmpty(t, refreshToken)
 		refreshTokens = append(refreshTokens, refreshToken)

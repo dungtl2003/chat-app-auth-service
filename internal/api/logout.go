@@ -18,21 +18,24 @@ func Logout(a *services.AuthService) gin.HandlerFunc {
 		authHeader := c.GetHeader("Authorization")
 		a.Logger.Debugf("authorization header: %s", authHeader)
 		if authHeader == "" {
-			a.Logger.Errorf("missing authorization header")
-			c.JSON(401, "missing authorization header")
+			a.Logger.Debugf("missing authorization header")
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Missing authorization header"})
+			c.Abort()
 			return
 		}
 
 		parts := strings.Split(authHeader, " ")
 		if len(parts) != 2 {
-			a.Logger.Errorf("authorization header should have 2 parts")
-			c.JSON(401, "authorization header should have 2 parts")
+			a.Logger.Debugf("authorization header should have 2 parts")
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization header should have 2 parts"})
+			c.Abort()
 			return
 		}
 
 		if parts[0] != "Bearer" {
-			a.Logger.Errorf("authorization header should start with `Bearer`")
-			c.JSON(401, "authorization header should start with `Bearer`")
+			a.Logger.Debugf("authorization header should start with `Bearer`")
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization header should start with `Bearer`"})
+			c.Abort()
 			return
 		}
 
@@ -40,7 +43,9 @@ func Logout(a *services.AuthService) gin.HandlerFunc {
 		accessToken, err := jwthandler.DecodeToken(a.JwtConfig.JwtSecret, accessTokenString)
 		if err != nil {
 			a.Logger.Debugf("DecodeToken(): %v", err)
-			c.JSON(401, "invalid token")
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid access token"})
+			c.SetCookie("refresh_token", "", -1, "/", a.DomainName, false, true)
+			c.Abort()
 			return
 		}
 
@@ -48,21 +53,24 @@ func Logout(a *services.AuthService) gin.HandlerFunc {
 		deviceId, err := claims.GetDeviceId()
 		if err != nil {
 			a.Logger.Errorf("GetDeviceId(): %v", err)
-			c.AbortWithStatus(http.StatusInternalServerError)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
+			c.Abort()
 			return
 		}
 
 		userIdStr, err := claims.GetSubject()
 		if err != nil {
 			a.Logger.Errorf("GetSubject(): %v", err)
-			c.AbortWithStatus(http.StatusInternalServerError)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
+			c.Abort()
 			return
 		}
 
 		userId, err := strconv.ParseInt(userIdStr, 10, 64)
 		if err != nil {
 			a.Logger.Errorf("strconv.ParseInt(): %v", err)
-			c.AbortWithStatus(http.StatusInternalServerError)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
+			c.Abort()
 			return
 		}
 
@@ -72,23 +80,24 @@ func Logout(a *services.AuthService) gin.HandlerFunc {
 		resp, err := a.Client.Delete(url, nil)
 		if err != nil {
 			a.Logger.Errorf("error when sending DELETE request: %v", err)
-			c.AbortWithStatus(500)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
+			c.Abort()
 			return
 		}
-		if resp.StatusCode != 200 {
+		if resp.StatusCode != http.StatusOK {
 			c.Status(resp.StatusCode)
 			_, err = io.Copy(c.Writer, resp.Body)
 			if err != nil {
 				a.Logger.Errorf("Copy(): %v", err)
-				c.AbortWithStatus(500)
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
+				c.Abort()
 			}
 
 			return
 		}
 
 		c.SetCookie("refresh_token", "", -1, "/", a.DomainName, false, true)
-
-		c.JSON(200, "logout successfully")
+		c.JSON(http.StatusOK, gin.H{"message": "Logout successfully"})
 		return
 	}
 }

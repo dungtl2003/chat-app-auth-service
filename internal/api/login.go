@@ -16,11 +16,22 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type LoginRequestBody struct {
-	Identifier string `json:"identifier" validate:"required"`
-	Password   string `json:"password" validate:"required"`
-	DeviceId   string `json:"device_id" validate:"required"`
+type LoginDeviceRequestBody struct {
+	Id         string `json:"id"`
+	DeviceName string `json:"device_name"`
+	DeviceType string `json:"device_type"`
+	Os         string `json:"os"`
 }
+
+type LoginRequestBody struct {
+	Identifier string                 `json:"identifier" validate:"required"`
+	Password   string                 `json:"password" validate:"required"`
+	Device     LoginDeviceRequestBody `json:"device" validate:"required"`
+}
+
+const (
+	INVALID_DEVICE_ID = "Invalid device ID"
+)
 
 func Login(a *services.AuthService) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -33,15 +44,20 @@ func Login(a *services.AuthService) gin.HandlerFunc {
 			return
 		}
 
-		deviceId, err := strconv.ParseInt(loginRequestBody.DeviceId, 10, 64)
-		if err != nil {
-			a.Logger.Debugf("invalid device ID: %s", loginRequestBody.DeviceId)
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid device ID"})
-			c.Abort()
-			return
-		}
-
 		a.Logger.Debugf("login request body: %#v", loginRequestBody)
+
+		var deviceId int64
+		deviceId = -1
+		if loginRequestBody.Device.Id != "" {
+			var err error
+			deviceId, err = strconv.ParseInt(loginRequestBody.Device.Id, 10, 64)
+			if err != nil {
+				a.Logger.Debugf("invalid device ID: %s", loginRequestBody.Device.Id)
+				c.JSON(http.StatusBadRequest, gin.H{"error": INVALID_DEVICE_ID})
+				c.Abort()
+				return
+			}
+		}
 
 		// get user information
 		url := fmt.Sprintf("%s/users/auth-info?identifier=%s", a.UserServiceURL, loginRequestBody.Identifier)
@@ -92,6 +108,51 @@ func Login(a *services.AuthService) gin.HandlerFunc {
 			return
 		}
 
+		// we need to add a new device
+		if deviceId == -1 {
+			url = fmt.Sprintf("%s/users/%d/devices", a.UserServiceURL, user.Id.Int64())
+			payload := fmt.Appendf(nil, `
+				{
+					"device_name": "%s",
+					"device_type": "%s",
+					"os": "%s"
+				}`, loginRequestBody.Device.DeviceName, loginRequestBody.Device.DeviceType, loginRequestBody.Device.Os)
+			a.Logger.Debugf("sending POST request to %s", url)
+			resp, err = a.Client.Post(url, nil, bytes.NewBuffer(payload))
+			if err != nil {
+				a.Logger.Errorf("error when sending POST request: %v", err)
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
+				c.Abort()
+				return
+			}
+
+			if resp.StatusCode != http.StatusCreated {
+				c.Status(resp.StatusCode)
+				_, err = io.Copy(c.Writer, resp.Body)
+				if err != nil {
+					a.Logger.Errorf("Copy(): %v", err)
+					c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
+					c.Abort()
+				}
+
+				return
+			}
+
+			var device model.Device
+			err = helper.ParseAsJson(body, &device)
+			if err != nil {
+				a.Logger.Errorf("ParseAsJson(): %v", err)
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
+				c.Abort()
+				return
+			}
+
+			a.Logger.Debugf("response body from POST request: %#v", device)
+
+			deviceId = device.Id.Int64()
+			user.Devices = append(user.Devices, device)
+		}
+
 		has := false
 		for _, device := range user.Devices {
 			if device.Id.Int64() == deviceId {
@@ -102,7 +163,7 @@ func Login(a *services.AuthService) gin.HandlerFunc {
 
 		if !has {
 			a.Logger.Debugf("user with ID %d does not have device with ID %d", user.Id.Int64(), deviceId)
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid device ID"})
+			c.JSON(http.StatusUnauthorized, gin.H{"error": INVALID_DEVICE_ID})
 			c.Abort()
 			return
 		}
@@ -155,8 +216,9 @@ func Login(a *services.AuthService) gin.HandlerFunc {
 
 		c.SetCookie("refresh_token", refreshToken, int(a.JwtConfig.RTDurationMs/1000), "/", a.DomainName, false, true)
 		c.JSON(http.StatusOK, gin.H{
-			"access_token": accessToken,
-			"user":         user,
+			"access_token":      accessToken,
+			"user":              user,
+			"current_device_id": deviceId,
 		})
 	}
 }

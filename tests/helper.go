@@ -66,6 +66,24 @@ func GetATFromResponse(resp *http.Response) string {
 	return jsonMap["access_token"].(string)
 }
 
+func GetRespJson(resp *http.Response) (map[string]any, error) {
+	if resp == nil {
+		return nil, fmt.Errorf("response is nil")
+	}
+	bodyAsByteArray, err := httpclient.ReadResponse(resp)
+	if err != nil {
+		return nil, err
+	}
+
+	jsonMap := make(map[string]any)
+	err = json.Unmarshal(bodyAsByteArray, &jsonMap)
+	if err != nil {
+		return nil, err
+	}
+
+	return jsonMap, nil
+}
+
 func NewHelper() *Helper {
 	ATDurationMsStr, bool := os.LookupEnv("ACCESS_TOKEN_DURATION_MS")
 	if !bool {

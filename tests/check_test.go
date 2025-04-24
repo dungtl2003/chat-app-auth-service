@@ -72,13 +72,15 @@ func TestCheckWithRealToken(t *testing.T) {
 			{
 				"identifier": "%s",
 				"password": "%s",
-				"device_id": "%d"
+				"device": {
+					"id": "%d"
+				}
 			}`, identifier, password, deviceId)
 
 	URL := fmt.Sprintf("%s/login", helper.AuthURL)
 	resp, err := helper.Client.Post(URL, nil, bytes.NewBuffer(payloadJson))
 	require.NoError(t, err)
-	require.EqualValues(t, 200, resp.StatusCode)
+	require.EqualValues(t, http.StatusOK, resp.StatusCode)
 
 	accessToken := GetATFromResponse(resp)
 	require.NotEmpty(t, accessToken)
@@ -89,7 +91,7 @@ func TestCheckWithRealToken(t *testing.T) {
 	}
 	resp, err = helper.Client.Get(URL, header)
 	require.NoError(t, err)
-	require.EqualValues(t, 200, resp.StatusCode)
+	require.EqualValues(t, http.StatusOK, resp.StatusCode)
 
 	SuckDelay(helper.ATDurationMs)
 	header = http.Header{

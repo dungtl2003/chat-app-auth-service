@@ -108,8 +108,9 @@ func SignUp(a *services.AuthService) gin.HandlerFunc {
 
 		c.SetCookie("refresh_token", refreshToken, int(a.JwtConfig.RTDurationMs/1000), "/", a.DomainName, false, true)
 		c.JSON(http.StatusOK, gin.H{
-			"access_token": accessToken,
-			"user":         user,
+			"access_token":      accessToken,
+			"user":              user,
+			"current_device_id": deviceId,
 		})
 		c.Abort()
 	}

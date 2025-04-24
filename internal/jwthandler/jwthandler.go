@@ -56,9 +56,6 @@ func DecodeToken(key string, tokStr string) (*jwt.Token, error) {
 	token, err := jwt.ParseWithClaims(tokStr, &JWTClaim{}, func(t *jwt.Token) (any, error) {
 		return []byte(key), nil
 	}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Name}))
-	// token, err := jwt.Parse(tokStr, func(t *jwt.Token) (any, error) {
-	// 	return []byte(key), nil
-	// }, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Name}))
 
 	if err != nil {
 		return nil, err

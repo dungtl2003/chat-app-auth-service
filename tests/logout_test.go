@@ -28,7 +28,9 @@ func TestLogoutShouldLogoutOneDevice(t *testing.T) {
 			{
 				"identifier": "%s",
 				"password": "%s",
-				"device_id": "%d"
+				"device": {
+					"id": "%d"
+				}
 			}`, identifier, password, deviceId)
 
 		URL := fmt.Sprintf("%s/login", helper.AuthURL)
