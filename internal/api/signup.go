@@ -6,6 +6,7 @@ import (
 	"dungtl2003/chat-app-auth-service/internal/jwthandler"
 	"dungtl2003/chat-app-auth-service/internal/model"
 	"dungtl2003/chat-app-auth-service/internal/services"
+	"dungtl2003/chat-app-auth-service/internal/types"
 	"fmt"
 	"io"
 	"net/http"
@@ -99,8 +100,17 @@ func SignUp(a *services.AuthService) gin.HandlerFunc {
 			return
 		}
 
+		// security
+		for i := range user.Devices {
+			user.Devices[i].RefreshToken = ""
+		}
+		user.SessionVersion = types.NewJsonInt64(-1)
+
 		c.SetCookie("refresh_token", refreshToken, int(a.JwtConfig.RTDurationMs/1000), "/", a.DomainName, false, true)
-		c.JSON(http.StatusOK, fmt.Sprintf("access_token: %s", accessToken))
+		c.JSON(http.StatusOK, gin.H{
+			"access_token": accessToken,
+			"user":         user,
+		})
 		c.Abort()
 	}
 }

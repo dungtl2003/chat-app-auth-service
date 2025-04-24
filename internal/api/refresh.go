@@ -228,6 +228,8 @@ func Refresh(a *services.AuthService) gin.HandlerFunc {
 
 		// set cookie
 		c.SetCookie("refresh_token", newRefreshToken, int(a.JwtConfig.RTDurationMs/1000), "/", a.DomainName, false, true)
-		c.JSON(200, fmt.Sprintf("access_token: %s", newAccessToken))
+		c.JSON(200, gin.H{
+			"access_token": newAccessToken,
+		})
 	}
 }

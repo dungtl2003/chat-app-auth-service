@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"dungtl2003/chat-app-auth-service/internal/helper"
 	"dungtl2003/chat-app-auth-service/internal/httpclient"
+	"encoding/json"
 	"fmt"
 	"log"
 	"log/slog"
@@ -51,16 +52,18 @@ func GetATFromResponse(resp *http.Response) string {
 	if resp == nil {
 		return ""
 	}
-	body, err := httpclient.ReadResponse(resp)
+	bodyAsByteArray, err := httpclient.ReadResponse(resp)
 	if err != nil {
 		return ""
 	}
-	accessTokenPrefix := `"access_token: `
-	accessTokenSuffix := `"`
-	accessToken := string(body)
-	accessToken = accessToken[len(accessTokenPrefix):]
-	accessToken = accessToken[:len(accessToken)-len(accessTokenSuffix)]
-	return accessToken
+
+	jsonMap := make(map[string]any)
+	err = json.Unmarshal(bodyAsByteArray, &jsonMap)
+	if err != nil {
+		return ""
+	}
+
+	return jsonMap["access_token"].(string)
 }
 
 func NewHelper() *Helper {

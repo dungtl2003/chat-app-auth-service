@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"dungtl2003/chat-app-auth-service/internal/jwthandler"
 	"fmt"
+	"net/http"
 	"strconv"
 	"testing"
 
@@ -30,13 +31,13 @@ func TestLoginReturnCorrectStatus(t *testing.T) {
 			identifier: "normaluser@gmail.com",
 			password:   "normalpassword",
 			deviceId:   "1",
-			status:     200,
+			status:     http.StatusOK,
 		},
 		{
 			identifier: "normaluser",
 			password:   "normalpassword",
 			deviceId:   "1",
-			status:     200,
+			status:     http.StatusOK,
 		},
 		{
 			identifier: "normaluser",
