@@ -2,6 +2,7 @@ package tests
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"testing"
@@ -20,25 +21,34 @@ func TestLogoutShouldLogoutOneDevice(t *testing.T) {
 
 	identifier := "normaluser"
 	password := "normalpassword"
-	deviceIds := []int{1, 2, 4}
+	deviceInfos := []json.RawMessage{
+		json.RawMessage(`{"user-agent": "Mozilla/5.0"}`),
+		json.RawMessage(`{"user-agent": "Chrome/5.0"}`),
+		json.RawMessage(`{"user-agent": "Firefox/5.0"}`),
+	}
 	accessTokens := []string{}
 	refreshTokens := []string{}
-	for _, deviceId := range deviceIds {
+	sessionIds := []int64{}
+	for _, devInfo := range deviceInfos {
 		payloadJson := fmt.Appendf(nil, `
 			{
 				"identifier": "%s",
 				"password": "%s",
-				"device": {
-					"id": "%d"
-				}
-			}`, identifier, password, deviceId)
+				"device_info": %s
+			}`, identifier, password, devInfo)
 
 		URL := fmt.Sprintf("%s/login", helper.AuthURL)
 		resp, err := helper.Client.Post(URL, nil, bytes.NewBuffer(payloadJson))
 		require.NoError(t, err)
-		require.EqualValues(t, 200, resp.StatusCode)
+		require.EqualValues(t, http.StatusOK, resp.StatusCode)
 
-		accessToken := GetATFromResponse(resp)
+		respJson, err := GetRespJson(resp)
+		require.NoError(t, err)
+
+		sessionId := int64(respJson["session_id"].(float64))
+		sessionIds = append(sessionIds, sessionId)
+
+		accessToken := respJson["access_token"].(string)
 		require.NotEmpty(t, accessToken)
 		accessTokens = append(accessTokens, accessToken)
 
@@ -47,14 +57,14 @@ func TestLogoutShouldLogoutOneDevice(t *testing.T) {
 		refreshTokens = append(refreshTokens, refreshToken)
 	}
 
-	// we will logout the first device
+	// we will logout the first session
 	URL := fmt.Sprintf("%s/logout", helper.AuthURL)
 	header := http.Header{
 		"Authorization": {fmt.Sprintf("Bearer %s", accessTokens[0])},
 	}
 	resp, err := helper.Client.Get(URL, header)
 	require.NoError(t, err)
-	require.EqualValues(t, 200, resp.StatusCode)
+	require.EqualValues(t, http.StatusOK, resp.StatusCode)
 
 	// other refresh tokens should work just fine
 	for i, refreshToken := range refreshTokens {
@@ -65,7 +75,7 @@ func TestLogoutShouldLogoutOneDevice(t *testing.T) {
 			}
 			resp, err = helper.Client.Get(URL, header)
 			require.NoError(t, err)
-			require.EqualValues(t, 200, resp.StatusCode)
+			require.EqualValues(t, http.StatusOK, resp.StatusCode)
 		}
 	}
 
@@ -78,5 +88,5 @@ func TestLogoutShouldLogoutOneDevice(t *testing.T) {
 	}
 	resp, err = helper.Client.Get(URL, header)
 	require.NoError(t, err)
-	require.EqualValues(t, 401, resp.StatusCode)
+	require.EqualValues(t, http.StatusUnauthorized, resp.StatusCode)
 }

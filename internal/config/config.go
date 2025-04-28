@@ -3,22 +3,25 @@ package config
 import (
 	"fmt"
 	"log"
-	"log/slog"
 	"os"
 	"strconv"
 	"strings"
 )
 
 type LogConfig struct {
-	Level  string // INFO, DEBUG, WARN, ERROR
-	Kind   string // TEXT or JSON
-	Logger *slog.Logger
+	Level string // INFO, DEBUG, WARN, ERROR
+	Kind  string // TEXT or JSON
 }
 
 type JwtTokenConfig struct {
 	JwtSecret    string
 	ATDurationMs int64
 	RTDurationMs int64
+}
+
+type SnowflakeConfig struct {
+	Addr    string
+	CertDir string
 }
 
 func (t JwtTokenConfig) String() string {
@@ -32,13 +35,14 @@ func (t JwtTokenConfig) String() string {
 }
 
 type Config struct {
-	ServerPort     int
-	Env            string
-	LogConfig      *LogConfig
-	UserServiceURL string
-	JwtTokenConfig *JwtTokenConfig
-	DomainName     string
-	Cost           int
+	ServerPort      int
+	Env             string
+	LogConfig       *LogConfig
+	UserServiceURL  string
+	JwtTokenConfig  *JwtTokenConfig
+	DomainName      string
+	Cost            int
+	SnowflakeConfig *SnowflakeConfig
 }
 
 func (l *LogConfig) String() string {
@@ -48,6 +52,15 @@ func (l *LogConfig) String() string {
 	}
 
 	return fmt.Sprintf("LogConfig{%s}", strings.Join(parts, ", "))
+}
+
+func (s *SnowflakeConfig) String() string {
+	parts := []string{
+		fmt.Sprintf("ADDR: %s", s.Addr),
+		fmt.Sprintf("CERT_DIR: %s", s.CertDir),
+	}
+
+	return fmt.Sprintf("SnowflakeConfig{%s}", strings.Join(parts, ", "))
 }
 
 func (c *Config) String() string {
@@ -69,6 +82,7 @@ func (c *Config) String() string {
 		fmt.Sprintf("JWT: %s", jwtTokenConfigPart),
 		fmt.Sprintf("DOMAIN_NAME: %s", c.DomainName),
 		fmt.Sprintf("COST: %d", c.Cost),
+		fmt.Sprintf("SNOWFLAKE_CONFIG: %s", c.SnowflakeConfig),
 	}
 
 	return fmt.Sprintf("Config{%s}", strings.Join(parts, ", "))
@@ -106,8 +120,32 @@ func LoadConfig() (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
+	err = c.setSnowflakeConfig()
+	if err != nil {
+		return nil, err
+	}
 
 	return c, nil
+}
+
+func (c *Config) setSnowflakeConfig() error {
+	c.SnowflakeConfig = &SnowflakeConfig{}
+
+	addr, has := os.LookupEnv("ID_GENERATOR_SERVICE_ADDR")
+	if !has {
+		return fmt.Errorf("ID_GENERATOR_SERVICE_ADDR not found")
+	}
+
+	certDir, has := os.LookupEnv("ID_GENERATOR_SERVICE_CERT_DIR")
+	if !has {
+		// return fmt.Errorf("ID_GENERATOR_SERVICE_CERT_DIR not found")
+		certDir = ""
+	}
+
+	c.SnowflakeConfig.Addr = addr
+	c.SnowflakeConfig.CertDir = certDir
+
+	return nil
 }
 
 func (c *Config) setCost() error {
@@ -198,42 +236,28 @@ func (c *Config) setUserServiceURL() error {
 }
 
 func (c *Config) setLogConfig() error {
-	log.Println("Setting LOG_LEVEL and LOG_KIND")
-	logLevel, err := getLogLevel()
-	if err != nil {
-		return err
+	c.LogConfig = &LogConfig{}
+
+	logLevel, has := os.LookupEnv("LOG_LEVEL")
+	if !has {
+		logLevel = "INFO"
 	}
-	logKind, err := getLogKind()
-	if err != nil {
-		return err
+	if logLevel != "INFO" && logLevel != "DEBUG" && logLevel != "WARN" && logLevel != "ERROR" {
+		return fmt.Errorf("`LOG_LEVEL=%s` is invalid. It can only be `INFO`, `DEBUG`, `WARN` or `ERROR`\n", logLevel)
 	}
 
-	writer := os.Stdout
-
-	var slogLogLevel slog.Level
-	switch logLevel {
-	case "DEBUG":
-		slogLogLevel = slog.LevelDebug
-	case "INFO":
-		slogLogLevel = slog.LevelInfo
-	case "WARN":
-		slogLogLevel = slog.LevelWarn
-	case "ERROR":
-		slogLogLevel = slog.LevelError
+	kind, has := os.LookupEnv("LOG_KIND")
+	if !has {
+		kind = "TEXT"
 	}
 
-	var handler slog.Handler
-	if logKind == "TEXT" {
-		handler = slog.NewTextHandler(writer, &slog.HandlerOptions{Level: slogLogLevel})
-	} else {
-		handler = slog.NewJSONHandler(writer, &slog.HandlerOptions{Level: slogLogLevel})
+	if kind != "TEXT" && kind != "JSON" {
+		return fmt.Errorf("`LOG_KIND=%s` is invalid, it can only be `TEXT` or `JSON`", kind)
 	}
 
-	c.LogConfig = &LogConfig{
-		Level:  logLevel,
-		Kind:   logKind,
-		Logger: slog.New(handler),
-	}
+	c.LogConfig.Level = logLevel
+	c.LogConfig.Kind = kind
+
 	return nil
 }
 
@@ -268,30 +292,4 @@ func (c *Config) setEnv() error {
 	c.Env = env
 
 	return nil
-}
-
-func getLogLevel() (string, error) {
-	logLevel, has := os.LookupEnv("LOG_LEVEL")
-	if !has {
-		logLevel = "INFO"
-	}
-
-	if logLevel != "INFO" && logLevel != "DEBUG" && logLevel != "WARN" && logLevel != "ERROR" {
-		return "", fmt.Errorf("`LOG_LEVEL=%s` is invalid. It can only be `INFO`, `DEBUG`, `WARN` or `ERROR`\n", logLevel)
-	}
-
-	return logLevel, nil
-}
-
-func getLogKind() (string, error) {
-	kind, has := os.LookupEnv("LOG_KIND")
-	if !has {
-		kind = "TEXT"
-	}
-
-	if kind != "TEXT" && kind != "JSON" {
-		return "", fmt.Errorf("`LOG_KIND=%s` is invalid, it can only be `TEXT` or `JSON`", kind)
-	}
-
-	return kind, nil
 }

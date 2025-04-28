@@ -21,7 +21,7 @@ type ChatUser struct {
 	Role           UserRole        `json:"role"`
 	SessionVersion types.JsonInt64 `json:"session_version"`
 
-	Devices []Device `json:"devices"`
+	Sessions []Session `json:"sessions"`
 }
 
 func IsRole(role string) bool {

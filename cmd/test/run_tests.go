@@ -70,17 +70,6 @@ func runSetup(client *sql.DB, passwordManager password.PasswordManager) error {
 		if err != nil {
 			return err
 		}
-
-		for _, device := range user.Devices {
-			_, err = tx.Exec(`INSERT INTO chat_user.device (
-                id, device_name, device_type, os, status, user_id
-            ) VALUES (
-                $1, $2, $3, $4, $5, $6
-            );`, device.Id, device.DeviceName, device.DeviceType, device.Os, device.Status, user.Id)
-			if err != nil {
-				return err
-			}
-		}
 	}
 
 	err = tx.Commit()
@@ -204,54 +193,6 @@ func main() {
 		}()
 	}
 
-	// dbLog, has := os.LookupEnv("DB_LOG")
-	// if has {
-	// 	fmt.Println("Start collecting database service log")
-	// 	lc, err := StartLogCapture("chat-app-db-service", dbLog)
-	// 	if err != nil {
-	// 		fmt.Printf("Failed capturing database service log: %v", err)
-	// 		os.Exit(1)
-	// 	}
-	// 	defer func() {
-	// 		err = lc.Stop()
-	// 		if err != nil {
-	// 			fmt.Printf("Stop(): %v", err)
-	// 		}
-	// 	}()
-	// }
-	//
-	// userLog, has := os.LookupEnv("USER_SERVICE_LOG")
-	// if has {
-	// 	fmt.Println("Start collecting user service log")
-	// 	lc, err := StartLogCapture("chat-app-user-service", userLog)
-	// 	if err != nil {
-	// 		fmt.Printf("Failed capturing user service log: %v", err)
-	// 		os.Exit(1)
-	// 	}
-	// 	defer func() {
-	// 		err = lc.Stop()
-	// 		if err != nil {
-	// 			fmt.Printf("Stop(): %v", err)
-	// 		}
-	// 	}()
-	// }
-	//
-	// snowflakeLog, has := os.LookupEnv("SNOWFLAKE_SERVICE_LOG")
-	// if has {
-	// 	fmt.Println("Start collecting snowflake service log")
-	// 	lc, err := StartLogCapture("chat-app-snowflake-service", snowflakeLog)
-	// 	if err != nil {
-	// 		fmt.Printf("Failed capturing snowflake service log: %v", err)
-	// 		os.Exit(1)
-	// 	}
-	// 	defer func() {
-	// 		err = lc.Stop()
-	// 		if err != nil {
-	// 			fmt.Printf("Stop(): %v", err)
-	// 		}
-	// 	}()
-	// }
-
 	client, err := sql.Open("postgres", adminDbURL)
 	if err != nil {
 		fmt.Println("Error opening database connection:", err)
@@ -298,7 +239,22 @@ func saveLog(serviceName string, logFilePath string) error {
 }
 
 func cleanDb(client *sql.DB) error {
-	_, err := client.Exec(`DELETE FROM chat_user.chat_user;`) // this will also delete conversations, participants, and messages (cascade)
+	tx, err := client.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+		}
+	}()
+
+	_, err = tx.Exec(`DELETE FROM chat_user.chat_user;`) // this will also delete conversations, participants, and messages (cascade)
+	if err != nil {
+		return err
+	}
+
+	err = tx.Commit()
 	if err != nil {
 		return err
 	}

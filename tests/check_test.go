@@ -2,6 +2,7 @@ package tests
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"testing"
@@ -20,29 +21,29 @@ func TestCheckReturnCorrectStatus(t *testing.T) {
 
 	// 200 status code will be tested seperately because it need real token (login first)
 	testcases := []struct {
-		authHeader string
-		status     int
+		authHeader     string
+		expectedStatus int
 	}{
 		{
-			authHeader: "Bearer sometoken",
-			status:     401,
+			authHeader:     "Bearer sometoken",
+			expectedStatus: http.StatusUnauthorized,
 		},
 		{
-			authHeader: "sometoken",
-			status:     401,
+			authHeader:     "sometoken",
+			expectedStatus: http.StatusUnauthorized,
 		},
 		{
-			authHeader: "",
-			status:     401,
+			authHeader:     "",
+			expectedStatus: http.StatusUnauthorized,
 		},
 		{
-			authHeader: "Bearer   sometoken",
-			status:     401,
+			authHeader:     "Bearer   sometoken",
+			expectedStatus: http.StatusUnauthorized,
 		},
 	}
 
 	for _, tc := range testcases {
-		t.Run(fmt.Sprintf("authHeader: %s, status: %d", tc.authHeader, tc.status), func(t *testing.T) {
+		t.Run(fmt.Sprintf("authHeader: %s, status: %d", tc.authHeader, tc.expectedStatus), func(t *testing.T) {
 
 			URL := fmt.Sprintf("%s/check", helper.AuthURL)
 			header := http.Header{
@@ -51,7 +52,7 @@ func TestCheckReturnCorrectStatus(t *testing.T) {
 
 			resp, err := helper.Client.Get(URL, header)
 			require.NoError(t, err)
-			require.EqualValues(t, tc.status, resp.StatusCode)
+			require.EqualValues(t, tc.expectedStatus, resp.StatusCode)
 		})
 	}
 }
@@ -67,15 +68,13 @@ func TestCheckWithRealToken(t *testing.T) {
 
 	identifier := "normaluser"
 	password := "normalpassword"
-	deviceId := 1
+	deviceInfo := json.RawMessage(`{"user-agent": "Mozilla/5.0"}`)
 	payloadJson := fmt.Appendf(nil, `
 			{
 				"identifier": "%s",
 				"password": "%s",
-				"device": {
-					"id": "%d"
-				}
-			}`, identifier, password, deviceId)
+				"device_info": %s
+			}`, identifier, password, deviceInfo)
 
 	URL := fmt.Sprintf("%s/login", helper.AuthURL)
 	resp, err := helper.Client.Post(URL, nil, bytes.NewBuffer(payloadJson))
@@ -100,5 +99,5 @@ func TestCheckWithRealToken(t *testing.T) {
 	resp, err = helper.Client.Get(URL, header)
 	require.NoError(t, err)
 	// token should be expired
-	require.EqualValues(t, 401, resp.StatusCode)
+	require.EqualValues(t, http.StatusUnauthorized, resp.StatusCode)
 }

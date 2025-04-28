@@ -2,8 +2,8 @@ package tests
 
 import (
 	"database/sql"
-	"dungtl2003/chat-app-auth-service/internal/helper"
 	"dungtl2003/chat-app-auth-service/internal/httpclient"
+	"dungtl2003/chat-app-auth-service/internal/logging"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -23,6 +23,7 @@ type Helper struct {
 	logger       *slog.Logger
 	JwtSecret    string
 	ATDurationMs int
+	RTDurationMs int
 }
 
 // SuckDelay is a function that blocks the current goroutine for a specified
@@ -94,6 +95,15 @@ func NewHelper() *Helper {
 		log.Fatal("ACCESS_TOKEN_DURATION_MS must be a non-negative number")
 	}
 
+	RTDurationMsStr, bool := os.LookupEnv("REFRESH_TOKEN_DURATION_MS")
+	if !bool {
+		log.Fatal("REFRESH_TOKEN_DURATION_MS is not set")
+	}
+	RTDurationMs, err := strconv.Atoi(RTDurationMsStr)
+	if err != nil || RTDurationMs < 0 {
+		log.Fatal("REFRESH_TOKEN_DURATION_MS must be a non-negative number")
+	}
+
 	jwtSecret, bool := os.LookupEnv("JWT_SECRET")
 	if !bool {
 		log.Fatal("JWT_SECRET is not set")
@@ -131,6 +141,7 @@ func NewHelper() *Helper {
 		AuthURL:      authUrl,
 		JwtSecret:    jwtSecret,
 		ATDurationMs: ATDurationMs,
+		RTDurationMs: RTDurationMs,
 	}
 }
 
@@ -154,7 +165,7 @@ func (h *Helper) Rollback() error {
 
 type Database struct {
 	client *sql.DB
-	logger helper.LoggerWrapper
+	logger *logging.LoggerWrapper
 }
 
 // New creates a new database connection. The function returns a database
@@ -167,7 +178,7 @@ func NewDb(url string, logger *slog.Logger) (*Database, error) {
 
 	return &Database{
 		client: client,
-		logger: helper.NewLoggerWrapper(logger),
+		logger: logging.NewLoggerWrapper(logger),
 	}, nil
 }
 
@@ -188,7 +199,7 @@ func (d *Database) Close() error {
 func (d *Database) Snapshot() error {
 	tx, err := d.client.Begin()
 	if err != nil {
-		d.logger.Error("error when starting transaction", "error", err)
+		d.logger.Errorfln("error when starting transaction: %v", err)
 		return err
 	}
 
@@ -198,44 +209,30 @@ func (d *Database) Snapshot() error {
 		}
 	}()
 
-	_, err = d.client.Exec(`CREATE TABLE IF NOT EXISTS chat_user.chat_user_snapshot AS SELECT * FROM chat_user.chat_user WHERE false;`) // create an empty table
-	if err != nil {
-		msg := fmt.Sprintf("error when creating snapshot: error when creating table chat_user_snapshot: %v", err)
-		d.logger.Error(msg)
-		return err
+	cmds := []string{
+		`CREATE TABLE IF NOT EXISTS chat_user.chat_user_snapshot AS SELECT * FROM chat_user.chat_user WHERE false;`, // create an empty table
+
+		`DELETE FROM chat_user.chat_user_snapshot;`,
+
+		`INSERT INTO chat_user.chat_user_snapshot SELECT * FROM chat_user.chat_user;`,
 	}
 
-	_, err = d.client.Exec(`CREATE TABLE IF NOT EXISTS chat_user.device_snapshot AS SELECT * FROM chat_user.device WHERE false;`) // create an empty table
-	if err != nil {
-		msg := fmt.Sprintf("error when creating snapshot: error when creating table device_snapshot: %v", err)
-		d.logger.Error(msg)
-		return err
+	for _, cmd := range cmds {
+		_, err = d.client.Exec(cmd)
+		if err != nil {
+			d.logger.Errorfln("error when trying to create snapshot: error when executing command: %s: %v", cmd, err)
+			return err
+		}
 	}
 
-	// we need to make sure that the snapshot tables are empty
-	_, err = d.client.Exec(`DELETE FROM chat_user.chat_user_snapshot;`)
+	err = tx.Commit()
 	if err != nil {
-		msg := fmt.Sprintf("error when creating snapshot: error when deleting data from chat_user_snapshot: %v", err)
-		d.logger.Error(msg)
-		return err
-	}
-
-	_, err = d.client.Exec(`INSERT INTO chat_user.chat_user_snapshot SELECT * FROM chat_user.chat_user;`)
-	if err != nil {
-		msg := fmt.Sprintf("error when creating snapshot: error when inserting data into chat_user_snapshot: %v", err)
-		d.logger.Error(msg)
-		return err
-	}
-
-	// insert data from the original tables to the snapshot tables
-	_, err = d.client.Exec(`INSERT INTO chat_user.device_snapshot SELECT * FROM chat_user.device;`)
-	if err != nil {
-		msg := fmt.Sprintf("error when creating snapshot: error when inserting data into device_snapshot: %v", err)
-		d.logger.Error(msg)
+		d.logger.Errorfln("error when trying to create snapshot: error when committing transaction: %v", err)
 		return err
 	}
 
 	return nil
+
 }
 
 // Rollback rolls back the database to the state before the snapshot. The function is currently used for testing purposes.
@@ -243,7 +240,7 @@ func (d *Database) Snapshot() error {
 func (d *Database) Rollback() error {
 	tx, err := d.client.Begin()
 	if err != nil {
-		d.logger.Error("error when starting transaction", "error", err)
+		d.logger.Errorfln("error when starting transaction: %v", err)
 		return err
 	}
 
@@ -253,46 +250,25 @@ func (d *Database) Rollback() error {
 		}
 	}()
 
-	// we will migrate the data from the snapshot tables to the original tables
-	_, err = d.client.Exec(`DELETE FROM chat_user.chat_user;`) // cascade delete
-	if err != nil {
-		msg := fmt.Sprintf("error when rolling back: error when deleting data from chat_user: %v", err)
-		d.logger.Error(msg)
-		return err
+	cmds := []string{
+		`DELETE FROM chat_user.chat_user;`,
+
+		`INSERT INTO chat_user.chat_user SELECT * FROM chat_user.chat_user_snapshot;`,
+
+		`DROP TABLE chat_user.chat_user_snapshot;`,
 	}
 
-	_, err = d.client.Exec(`INSERT INTO chat_user.chat_user SELECT * FROM chat_user.chat_user_snapshot;`)
-	if err != nil {
-		msg := fmt.Sprintf("error when rolling back: error when inserting data into chat_user: %v", err)
-		d.logger.Error(msg)
-		return err
-	}
-
-	_, err = d.client.Exec(`INSERT INTO chat_user.device SELECT * FROM chat_user.device_snapshot;`)
-	if err != nil {
-		msg := fmt.Sprintf("error when rolling back: error when inserting data into device: %v", err)
-		d.logger.Error(msg)
-		return err
-	}
-
-	_, err = d.client.Exec(`DROP TABLE chat_user.device_snapshot;`)
-	if err != nil {
-		msg := fmt.Sprintf("error when rolling back: error when dropping device_snapshot: %v", err)
-		d.logger.Error(msg)
-		return err
-	}
-
-	_, err = d.client.Exec(`DROP TABLE chat_user.chat_user_snapshot;`)
-	if err != nil {
-		msg := fmt.Sprintf("error when rolling back: error when dropping chat_user_snapshot: %v", err)
-		d.logger.Error(msg)
-		return err
+	for _, cmd := range cmds {
+		_, err = d.client.Exec(cmd)
+		if err != nil {
+			d.logger.Errorfln("error when rolling back: error when executing command: %s: %v", cmd, err)
+			return err
+		}
 	}
 
 	err = tx.Commit()
 	if err != nil {
-		msg := fmt.Sprintf("error when rolling back: error when committing transaction: %v", err)
-		d.logger.Error(msg)
+		d.logger.Errorfln("error when rolling back: error when committing transaction: %v", err)
 		return err
 	}
 

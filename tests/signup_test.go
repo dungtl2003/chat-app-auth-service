@@ -2,6 +2,7 @@ package tests
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"testing"
@@ -22,9 +23,7 @@ func TestSignUpSuccessShouldAutoLogin(t *testing.T) {
 	username := "you"
 	password := "password"
 	role := "USER"
-	deviceName := "IPhone 14 Pro Max"
-	deviceType := "IPhone"
-	deviceOs := "IOS 16.5"
+	deviceInfo := json.RawMessage(`{"user-agent": "Mozilla/5.0"}`)
 
 	payloadJson := fmt.Appendf(nil, `
 		{
@@ -32,12 +31,8 @@ func TestSignUpSuccessShouldAutoLogin(t *testing.T) {
 			"username": "%s",
 			"password": "%s",
 			"role": "%s",
-			"device": {
-				"device_name": "%s",
-				"device_type": "%s",
-				"os": "%s"
-			}
-		}`, email, username, password, role, deviceName, deviceType, deviceOs)
+			"device_info": %s
+		}`, email, username, password, role, deviceInfo)
 
 	URL := fmt.Sprintf("%s/signup", helper.AuthURL)
 	header := http.Header{
@@ -52,7 +47,9 @@ func TestSignUpSuccessShouldAutoLogin(t *testing.T) {
 	refreshToken := GetRTFromResponse(resp)
 	require.NotEmpty(t, refreshToken)
 
-	// body: "access_token: %s"
-	accessToken := GetATFromResponse(resp)
-	require.NotEmpty(t, accessToken)
+	respJson, err := GetRespJson(resp)
+	require.NoError(t, err)
+	require.NotEmpty(t, respJson["user"])
+	require.NotEmpty(t, respJson["session_id"])
+	require.NotEmpty(t, respJson["access_token"])
 }

@@ -25,6 +25,8 @@ REFRESH_TOKEN_DURATION_MS=${REFRESH_TOKEN_DURATION_MS:-6000}
 DOMAIN_NAME=${DOMAIN_NAME:-"localhost"}
 COST=${COST:-12}
 ORIGIN=${ORIGIN:-"http://localhost:5174"}
+ID_GENERATOR_SERVICE_ADDR=${ID_GENERATOR_SERVICE_ADDR:-"localhost:9000"}
+ID_GENERATOR_SERVICE_CERT_DIR=${ID_GENERATOR_SERVICE_CERT_DIR:-"$ROOT_DIR/environments/test/auth/services/snowflake/ssl"}
 
 # Test's specific environment variables
 ADMIN_DATABASE_URL=${ADMIN_DATABASE_URL:-"postgresql://admin:testpass123@localhost:6000/chat-app?sslmode=disable"}
@@ -66,6 +68,10 @@ function export_envs() {
     export COST
     printf "export ORIGIN=%s\n" $ORIGIN
     export ORIGIN
+    printf "export ID_GENERATOR_SERVICE_ADDR=%s\n" $ID_GENERATOR_SERVICE_ADDR
+    export ID_GENERATOR_SERVICE_ADDR
+    printf "export ID_GENERATOR_SERVICE_CERT_DIR=%s\n" $ID_GENERATOR_SERVICE_CERT_DIR
+    export ID_GENERATOR_SERVICE_CERT_DIR
 
     printf "export ADMIN_DATABASE_URL=%s\n" $ADMIN_DATABASE_URL
     export ADMIN_DATABASE_URL

@@ -1,14 +1,25 @@
 package healthcheck
 
 import (
+	"dungtl2003/chat-app-auth-service/internal/context"
 	"dungtl2003/chat-app-auth-service/internal/services"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
 
-func HealthCheck(a *services.AuthService) gin.HandlerFunc {
+func HealthCheck(appCtx *context.AppContext) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		a.Logger.Info("server are running")
-		c.JSON(200, "UP")
+		logger := appCtx.Logger
+		if appCtx.IdGeneratorService.GetStatus() != services.RUNNING {
+			logger.Debugfln("%s is not running", appCtx.IdGeneratorService.GetName())
+			c.JSON(http.StatusOK, "DOWN")
+			c.Abort()
+			return
+		}
+
+		logger.Debugfln("all services are running")
+		c.JSON(http.StatusOK, "UP")
+		c.Abort()
 	}
 }

@@ -31,6 +31,12 @@ else
 	./scripts/test_local.sh go run ./cmd/test/run_tests.go
 endif
 
+.PHONY: proto
+proto:
+	$(info ==================== generating new proto files ====================)
+	@mkdir -p internal/services/snowflake/proto
+	protoc --proto_path=proto proto/*.proto  --go_out=:internal/services/snowflake/proto --go-grpc_out=:internal/services/snowflake/proto
+
 .PHONY: run
 run: build
 ifdef ENV
