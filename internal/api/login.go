@@ -40,7 +40,7 @@ func Login(appCtx *context.AppContext) gin.HandlerFunc {
 		appCtx.Logger.Debugfln("login request body: %#v", loginRequestBody)
 
 		// get user information
-		url := fmt.Sprintf("%s/users/auth-info?identifier=%s", appCtx.UserServiceURL, loginRequestBody.Identifier)
+		url := helper.EncodeURLPath(fmt.Sprintf(`%s/users/auth-info?identifier=%s`, appCtx.UserServiceURL, loginRequestBody.Identifier))
 		appCtx.Logger.Debugfln("sending GET request to %s", url)
 		resp, err := appCtx.Client.Get(url, nil)
 		if err != nil {
@@ -140,7 +140,7 @@ func Login(appCtx *context.AppContext) gin.HandlerFunc {
 		}
 
 		// create session
-		url = fmt.Sprintf("%s/users/%d/sessions", appCtx.UserServiceURL, user.Id.Int64())
+		url = helper.EncodeURLPath(fmt.Sprintf("%s/users/%d/sessions", appCtx.UserServiceURL, user.Id.Int64()))
 		payload := fmt.Appendf(nil, `
 		{
 			"id": "%d",

@@ -75,12 +75,12 @@ func New() *Server {
 			H:      api.Authorize(appCtx),
 		},
 		{
-			Method: router.GET,
+			Method: router.POST,
 			Path:   "/auth/refresh",
 			H:      api.Refresh(appCtx),
 		},
 		{
-			Method: router.GET,
+			Method: router.POST,
 			Path:   "/auth/logout",
 			H:      api.Logout(appCtx),
 		},

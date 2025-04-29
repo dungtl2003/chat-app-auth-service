@@ -68,7 +68,7 @@ func Authorize(appCtx *context.AppContext) gin.HandlerFunc {
 		}
 
 		// get user information
-		url := fmt.Sprintf("%s/users/%d", appCtx.UserServiceURL, userId)
+		url := helper.EncodeURLPath(fmt.Sprintf("%s/users/%d", appCtx.UserServiceURL, userId))
 		header := http.Header{
 			"Authorization": []string{authHeader},
 		}

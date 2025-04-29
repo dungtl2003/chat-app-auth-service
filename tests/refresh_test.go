@@ -50,7 +50,7 @@ func TestRefreshShouldWorkAsExpected(t *testing.T) {
 	header := http.Header{
 		"Cookie": {fmt.Sprintf("refresh_token=%s", refreshToken)},
 	}
-	resp, err = helper.Client.Get(URL, header)
+	resp, err = helper.Client.Post(URL, header, nil)
 	require.NoError(t, err)
 	require.EqualValues(t, http.StatusOK, resp.StatusCode)
 
@@ -78,7 +78,7 @@ func TestRefreshShouldNotWorkWithInvalidToken(t *testing.T) {
 	URL := fmt.Sprintf("%s/refresh", helper.AuthURL)
 
 	// no cookie
-	resp, err := helper.Client.Get(URL, nil)
+	resp, err := helper.Client.Post(URL, nil, nil)
 	require.NoError(t, err)
 	require.EqualValues(t, http.StatusUnauthorized, resp.StatusCode)
 
@@ -86,7 +86,7 @@ func TestRefreshShouldNotWorkWithInvalidToken(t *testing.T) {
 	header := http.Header{
 		"Cookie": {fmt.Sprintf("refresh_token=%s", "invalidtoken")},
 	}
-	resp, err = helper.Client.Get(URL, header)
+	resp, err = helper.Client.Post(URL, header, nil)
 	require.NoError(t, err)
 	require.EqualValues(t, 401, resp.StatusCode)
 
@@ -114,7 +114,7 @@ func TestRefreshShouldNotWorkWithInvalidToken(t *testing.T) {
 	header = http.Header{
 		"Cookie": {fmt.Sprintf("refresh_token=%s", refreshToken)},
 	}
-	resp, err = helper.Client.Get(URL, header)
+	resp, err = helper.Client.Post(URL, header, nil)
 	require.NoError(t, err)
 	require.EqualValues(t, http.StatusUnauthorized, resp.StatusCode)
 }
@@ -159,7 +159,7 @@ func TestRefreshShouldHaveReuseDetection(t *testing.T) {
 			header := http.Header{
 				"Cookie": {fmt.Sprintf("refresh_token=%s", refreshToken)},
 			}
-			resp, err = helper.Client.Get(URL, header)
+			resp, err = helper.Client.Post(URL, header, nil)
 			require.NoError(t, err)
 			refreshToken = GetRTFromResponse(resp)
 			require.NotEmpty(t, refreshToken)
@@ -172,7 +172,7 @@ func TestRefreshShouldHaveReuseDetection(t *testing.T) {
 	header := http.Header{
 		"Cookie": {fmt.Sprintf("refresh_token=%s", refreshToken)},
 	}
-	resp, err := helper.Client.Get(URL, header)
+	resp, err := helper.Client.Post(URL, header, nil)
 	require.NoError(t, err)
 	require.EqualValues(t, http.StatusUnauthorized, resp.StatusCode)
 
@@ -182,7 +182,7 @@ func TestRefreshShouldHaveReuseDetection(t *testing.T) {
 		header := http.Header{
 			"Cookie": {fmt.Sprintf("refresh_token=%s", refreshToken)},
 		}
-		resp, err = helper.Client.Get(URL, header)
+		resp, err = helper.Client.Post(URL, header, nil)
 		require.NoError(t, err)
 		require.EqualValues(t, http.StatusUnauthorized, resp.StatusCode)
 	}

@@ -49,7 +49,7 @@ func SignUp(appCtx *context.AppContext) gin.HandlerFunc {
 			"password": "%s",
 			"role": "%s"
 		}`, signUpRequestBody.Email, signUpRequestBody.Username, signUpRequestBody.Password, signUpRequestBody.Role)
-		url := fmt.Sprintf("%s/users", appCtx.UserServiceURL)
+		url := helper.EncodeURLPath(fmt.Sprintf("%s/users", appCtx.UserServiceURL))
 		appCtx.Logger.Debugfln("sending POST request to %s with payload: %s", url, helper.StripWS(string(payload)))
 		resp, err := appCtx.Client.Post(url, nil, bytes.NewBuffer(payload))
 		if err != nil {
@@ -130,7 +130,7 @@ func SignUp(appCtx *context.AppContext) gin.HandlerFunc {
 		}
 
 		// create session
-		url = fmt.Sprintf("%s/users/%d/sessions", appCtx.UserServiceURL, user.Id.Int64())
+		url = helper.EncodeURLPath(fmt.Sprintf("%s/users/%d/sessions", appCtx.UserServiceURL, user.Id.Int64()))
 		payload = fmt.Appendf(nil, `
 		{
 			"id": "%d",

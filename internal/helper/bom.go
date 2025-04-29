@@ -29,3 +29,8 @@ func StripWS(s string) string {
 
 	return b.String()
 }
+
+func EncodeURLPath(path string) string {
+	// Encode the path to make it safe for use in a URL
+	return strings.ReplaceAll(path, " ", "%20")
+}

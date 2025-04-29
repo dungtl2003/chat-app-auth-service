@@ -86,7 +86,7 @@ func Refresh(appCtx *context.AppContext) gin.HandlerFunc {
 		}
 
 		// 	get user information
-		url := fmt.Sprintf("%s/users/%d", appCtx.UserServiceURL, userId)
+		url := helper.EncodeURLPath(fmt.Sprintf("%s/users/%d", appCtx.UserServiceURL, userId))
 		appCtx.Logger.Debugfln("sending GET request to %s", url)
 		resp, err := appCtx.Client.Get(url, nil)
 		if err != nil {
@@ -132,7 +132,7 @@ func Refresh(appCtx *context.AppContext) gin.HandlerFunc {
 		}
 
 		// check if session is revoked
-		url = fmt.Sprintf("%s/users/%d/sessions/%d", appCtx.UserServiceURL, user.Id.Int64(), sessId)
+		url = helper.EncodeURLPath(fmt.Sprintf("%s/users/%d/sessions/%d", appCtx.UserServiceURL, user.Id.Int64(), sessId))
 		appCtx.Logger.Debugfln("sending GET request to %s", url)
 		resp, err = appCtx.Client.Get(url, nil)
 		if err != nil {
@@ -171,7 +171,7 @@ func Refresh(appCtx *context.AppContext) gin.HandlerFunc {
 		// Reuse detected!!!
 		if session.RevokedAt.Valid {
 			// maybe stolen by someone. Regardless, REVOKE ALL!!!
-			url = fmt.Sprintf("%s/users/%d/sessions/revoke", appCtx.UserServiceURL, user.Id.Int64())
+			url = helper.EncodeURLPath(fmt.Sprintf("%s/users/%d/sessions/revoke", appCtx.UserServiceURL, user.Id.Int64()))
 			appCtx.Logger.Debugfln("sending POST request to %s", url)
 			resp, err = appCtx.Client.Post(url, nil, nil)
 			if err != nil {
@@ -193,7 +193,7 @@ func Refresh(appCtx *context.AppContext) gin.HandlerFunc {
 			}
 
 			// update session version
-			url = fmt.Sprintf("%s/users/%d/session-version/increment", appCtx.UserServiceURL, user.Id.Int64())
+			url = helper.EncodeURLPath(fmt.Sprintf("%s/users/%d/session-version/increment", appCtx.UserServiceURL, user.Id.Int64()))
 			appCtx.Logger.Debugfln("sending POST request to %s", url)
 			resp, err = appCtx.Client.Post(url, nil, nil)
 			if err != nil {
@@ -222,7 +222,7 @@ func Refresh(appCtx *context.AppContext) gin.HandlerFunc {
 		}
 
 		// revoke session
-		url = fmt.Sprintf("%s/users/%d/sessions/%d/revoke", appCtx.UserServiceURL, user.Id.Int64(), sessId)
+		url = helper.EncodeURLPath(fmt.Sprintf("%s/users/%d/sessions/%d/revoke", appCtx.UserServiceURL, user.Id.Int64(), sessId))
 		appCtx.Logger.Debugfln("sending POST request to %s", url)
 		resp, err = appCtx.Client.Post(url, nil, nil)
 		if err != nil {
@@ -288,7 +288,7 @@ func Refresh(appCtx *context.AppContext) gin.HandlerFunc {
 		}
 
 		// create new session
-		url = fmt.Sprintf("%s/users/%d/sessions", appCtx.UserServiceURL, user.Id.Int64())
+		url = helper.EncodeURLPath(fmt.Sprintf("%s/users/%d/sessions", appCtx.UserServiceURL, user.Id.Int64()))
 		payload := fmt.Appendf(nil, `
 		{
 			"id": "%d",

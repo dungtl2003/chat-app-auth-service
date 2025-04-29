@@ -41,6 +41,13 @@ func TestLoginReturnCorrectStatus(t *testing.T) {
 			expectedStatus: http.StatusOK,
 		},
 		{
+			// 2 letters
+			identifier:     "john doe",
+			password:       "normalpassword4",
+			deviceInfo:     json.RawMessage(`{"user-agent": "Mozilla/5.0"}`),
+			expectedStatus: http.StatusOK,
+		},
+		{
 			password:       "normalpassword",
 			deviceInfo:     json.RawMessage(`{"user-agent": "Mozilla/5.0"}`),
 			expectedStatus: http.StatusBadRequest,

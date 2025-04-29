@@ -19,5 +19,12 @@
         "username": "normaluser3",
         "password": "normalpassword3",
         "role": "USER"
+    },
+    {
+        "id": "4",
+        "email": "normaluser4@gmail.com",
+        "username": "john doe",
+        "password": "normalpassword4",
+        "role": "USER"
     }
 ]

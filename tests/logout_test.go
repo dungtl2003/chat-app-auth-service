@@ -62,7 +62,7 @@ func TestLogoutShouldLogoutOneDevice(t *testing.T) {
 	header := http.Header{
 		"Authorization": {fmt.Sprintf("Bearer %s", accessTokens[0])},
 	}
-	resp, err := helper.Client.Get(URL, header)
+	resp, err := helper.Client.Post(URL, header, nil)
 	require.NoError(t, err)
 	require.EqualValues(t, http.StatusOK, resp.StatusCode)
 
@@ -73,7 +73,7 @@ func TestLogoutShouldLogoutOneDevice(t *testing.T) {
 			header = http.Header{
 				"Cookie": {fmt.Sprintf("refresh_token=%s", refreshToken)},
 			}
-			resp, err = helper.Client.Get(URL, header)
+			resp, err = helper.Client.Post(URL, header, nil)
 			require.NoError(t, err)
 			require.EqualValues(t, http.StatusOK, resp.StatusCode)
 		}
@@ -86,7 +86,7 @@ func TestLogoutShouldLogoutOneDevice(t *testing.T) {
 	header = http.Header{
 		"Cookie": {fmt.Sprintf("refresh_token=%s", refreshTokens[0])},
 	}
-	resp, err = helper.Client.Get(URL, header)
+	resp, err = helper.Client.Post(URL, header, nil)
 	require.NoError(t, err)
 	require.EqualValues(t, http.StatusUnauthorized, resp.StatusCode)
 }

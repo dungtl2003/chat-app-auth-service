@@ -2,6 +2,7 @@ package api
 
 import (
 	"dungtl2003/chat-app-auth-service/internal/context"
+	"dungtl2003/chat-app-auth-service/internal/helper"
 	"dungtl2003/chat-app-auth-service/internal/jwthandler"
 	"fmt"
 	"io"
@@ -75,7 +76,7 @@ func Logout(appCtx *context.AppContext) gin.HandlerFunc {
 		}
 
 		// revoke session
-		url := fmt.Sprintf("%s/users/%d/sessions/%d/revoke", appCtx.UserServiceURL, userId, sessId)
+		url := helper.EncodeURLPath(fmt.Sprintf("%s/users/%d/sessions/%d/revoke", appCtx.UserServiceURL, userId, sessId))
 		appCtx.Logger.Debugfln("sending POST request to %s", url)
 		resp, err := appCtx.Client.Post(url, nil, nil)
 		if err != nil {
