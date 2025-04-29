@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"dungtl2003/chat-app-auth-service/internal/constants"
 	"dungtl2003/chat-app-auth-service/internal/context"
 	"dungtl2003/chat-app-auth-service/internal/helper"
 	"dungtl2003/chat-app-auth-service/internal/httpclient"
@@ -215,7 +216,7 @@ func Refresh(appCtx *context.AppContext) gin.HandlerFunc {
 			}
 
 			appCtx.Logger.Debugfln("the account might be attacked")
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid refresh token"})
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid refresh token", "code": constants.REFRESH_TOKEN_REUSE})
 			c.SetCookie("refresh_token", "", -1, "/", appCtx.DomainName, false, true)
 			c.Abort()
 			return
