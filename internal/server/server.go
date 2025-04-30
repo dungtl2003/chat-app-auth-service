@@ -48,6 +48,7 @@ func New() *Server {
 	log.Println("Creating http client")
 	client := httpclient.New()
 
+	log.Println("Creating password manager")
 	pm, err := password.NewBcryptPasswordManager(config.Cost)
 	if err != nil {
 		log.Fatalf("NewBcryptPasswordManager(): %v", err)

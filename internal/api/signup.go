@@ -130,6 +130,8 @@ func SignUp(appCtx *context.AppContext) gin.HandlerFunc {
 		}
 
 		// create session
+		refreshTokenHash := helper.HashWithSHA256(refreshTokenStr)
+		appCtx.Logger.Debugfln("refresh token hash: %s", refreshTokenHash)
 		url = helper.EncodeURLPath(fmt.Sprintf("%s/users/%d/sessions", appCtx.UserServiceURL, user.Id.Int64()))
 		payload = fmt.Appendf(nil, `
 		{
@@ -138,7 +140,7 @@ func SignUp(appCtx *context.AppContext) gin.HandlerFunc {
 			"device_info": %s,
 			"refresh_token_hash": "%s",
 			"expires_at": "%s"
-		}`, sessId, user.SessionVersion.Int64(), signUpRequestBody.DeviceInfo, refreshTokenStr, expiresAt.Format("2006-01-02T15:04:05.999Z"))
+		}`, sessId, user.SessionVersion.Int64(), signUpRequestBody.DeviceInfo, refreshTokenHash, expiresAt.Format("2006-01-02T15:04:05.999Z"))
 		resp, err = appCtx.Client.Post(url, nil, bytes.NewBuffer(payload))
 		if err != nil {
 			appCtx.Logger.Errorfln("error when sending POST request: %v", err)

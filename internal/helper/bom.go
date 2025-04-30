@@ -1,6 +1,8 @@
 package helper
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"strings"
 	"unicode"
@@ -33,4 +35,10 @@ func StripWS(s string) string {
 func EncodeURLPath(path string) string {
 	// Encode the path to make it safe for use in a URL
 	return strings.ReplaceAll(path, " ", "%20")
+}
+
+func HashWithSHA256(s string) string {
+	h := sha256.New()
+	h.Write([]byte(s))
+	return hex.EncodeToString(h.Sum(nil))
 }

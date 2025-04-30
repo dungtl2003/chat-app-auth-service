@@ -24,8 +24,9 @@ import (
 // of times server detects that the user uses the same refresh token more than once.
 // If the session version is less than the one in the database, it means that the
 // user still uses the old valid refresh token).
-// 4. If the corresponding session isn't found, delete the cookie and return 401.
-// 5. If the corresponding session is found but already revoked, revoke all
+// 4. If the token and the hash are not matched, delete the cookie and return 401.
+// 5. If the corresponding session isn't found, delete the cookie and return 401.
+// 6. If the corresponding session is found but already revoked, revoke all
 // sessions belonged to that user, increase session version, delete the cookie,
 // and return 401.
 func Refresh(appCtx *context.AppContext) gin.HandlerFunc {
@@ -124,10 +125,11 @@ func Refresh(appCtx *context.AppContext) gin.HandlerFunc {
 		}
 		appCtx.Logger.Debugfln("response body from GET request: %#v", user)
 
+		// the account was attacked so this refresh token is not valid anymore
 		if sessionVersion < user.SessionVersion.Int64() {
 			c.SetCookie("refresh_token", "", -1, "/", appCtx.DomainName, false, true)
 			appCtx.Logger.Debugfln("invalid session version (expected: %d, got: %d)", user.SessionVersion.Int64(), sessionVersion)
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid session version"})
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid session version", "code": constants.REFRESH_TOKEN_REUSE})
 			c.Abort()
 			return
 		}
@@ -168,6 +170,16 @@ func Refresh(appCtx *context.AppContext) gin.HandlerFunc {
 			return
 		}
 		appCtx.Logger.Debugfln("response body from GET request: %#v", session)
+
+		refreshTokenHash := helper.HashWithSHA256(refreshTokenStr)
+		// check if refresh token hash is correct
+		if refreshTokenHash != session.RefreshTokenHash {
+			appCtx.Logger.Debugfln("invalid refresh token hash (expected: %s, got: %s)", session.RefreshTokenHash, refreshTokenHash)
+			c.SetCookie("refresh_token", "", -1, "/", appCtx.DomainName, false, true)
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid refresh token"})
+			c.Abort()
+			return
+		}
 
 		// Reuse detected!!!
 		if session.RevokedAt.Valid {
@@ -289,6 +301,7 @@ func Refresh(appCtx *context.AppContext) gin.HandlerFunc {
 		}
 
 		// create new session
+		newRefreshTokenHash := helper.HashWithSHA256(newRefreshTokenStr)
 		url = helper.EncodeURLPath(fmt.Sprintf("%s/users/%d/sessions", appCtx.UserServiceURL, user.Id.Int64()))
 		payload := fmt.Appendf(nil, `
 		{
@@ -297,7 +310,7 @@ func Refresh(appCtx *context.AppContext) gin.HandlerFunc {
 			"device_info": %s,
 			"refresh_token_hash": "%s",
 			"expires_at": "%s"
-		}`, newSessId, user.SessionVersion.Int64(), session.DeviceInfo, newRefreshTokenStr, expiresAt.Format("2006-01-02T15:04:05.999Z"))
+		}`, newSessId, user.SessionVersion.Int64(), session.DeviceInfo, newRefreshTokenHash, expiresAt.Format("2006-01-02T15:04:05.999Z"))
 		resp, err = appCtx.Client.Post(url, nil, bytes.NewBuffer(payload))
 		if err != nil {
 			appCtx.Logger.Errorfln("error when sending POST request: %v", err)
