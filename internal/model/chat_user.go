@@ -14,12 +14,22 @@ const (
 )
 
 type ChatUser struct {
-	Id             types.JsonInt64 `json:"id"`
-	Email          string          `json:"email"`
-	Username       string          `json:"username"`
-	Password       string          `json:"password"`
-	Role           UserRole        `json:"role"`
-	SessionVersion types.JsonInt64 `json:"session_version"`
+	Id             types.JsonInt64      `json:"id"`
+	Email          string               `json:"email"`
+	Username       string               `json:"username"`
+	Password       string               `json:"password"`
+	Role           UserRole             `json:"role"`
+	FirstName      types.JsonNullString `json:"first_name"`
+	LastName       types.JsonNullString `json:"last_name"`
+	Birthday       types.JsonNullTime   `json:"birthday"`
+	Gender         types.JsonNullString `json:"gender"`
+	PhoneNumber    types.JsonNullString `json:"phone_number"`
+	Privacy        types.JsonNullString `json:"privacy"`
+	Avatar         types.JsonNullString `json:"avatar"`
+	SessionVersion types.JsonInt64      `json:"session_version"`
+	CreatedAt      types.JsonTime       `json:"created_at"`
+	UpdatedAt      types.JsonNullTime   `json:"updated_at"`
+	DeletedAt      types.JsonNullTime   `json:"deleted_at"`
 
 	Sessions []Session `json:"sessions"`
 }

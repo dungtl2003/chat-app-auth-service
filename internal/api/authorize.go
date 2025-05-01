@@ -102,6 +102,9 @@ func Authorize(appCtx *context.AppContext) gin.HandlerFunc {
 		}
 		appCtx.Logger.Debugfln("response body from GET request: %#v", user)
 
+		// security
+		user.Password = ""
+
 		c.JSON(http.StatusOK, gin.H{"user": user})
 		return
 	}

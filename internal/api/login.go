@@ -189,6 +189,9 @@ func Login(appCtx *context.AppContext) gin.HandlerFunc {
 		// add new session to user
 		user.Sessions = append(user.Sessions, session)
 
+		// security
+		user.Password = ""
+
 		c.SetCookie("refresh_token", refreshTokenStr, int(appCtx.JwtConfig.RTDurationMs/1000), "/", appCtx.DomainName, false, true)
 		c.JSON(http.StatusOK, gin.H{
 			"access_token": accessTokenStr,
