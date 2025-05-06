@@ -63,9 +63,10 @@ func Refresh(appCtx *context.AppContext) gin.HandlerFunc {
 
 		// the account was attacked so this refresh token is not valid anymore
 		if sessionVersion < user.SessionVersion.Int64() {
+			appCtx.Logger.Debugfln("invalid session version (expected: %d, got: %d)", user.SessionVersion.Int64(), sessionVersion)
 			ok := helper.HandleRevokeSession(appCtx, c, userId, sessId)
 			if ok {
-				c.JSON(http.StatusUnauthorized, gin.H{"error": "Expired refresh token"})
+				c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid session version", "code": constants.REFRESH_TOKEN_REUSE})
 				c.Abort()
 			}
 			return
