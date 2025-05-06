@@ -16,6 +16,7 @@ services:
       - ID_GENERATOR_ADDR=chat-app-snowflake-service:80
       - ID_GENERATOR_CERT_DIR=/etc/chat-app/services/snowflake/ssl/certs
       - COST=12
+      - CLOUDINARY_URL=not-real-cloudinary-url
     volumes:
       - ../environments/test/user/ssl:/etc/chat-app/services/snowflake/ssl/certs:ro
     networks:

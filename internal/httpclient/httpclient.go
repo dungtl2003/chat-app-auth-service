@@ -1,6 +1,8 @@
 package httpclient
 
 import (
+	"encoding/json"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -36,15 +38,19 @@ func NewWithConfig(config *http.Client) *HttpClient {
 	}
 }
 
-// ReadResponse will consume the response body and return a slice of byte or error.
-func ReadResponse(resp *http.Response) ([]byte, error) {
+// GetRespJson will read the response body and unmarshal it into a map[string]interface{}.
+func ParseResponse(resp *http.Response, v any) error {
 	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return fmt.Errorf("io.ReadAll(): %v", err)
 	}
 
-	return body, nil
+	if err := json.Unmarshal(body, v); err != nil {
+		return fmt.Errorf("json.Unmarshal(): %v", err)
+	}
+
+	return nil
 }
 
 func (h *HttpClient) Get(url string, header http.Header) (*http.Response, error) {

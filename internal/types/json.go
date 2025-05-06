@@ -5,11 +5,21 @@ import (
 	"encoding/json"
 )
 
-type JSON struct {
+type Json struct {
 	json.RawMessage
 }
 
-func (j JSON) String() string {
+func NewJson(data any) Json {
+	if data == nil {
+		return Json{}
+	}
+	if len(data.([]byte)) == 0 {
+		return Json{RawMessage: json.RawMessage{}}
+	}
+	return Json{RawMessage: data.([]byte)}
+}
+
+func (j Json) String() string {
 	if j.RawMessage == nil {
 		return ""
 	}
@@ -19,31 +29,7 @@ func (j JSON) String() string {
 	return string(j.RawMessage)
 }
 
-func (j *JSON) UnmarshalJSON(data []byte) error {
-	if data == nil {
-		j.RawMessage = nil
-		return nil
-	}
-	if len(data) == 0 {
-		j.RawMessage = json.RawMessage{}
-		return nil
-	}
-	RawMessage := json.RawMessage(data)
-	j.RawMessage = RawMessage
-	return nil
-}
-
-func (j *JSON) MarshalJSON() ([]byte, error) {
-	if j.RawMessage == nil {
-		return nil, nil
-	}
-	if len(j.RawMessage) == 0 {
-		return []byte{}, nil
-	}
-	return j.RawMessage, nil
-}
-
-func (j *JSON) Scan(value any) error {
+func (j *Json) Scan(value any) error {
 	if value == nil {
 		j.RawMessage = nil
 		return nil
@@ -61,7 +47,7 @@ func (j *JSON) Scan(value any) error {
 	}
 }
 
-func (j JSON) Value() (driver.Value, error) {
+func (j Json) Value() (driver.Value, error) {
 	if j.RawMessage == nil {
 		return nil, nil
 	}

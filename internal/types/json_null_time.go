@@ -16,6 +16,14 @@ func (j JsonNullTime) String() string {
 	return j.Time.String()
 }
 
+func NewJsonNullTimeEmpty() JsonNullTime {
+	return JsonNullTime{
+		sql.NullTime{
+			Valid: false,
+		},
+	}
+}
+
 func NewJsonNullTime(t time.Time) JsonNullTime {
 	return JsonNullTime{
 		sql.NullTime{

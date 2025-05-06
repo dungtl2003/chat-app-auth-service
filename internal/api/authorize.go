@@ -3,12 +3,8 @@ package api
 import (
 	"dungtl2003/chat-app-auth-service/internal/context"
 	"dungtl2003/chat-app-auth-service/internal/helper"
-	"dungtl2003/chat-app-auth-service/internal/httpclient"
 	"dungtl2003/chat-app-auth-service/internal/jwthandler"
-	"dungtl2003/chat-app-auth-service/internal/model"
-	"fmt"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -49,63 +45,22 @@ func Authorize(appCtx *context.AppContext) gin.HandlerFunc {
 			c.Abort()
 			return
 		}
-
-		claims := accessToken.Claims.(*jwthandler.JWTClaim)
-		userIdStr, err := claims.GetSubject()
+		parsedToken, err := helper.ParseToken(accessToken)
 		if err != nil {
-			appCtx.Logger.Errorfln("GetSubject(): %v", err)
+			appCtx.Logger.Errorfln("ParseToken(): %v", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
 			c.Abort()
 			return
 		}
-
-		userId, err := strconv.ParseInt(userIdStr, 10, 64)
-		if err != nil {
-			appCtx.Logger.Errorfln("ParseInt(): %v", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
-			c.Abort()
-			return
-		}
+		userId := parsedToken.UserId
 
 		// get user information
-		url := helper.EncodeURLPath(fmt.Sprintf("%s/users/%d", appCtx.UserServiceURL, userId))
-		header := http.Header{
-			"Authorization": []string{authHeader},
-		}
-		resp, err := appCtx.Client.Get(url, header)
-		if err != nil {
-			appCtx.Logger.Errorfln("error when sending GET request: %v", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
-			c.Abort()
+		user := helper.HandleGetUserSecure(appCtx, c, userId)
+		if user == nil {
 			return
 		}
-		if resp.StatusCode != http.StatusOK {
-			appCtx.Logger.Errorfln("error GET request status: %d", resp.StatusCode)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
-			c.Abort()
-			return
-		}
-		body, err := httpclient.ReadResponse(resp)
-		if err != nil {
-			appCtx.Logger.Errorfln("ReadResponse(): %v", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
-			c.Abort()
-			return
-		}
-		var user model.ChatUser
-		err = helper.ParseAsJson(body, &user)
-		if err != nil {
-			appCtx.Logger.Errorfln("ParseAsJson(): %v", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
-			c.Abort()
-			return
-		}
-		appCtx.Logger.Debugfln("response body from GET request: %#v", user)
 
-		// security
-		user.Password = ""
-
-		c.JSON(http.StatusOK, gin.H{"user": user})
+		c.JSON(http.StatusOK, gin.H{"user": *user})
 		return
 	}
 }

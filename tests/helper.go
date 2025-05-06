@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"dungtl2003/chat-app-auth-service/internal/httpclient"
 	"dungtl2003/chat-app-auth-service/internal/logging"
-	"encoding/json"
 	"fmt"
 	"log"
 	"log/slog"
@@ -53,13 +52,9 @@ func GetATFromResponse(resp *http.Response) string {
 	if resp == nil {
 		return ""
 	}
-	bodyAsByteArray, err := httpclient.ReadResponse(resp)
-	if err != nil {
-		return ""
-	}
 
 	jsonMap := make(map[string]any)
-	err = json.Unmarshal(bodyAsByteArray, &jsonMap)
+	err := httpclient.ParseResponse(resp, &jsonMap)
 	if err != nil {
 		return ""
 	}
@@ -71,15 +66,10 @@ func GetRespJson(resp *http.Response) (map[string]any, error) {
 	if resp == nil {
 		return nil, fmt.Errorf("response is nil")
 	}
-	bodyAsByteArray, err := httpclient.ReadResponse(resp)
-	if err != nil {
-		return nil, err
-	}
-
 	jsonMap := make(map[string]any)
-	err = json.Unmarshal(bodyAsByteArray, &jsonMap)
+	err := httpclient.ParseResponse(resp, &jsonMap)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("httpclient.ParseResponse(): %v", err)
 	}
 
 	return jsonMap, nil
