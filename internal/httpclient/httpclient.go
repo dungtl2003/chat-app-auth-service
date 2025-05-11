@@ -38,7 +38,8 @@ func NewWithConfig(config *http.Client) *HttpClient {
 	}
 }
 
-// GetRespJson will read the response body and unmarshal it into a map[string]interface{}.
+// ParseResponse parses the HTTP response body into the provided struct.
+// Note that the response body is closed after reading.
 func ParseResponse(resp *http.Response, v any) error {
 	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
