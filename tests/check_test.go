@@ -2,6 +2,7 @@ package tests
 
 import (
 	"bytes"
+	"dungtl2003/chat-app-auth-service/internal/jwthandler"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -99,5 +100,27 @@ func TestCheckWithRealToken(t *testing.T) {
 	resp, err = helper.Client.Get(URL, header)
 	require.NoError(t, err)
 	// token should be expired
+	require.EqualValues(t, http.StatusUnauthorized, resp.StatusCode)
+}
+
+func TestCheckWithInternalTokenShouldFail(t *testing.T) {
+	helper := NewHelper()
+	err := helper.Snapshot()
+	require.NoError(t, err)
+	defer func() {
+		err := helper.Rollback()
+		require.NoError(t, err)
+	}()
+
+	internalToken, err := jwthandler.CreateInternalToken(helper.JwtSecret, 5_000_000, 2)
+	require.NoError(t, err)
+
+	URL := fmt.Sprintf("%s/check", helper.AuthURL)
+	header := http.Header{
+		"Authorization": {fmt.Sprintf("Bearer %s", internalToken)},
+	}
+
+	resp, err := helper.Client.Get(URL, header)
+	require.NoError(t, err)
 	require.EqualValues(t, http.StatusUnauthorized, resp.StatusCode)
 }
