@@ -10,6 +10,7 @@ import (
 	"dungtl2003/chat-app-auth-service/internal/logging"
 	"dungtl2003/chat-app-auth-service/internal/password"
 	"dungtl2003/chat-app-auth-service/internal/router"
+	"dungtl2003/chat-app-auth-service/internal/services"
 	"dungtl2003/chat-app-auth-service/internal/services/snowflake"
 	"dungtl2003/chat-app-auth-service/internal/validate"
 	"fmt"
@@ -22,8 +23,8 @@ import (
 )
 
 type Server struct {
-	srv *http.Server
-	ctx *ctx.AppContext
+	srv    *http.Server
+	appCtx *ctx.AppContext
 }
 
 // New creates a new AuthServer instance. The function will load the configuration
@@ -61,7 +62,7 @@ func New() *Server {
 		os.Exit(1)
 	}
 
-	appCtx := ctx.NewAppCtx(loggerWrapper, validator, client, config.UserServiceURL, *config.JwtTokenConfig, config.DomainName, pm, idGeneratorService)
+	appCtx := ctx.NewAppCtx(loggerWrapper, validator, client, config.UserServiceURL, *config.JwtTokenConfig, config.DomainName, pm, idGeneratorService, []services.Service{idGeneratorService})
 
 	log.Println("Creating router")
 	handlers := []router.Handler{
@@ -106,8 +107,8 @@ func New() *Server {
 	}
 
 	return &Server{
-		ctx: appCtx,
-		srv: srv,
+		appCtx: appCtx,
+		srv:    srv,
 	}
 }
 
@@ -115,12 +116,7 @@ func New() *Server {
 // to shut down the server. The function will exit the program if there is an error
 // when starting the server. Call Close() to shut down the server.
 func (s *Server) Run() {
-	logger := s.ctx.Logger
-
-	if err := s.ctx.IdGeneratorService.Run(); err != nil {
-		s.ctx.Logger.Errorfln("IdGeneratorService.Run(): %v", err)
-		os.Exit(1)
-	}
+	logger := s.appCtx.Logger
 
 	go func() {
 		if err := s.srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -142,8 +138,7 @@ func (s *Server) Run() {
 // the server is shut down successfully. The function will exit the program with
 // status code 1 if there is an error when shutting down the server.
 func (s *Server) Close() {
-	logger := s.ctx.Logger
-	logger.Info("shutting down server")
+	s.appCtx.Logger.Info("shutting down server")
 
 	var err error
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -156,9 +151,17 @@ func (s *Server) Close() {
 		os.Exit(0)
 	}()
 
+	for _, service := range s.appCtx.Services {
+		if err = service.Close(); err != nil {
+			s.appCtx.Logger.Errorfln("error when closing service [%s]: %v", service.Name(), err)
+		} else {
+			s.appCtx.Logger.Debugfln("service [%s] closed successfully", service.Name())
+		}
+	}
+
 	if err = s.srv.Shutdown(ctx); err != nil {
-		logger.Error("error when shutting down server", "error", err)
+		s.appCtx.Logger.Errorfln("error when shutting down server: %v", err)
 	} else {
-		logger.Info("server shut down")
+		s.appCtx.Logger.Infofln("server shut down")
 	}
 }
