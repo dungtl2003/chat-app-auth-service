@@ -45,6 +45,28 @@ func Authorize(appCtx *context.AppContext) gin.HandlerFunc {
 			c.Abort()
 			return
 		}
+
+		// make sure token is not internal token
+		audiences, err := accessToken.Claims.GetAudience()
+		if err != nil {
+			appCtx.Logger.Debugfln("GetAudience(): %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
+			c.Abort()
+			return
+		}
+		if len(audiences) == 0 {
+			appCtx.Logger.Debugfln("token has no audience")
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
+			c.Abort()
+			return
+		}
+		if audiences[0] == jwthandler.INTERNAL_AUDIENCE {
+			appCtx.Logger.Debugfln("token is internal token")
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
+			c.Abort()
+			return
+		}
+
 		parsedToken, err := helper.ParseToken(accessToken)
 		if err != nil {
 			appCtx.Logger.Errorfln("ParseToken(): %v", err)
@@ -54,13 +76,23 @@ func Authorize(appCtx *context.AppContext) gin.HandlerFunc {
 		}
 		userId := parsedToken.UserId
 
+		// create internal token
+		internalToken, err := jwthandler.CreateInternalToken(appCtx.JwtConfig.JwtSecret, appCtx.JwtConfig.ATDurationMs, userId)
+		if err != nil {
+			appCtx.Logger.Errorfln("CreateInternalToken(): %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
+			c.Abort()
+			return
+		}
+
 		// get user information
 		user := helper.HandleGetUserSecure(appCtx, c, userId)
 		if user == nil {
 			return
 		}
 
+		// replace user token with internal token for internal service
+		c.Header("Authorization", "Bearer "+internalToken)
 		c.JSON(http.StatusOK, gin.H{"user": *user})
-		return
 	}
 }

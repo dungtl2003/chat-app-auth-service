@@ -3,6 +3,7 @@ package tests
 import (
 	"bytes"
 	"dungtl2003/chat-app-auth-service/internal/jwthandler"
+	"dungtl2003/chat-app-auth-service/internal/model"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -94,7 +95,7 @@ func TestLoginSuccessfully(t *testing.T) {
 	uid := 2
 	identifier := "normaluser"
 	password := "normalpassword"
-	role := "USER"
+	role := model.USER
 	deviceInfo := json.RawMessage(`{"user-agent": "Mozilla/5.0"}`)
 
 	payloadJson := fmt.Appendf(nil, `
@@ -116,8 +117,8 @@ func TestLoginSuccessfully(t *testing.T) {
 
 	// validate RT
 	tok, err := jwthandler.DecodeToken(helper.JwtSecret, refreshToken)
-	claims := tok.Claims.(*jwthandler.JWTClaim)
 	require.NoError(t, err)
+	claims := tok.Claims.(*jwthandler.UserJWTClaim)
 	subStr, err := claims.GetSubject()
 	require.NoError(t, err)
 	sub, err := strconv.Atoi(subStr)
@@ -125,7 +126,10 @@ func TestLoginSuccessfully(t *testing.T) {
 	require.EqualValues(t, uid, sub)
 	aud, err := claims.GetAudience()
 	require.NoError(t, err)
-	require.EqualValues(t, role, aud[0])
+	require.EqualValues(t, jwthandler.FRONTEND_AUDIENCE, aud[0])
+	r, err := claims.GetRole()
+	require.NoError(t, err)
+	require.EqualValues(t, role, r)
 
 	respJson, err := GetRespJson(resp)
 	require.NoError(t, err)
@@ -137,12 +141,16 @@ func TestLoginSuccessfully(t *testing.T) {
 	// validate AT
 	tok, err = jwthandler.DecodeToken(helper.JwtSecret, accessToken)
 	require.NoError(t, err)
-	subStr, err = tok.Claims.GetSubject()
+	claims = tok.Claims.(*jwthandler.UserJWTClaim)
+	subStr, err = claims.GetSubject()
 	require.NoError(t, err)
 	sub, err = strconv.Atoi(subStr)
 	require.NoError(t, err)
 	require.EqualValues(t, uid, sub)
-	aud, err = tok.Claims.GetAudience()
+	aud, err = claims.GetAudience()
 	require.NoError(t, err)
-	require.EqualValues(t, role, aud[0])
+	require.EqualValues(t, jwthandler.FRONTEND_AUDIENCE, aud[0])
+	r, err = claims.GetRole()
+	require.NoError(t, err)
+	require.EqualValues(t, role, r)
 }

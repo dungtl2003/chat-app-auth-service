@@ -81,7 +81,7 @@ function export_envs() {
 
 function main() {
     export_envs
-    NO_ENV_FILE=1 $SCRIPT_DIR/run_with_services.sh "$command" $extraArgs
+    $SCRIPT_DIR/__test_with_services.sh "$command" $extraArgs
 }
 
 main

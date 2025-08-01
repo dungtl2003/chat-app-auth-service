@@ -13,11 +13,11 @@ import (
 
 // CreateNewTokenPair creates a new access token and refresh token pair for the given user.
 func CreateNewTokenPair(secret string, user model.ChatUser, atDurationMs int64, rtDurationMs int64, sessionId int64) (string, string, error) {
-	accessTokenStr, err := jwthandler.CreateToken(secret, user, atDurationMs, sessionId)
+	accessTokenStr, err := jwthandler.CreateUserToken(secret, user, atDurationMs, sessionId)
 	if err != nil {
 		return "", "", fmt.Errorf("error creating access token: CreateToken(): %v", err)
 	}
-	refreshTokenStr, err := jwthandler.CreateToken(secret, user, rtDurationMs, sessionId)
+	refreshTokenStr, err := jwthandler.CreateUserToken(secret, user, rtDurationMs, sessionId)
 	if err != nil {
 		return "", "", fmt.Errorf("error creating refresh token: CreateToken(): %v", err)
 	}
@@ -31,7 +31,7 @@ func GetTokExpStr(tokenStr string, secret string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("DecodeToken(): %v", err)
 	}
-	claims := token.Claims.(*jwthandler.JWTClaim)
+	claims := token.Claims.(*jwthandler.UserJWTClaim)
 	expiresAt, err := claims.GetExpirationTime()
 	if err != nil {
 		return "", fmt.Errorf("GetExpiresAt(): %v", err)

@@ -284,7 +284,7 @@ func HandleCreateUser(appCtx *context.AppContext, c *gin.Context, data UserPostP
 // It extracts the user ID, session version, and session ID from the token claims.
 // If any of these values cannot be extracted, it returns an error.
 func ParseToken(tok *jwt.Token) (*ParsedToken, error) {
-	claims := tok.Claims.(*jwthandler.JWTClaim)
+	claims := tok.Claims.(*jwthandler.UserJWTClaim)
 	sessionVersion, err := claims.GetSessVersion()
 	if err != nil {
 		return nil, fmt.Errorf("GetSessVersion(): %v", err)
