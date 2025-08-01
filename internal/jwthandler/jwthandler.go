@@ -17,7 +17,6 @@ const (
 
 type InternalJWTClaim struct {
 	jwt.RegisteredClaims
-	CallerUserId types.JsonInt64 `json:"caller_user_id"`
 }
 
 type UserJWTClaim struct {
@@ -79,8 +78,8 @@ func CreateInternalToken(key string, duration int64, userId int64) (string, erro
 				ExpiresAt: &jwt.NumericDate{Time: exp},
 				Issuer:    ISSUER,
 				Audience:  []string{INTERNAL_AUDIENCE},
+				Subject:   fmt.Sprintf("user:%d", userId),
 			},
-			types.NewJsonInt64(userId),
 		},
 	)
 
