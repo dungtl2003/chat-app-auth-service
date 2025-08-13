@@ -52,7 +52,7 @@ services:
       - LOG_KIND=TEXT
       - ID_GENERATOR_ADDR=chat-app-snowflake-tls-service:80
       - ID_GENERATOR_CERT_DIR=/etc/chat-app/services/snowflake/ssl/certs
-      - COST=12
+      - PASSWORD_HASH_COST=10
       - ENVIRONMENT=test
       - KAFKA_BROKERS=broker-1:19092,broker-2:19092,broker-3:19092
       - MEDIA_SERVICE_URL=http://chat-app-media-service:80

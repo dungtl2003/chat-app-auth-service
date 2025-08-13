@@ -96,7 +96,7 @@ The service can be configured using the following environment variables:
 | JWT_SECRET | The secret key to sign the JWT tokens | Yes | | string | any valid string |
 | ACCESS_TOKEN_DURATION_MS | The duration of the access token in milliseconds | No | 900000 (15 minutes) | int | any valid unsigned int |
 | REFRESH_TOKEN_DURATION_MS | The duration of the refresh token in milliseconds | No | 172800000 (2 days) | int | any valid unsigned int |
-| PASSWORD_HASH_COST | The cost of the password hash | No | 12 | int | any valid unsigned int |
+| PASSWORD_HASH_COST | The cost of the password hashing | No | 12 | int | any valid integer between 4 and 31 |
 | DOMAIN_NAME | The domain name of the service | No | localhost | string | any valid string |
 | ID_GENERATOR_ADDR | The address of the id generator service | Yes | | string | any valid string made of address and port (e.g. localhost:8501) |
 | ID_GENERATOR_CERT_DIR | The directory to the certificate of the id generator service | No | | string | any valid directory |
