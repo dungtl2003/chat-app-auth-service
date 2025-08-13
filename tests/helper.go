@@ -1,81 +1,46 @@
 package tests
 
 import (
-	"database/sql"
-	"dungtl2003/chat-app-auth-service/internal/httpclient"
 	"dungtl2003/chat-app-auth-service/internal/logging"
+	"dungtl2003/chat-app-auth-service/internal/password"
+	"dungtl2003/chat-app-auth-service/internal/server"
+	"dungtl2003/chat-app-auth-service/internal/services/database"
 	"fmt"
+	"io"
 	"log"
-	"log/slog"
 	"net/http"
 	"os"
 	"strconv"
 	"time"
-
-	_ "github.com/lib/pq" // postgresql driver support
 )
 
-type Helper struct {
-	Db           *Database
-	Client       *httpclient.HttpClient
-	AuthURL      string
-	logger       *slog.Logger
-	JwtSecret    string
-	ATDurationMs int
-	RTDurationMs int
+type TestHelper struct {
+	AdminDatabaseService *database.DatabaseService
+	Client               *http.Client
+	AuthURL              string
+	Logger               *logging.LoggerWrapper
+	JwtSecret            string
+	ATDurationMs         int
+	RTDurationMs         int
+	DataFileDir          string
+
+	passwordManager password.PasswordManager
+	server          *server.AuthServer
 }
 
-// SuckDelay is a function that blocks the current goroutine for a specified
-// duration in milliseconds. It uses a busy wait loop to achieve this.
-// Sleep is not used to avoid blocking the entire process.
-func SuckDelay(ms int) {
-	start := time.Now()
-	duration := time.Duration(ms) * time.Millisecond
-	for start.Add(duration).After(time.Now()) {
-	}
+type IdGeneratorConfig struct {
+	TLSAddr     string
+	NonTLSAddr  string
+	CertDir     string
+	FakeCertDir string
 }
 
-func GetRTFromResponse(resp *http.Response) string {
-	if resp == nil {
-		return ""
-	}
-	cookies := resp.Cookies()
-	for _, cookie := range cookies {
-		if cookie.Name == "refresh_token" {
-			return cookie.Value
-		}
-	}
-	return ""
+type SetUpOptions struct {
+	DataFile      *database.DataFile
+	ServerOptions *server.AuthServerOptions
 }
 
-func GetATFromResponse(resp *http.Response) string {
-	if resp == nil {
-		return ""
-	}
-
-	jsonMap := make(map[string]any)
-	err := httpclient.ParseResponse(resp, &jsonMap)
-	if err != nil {
-		return ""
-	}
-
-	return jsonMap["access_token"].(string)
-}
-
-func GetRespJson(resp *http.Response) (map[string]any, error) {
-	if resp == nil {
-		return nil, fmt.Errorf("response is nil")
-	}
-	jsonMap := make(map[string]any)
-	err := httpclient.ParseResponse(resp, &jsonMap)
-	if err != nil {
-		return nil, fmt.Errorf("httpclient.ParseResponse(): %v", err)
-	}
-
-	return jsonMap, nil
-}
-
-func NewHelper() *Helper {
+func NewTestHelper() *TestHelper {
 	ATDurationMsStr, bool := os.LookupEnv("ACCESS_TOKEN_DURATION_MS")
 	if !bool {
 		log.Fatal("ACCESS_TOKEN_DURATION_MS is not set")
@@ -104,163 +69,192 @@ func NewHelper() *Helper {
 		log.Fatal("AUTH_URL is not set")
 	}
 
-	dbUrl, bool := os.LookupEnv("ADMIN_DATABASE_URL")
+	dataFileDir, bool := os.LookupEnv("DATA_FILE_DIR")
 	if !bool {
-		log.Fatal("ADMIN_DATABASE_URL is not set")
+		log.Fatal("DATA_FILE_DIR is not set")
 	}
 
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
-
-	db, err := NewDb(dbUrl, logger)
+	logger, err := logging.NewLogger(logging.DEBUG, logging.TEXT)
 	if err != nil {
-		log.Fatalf("Error when creating database connection: %v", err)
+		log.Fatalf("Error when loading logger: %v", err)
+	}
+	loggerWrapper := logging.NewLoggerWrapper(logger)
+
+	adminDbURL, has := os.LookupEnv("ADMIN_DATABASE_URL")
+	if !has {
+		log.Fatalf("Error when getting ADMIN_DATABASE_URL")
+	}
+	db, err := database.New(adminDbURL, loggerWrapper)
+	if err != nil {
+		log.Fatalf("Error when creating database: %v", err)
 	}
 
-	client := httpclient.NewWithConfig(&http.Client{
+	costStr, has := os.LookupEnv("COST")
+	if !has {
+		log.Println("COST not found, setting to 12")
+		costStr = "12"
+	}
+	cost, err := strconv.Atoi(costStr)
+	if err != nil {
+		log.Fatalf("Invalid cost number: %s", costStr)
+	}
+	passwordManager, err := password.NewBcryptPasswordManager(cost)
+	if err != nil {
+		log.Fatalf("Error when creating password manager: %v", err)
+	}
+
+	loggerWrapper.Info("Creating http client")
+	client := &http.Client{
 		Transport: &http.Transport{
 			DisableKeepAlives:     true,
 			ResponseHeaderTimeout: 15 * time.Second,
 		},
 		Timeout: 15 * time.Second,
-	})
+	}
 
-	return &Helper{
-		Db:           db,
-		Client:       client,
-		logger:       logger,
-		AuthURL:      authUrl,
-		JwtSecret:    jwtSecret,
-		ATDurationMs: ATDurationMs,
-		RTDurationMs: RTDurationMs,
+	h := &TestHelper{
+		AdminDatabaseService: db,
+		Client:               client,
+		Logger:               loggerWrapper,
+		AuthURL:              authUrl,
+		JwtSecret:            jwtSecret,
+		ATDurationMs:         ATDurationMs,
+		RTDurationMs:         RTDurationMs,
+		DataFileDir:          dataFileDir,
+		passwordManager:      passwordManager,
+	}
+
+	h.Logger.Info("Test helper setup completed successfully")
+	return h
+}
+
+func SetUp(t *TestHelper, opts *SetUpOptions) {
+	if err := t.clearAllData(); err != nil {
+		log.Fatalf("Error when clearing all data: %v", err)
+	}
+
+	if opts != nil && opts.DataFile != nil {
+		t.Logger.Info("Creating test data")
+		if err := t.createTestData(*opts.DataFile); err != nil {
+			log.Fatalf("Error when creating test data: %v", err)
+		}
+	} else {
+		t.Logger.Info("No test data provided, skipping data creation")
+	}
+
+	var serverOpts *server.AuthServerOptions
+	serverOpts = nil
+	if opts != nil {
+		serverOpts = opts.ServerOptions
+	}
+
+	server, err := server.New(serverOpts)
+	if err != nil {
+		log.Fatalf("Error when creating server: %v", err)
+	}
+	t.server = server
+
+	t.Logger.Info("Starting server")
+	go server.Run()
+
+	err = waitForServer(fmt.Sprintf("%s/healthcheck", t.AuthURL), 5*time.Second)
+	if err != nil {
+		t.Logger.Errorfln("Server did not start in time: %v", err)
+		log.Fatalf("Error waiting for server to start: %v", err)
 	}
 }
 
-func (h *Helper) Snapshot() error {
-	h.logger.Info("Taking snapshot")
-	return h.Db.Snapshot()
+func TearDown(t *TestHelper) {
+	t.Logger.Info("Tearing down test helper")
+
+	t.Logger.Info("Clearing all data")
+	if err := t.clearAllData(); err != nil {
+		t.Logger.Errorfln("Failed to clear all data: %v", err)
+	}
+
+	t.Logger.Info("Closing admin database service")
+	if err := t.AdminDatabaseService.Close(); err != nil {
+		t.Logger.Errorfln("Failed to close admin database service: %v", err)
+	}
+
+	t.Logger.Info("Closing server")
+	err := t.server.Close()
+	if err != nil {
+		t.Logger.Errorfln("Failed to close server: %v", err)
+	}
+
+	t.Logger.Info("Test helper torn down successfully")
 }
 
-func (h *Helper) Rollback() error {
-	var err error
-	err = nil
-	defer func() {
-		h.logger.Info("Closing connection")
-		h.Db.Close()
-	}()
-	h.logger.Info("Rolling back")
-	err = h.Db.Rollback()
-
-	return err
+func GetRTFromResponse(resp *http.Response) string {
+	if resp == nil {
+		return ""
+	}
+	cookies := resp.Cookies()
+	for _, cookie := range cookies {
+		if cookie.Name == "refresh_token" {
+			return cookie.Value
+		}
+	}
+	return ""
 }
 
-type Database struct {
-	client *sql.DB
-	logger *logging.LoggerWrapper
-}
-
-// New creates a new database connection. The function returns a database
-// connection and an error.
-func NewDb(url string, logger *slog.Logger) (*Database, error) {
-	client, err := sql.Open("postgres", url)
+func Get(client *http.Client, url string, header http.Header) (*http.Response, error) {
+	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Database{
-		client: client,
-		logger: logging.NewLoggerWrapper(logger),
-	}, nil
+	req.Header = header
+	return client.Do(req)
 }
 
-// Close closes the database connection. The function returns an error.
-func (d *Database) Close() error {
-	d.logger.Info("closing database connection")
-	if err := d.client.Close(); err != nil {
-		d.logger.Error("error when closing database connection", "error", err)
-		return err
-	} else {
-		d.logger.Info("database connection closed")
-		return nil
+func Post(client *http.Client, url string, header http.Header, body io.Reader) (*http.Response, error) {
+	req, err := http.NewRequest("POST", url, body)
+	if err != nil {
+		return nil, err
 	}
+
+	if header != nil {
+		req.Header = header
+	}
+	return client.Do(req)
 }
 
-// Snapshot creates a snapshot of the current database state. The function is currently used for testing purposes.
-// The function returns an error. You can use Rollback() to revert the database to the state before the snapshot.
-func (d *Database) Snapshot() error {
-	tx, err := d.client.Begin()
-	if err != nil {
-		d.logger.Errorfln("error when starting transaction: %v", err)
-		return err
-	}
-
-	defer func() {
-		if err != nil {
-			tx.Rollback()
-		}
-	}()
-
-	cmds := []string{
-		`CREATE TABLE IF NOT EXISTS chat_user.chat_user_snapshot AS SELECT * FROM chat_user.chat_user WHERE false;`, // create an empty table
-
-		`DELETE FROM chat_user.chat_user_snapshot;`,
-
-		`INSERT INTO chat_user.chat_user_snapshot SELECT * FROM chat_user.chat_user;`,
-	}
-
-	for _, cmd := range cmds {
-		_, err = d.client.Exec(cmd)
-		if err != nil {
-			d.logger.Errorfln("error when trying to create snapshot: error when executing command: %s: %v", cmd, err)
-			return err
-		}
-	}
-
-	err = tx.Commit()
-	if err != nil {
-		d.logger.Errorfln("error when trying to create snapshot: error when committing transaction: %v", err)
+func (t *TestHelper) clearAllData() error {
+	t.Logger.Info("Clearing all data")
+	if err := t.AdminDatabaseService.ClearAllData(); err != nil {
+		t.Logger.Errorfln("Failed to clear all data: %v", err)
 		return err
 	}
 
 	return nil
-
 }
 
-// Rollback rolls back the database to the state before the snapshot. The function is currently used for testing purposes.
-// The function returns an error. You must call Snapshot() before calling this function.
-func (d *Database) Rollback() error {
-	tx, err := d.client.Begin()
+func (h *TestHelper) createTestData(dataFile database.DataFile) error {
+	if dataFile.AssetFile != "" {
+		dataFile.AssetFile = fmt.Sprintf("%s/%s", h.DataFileDir, dataFile.AssetFile)
+	}
+	if dataFile.UserFile != "" {
+		dataFile.UserFile = fmt.Sprintf("%s/%s", h.DataFileDir, dataFile.UserFile)
+	}
+
+	h.Logger.Info("Creating temporary data")
+	err := h.AdminDatabaseService.CreateTemporaryData(dataFile, h.passwordManager)
 	if err != nil {
-		d.logger.Errorfln("error when starting transaction: %v", err)
 		return err
 	}
-
-	defer func() {
-		if err != nil {
-			tx.Rollback()
-		}
-	}()
-
-	cmds := []string{
-		`DELETE FROM chat_user.chat_user;`,
-
-		`INSERT INTO chat_user.chat_user SELECT * FROM chat_user.chat_user_snapshot;`,
-
-		`DROP TABLE chat_user.chat_user_snapshot;`,
-	}
-
-	for _, cmd := range cmds {
-		_, err = d.client.Exec(cmd)
-		if err != nil {
-			d.logger.Errorfln("error when rolling back: error when executing command: %s: %v", cmd, err)
-			return err
-		}
-	}
-
-	err = tx.Commit()
-	if err != nil {
-		d.logger.Errorfln("error when rolling back: error when committing transaction: %v", err)
-		return err
-	}
-
 	return nil
+}
+
+func waitForServer(url string, timeout time.Duration) error {
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		resp, err := http.Get(url)
+		if err == nil && resp.StatusCode == http.StatusOK {
+			return nil
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	return fmt.Errorf("server did not start at %s within %s", url, timeout)
 }

@@ -1,6 +1,7 @@
 package config
 
 import (
+	"dungtl2003/chat-app-auth-service/internal/logging"
 	"fmt"
 	"log"
 	"os"
@@ -8,84 +9,35 @@ import (
 	"strings"
 )
 
-type LogConfig struct {
-	Level string // INFO, DEBUG, WARN, ERROR
-	Kind  string // TEXT or JSON
-}
-
 type JwtTokenConfig struct {
 	JwtSecret    string
 	ATDurationMs int64
 	RTDurationMs int64
 }
 
-type SnowflakeConfig struct {
+type LogConfig struct {
+	Level logging.LoggerLevel
+	Kind  logging.LoggerKind
+}
+
+type UserServiceConfig struct {
+	URL string
+}
+
+type IdGeneratorConfig struct {
 	Addr    string
 	CertDir string
 }
 
-func (t JwtTokenConfig) String() string {
-	parts := []string{
-		fmt.Sprintf("JWT_SECRET: %s", t.JwtSecret),
-		fmt.Sprintf("AT_DURATION_MS: %d", t.ATDurationMs),
-		fmt.Sprintf("RT_DURATION_MS: %d", t.RTDurationMs),
-	}
-
-	return fmt.Sprintf("JwtTokenConfig{%s}", strings.Join(parts, ", "))
-}
-
 type Config struct {
-	ServerPort      int
-	Env             string
-	LogConfig       *LogConfig
-	UserServiceURL  string
-	JwtTokenConfig  *JwtTokenConfig
-	DomainName      string
-	Cost            int
-	SnowflakeConfig *SnowflakeConfig
-}
-
-func (l *LogConfig) String() string {
-	parts := []string{
-		fmt.Sprintf("LEVEL: %s", l.Level),
-		fmt.Sprintf("KIND: %s", l.Kind),
-	}
-
-	return fmt.Sprintf("LogConfig{%s}", strings.Join(parts, ", "))
-}
-
-func (s *SnowflakeConfig) String() string {
-	parts := []string{
-		fmt.Sprintf("ADDR: %s", s.Addr),
-		fmt.Sprintf("CERT_DIR: %s", s.CertDir),
-	}
-
-	return fmt.Sprintf("SnowflakeConfig{%s}", strings.Join(parts, ", "))
-}
-
-func (c *Config) String() string {
-	logConfigPart := "nil"
-	if c.LogConfig != nil {
-		logConfigPart = fmt.Sprintf("%s", c.LogConfig)
-	}
-
-	jwtTokenConfigPart := "nil"
-	if c.JwtTokenConfig != nil {
-		jwtTokenConfigPart = fmt.Sprintf("%s", c.JwtTokenConfig)
-	}
-
-	parts := []string{
-		fmt.Sprintf("SERVER_PORT: %d", c.ServerPort),
-		fmt.Sprintf("LOGGER: %s", logConfigPart),
-		fmt.Sprintf("ENV: %s", c.Env),
-		fmt.Sprintf("USER_SERVICE_URL: %s", c.UserServiceURL),
-		fmt.Sprintf("JWT: %s", jwtTokenConfigPart),
-		fmt.Sprintf("DOMAIN_NAME: %s", c.DomainName),
-		fmt.Sprintf("COST: %d", c.Cost),
-		fmt.Sprintf("SNOWFLAKE_CONFIG: %s", c.SnowflakeConfig),
-	}
-
-	return fmt.Sprintf("Config{%s}", strings.Join(parts, ", "))
+	ServerPort        int
+	Env               string
+	LogConfig         LogConfig
+	UserServiceConfig UserServiceConfig
+	JwtTokenConfig    JwtTokenConfig
+	DomainName        string
+	Cost              int
+	IdGeneratorConfig IdGeneratorConfig
 }
 
 // LoadConfig loads the configuration from env file. It will return Config instance
@@ -104,7 +56,7 @@ func LoadConfig() (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = c.setUserServiceURL()
+	err = c.setUserServiceConfig()
 	if err != nil {
 		return nil, err
 	}
@@ -120,7 +72,7 @@ func LoadConfig() (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = c.setSnowflakeConfig()
+	err = c.setIdGeneratorConfig()
 	if err != nil {
 		return nil, err
 	}
@@ -128,8 +80,59 @@ func LoadConfig() (*Config, error) {
 	return c, nil
 }
 
-func (c *Config) setSnowflakeConfig() error {
-	c.SnowflakeConfig = &SnowflakeConfig{}
+func (t JwtTokenConfig) String() string {
+	parts := []string{
+		fmt.Sprintf("JWT_SECRET: %s", t.JwtSecret),
+		fmt.Sprintf("AT_DURATION_MS: %d", t.ATDurationMs),
+		fmt.Sprintf("RT_DURATION_MS: %d", t.RTDurationMs),
+	}
+
+	return fmt.Sprintf("JwtTokenConfig{%s}", strings.Join(parts, ", "))
+}
+
+func (u *UserServiceConfig) String() string {
+	parts := []string{
+		fmt.Sprintf("URL: %s", u.URL),
+	}
+
+	return fmt.Sprintf("UserServiceConfig{%s}", strings.Join(parts, ", "))
+}
+
+func (l *LogConfig) String() string {
+	parts := []string{
+		fmt.Sprintf("LEVEL: %s", l.Level),
+		fmt.Sprintf("KIND: %s", l.Kind),
+	}
+
+	return fmt.Sprintf("LogConfig{%s}", strings.Join(parts, ", "))
+}
+
+func (s *IdGeneratorConfig) String() string {
+	parts := []string{
+		fmt.Sprintf("ADDR: %s", s.Addr),
+		fmt.Sprintf("CERT_DIR: %s", s.CertDir),
+	}
+
+	return fmt.Sprintf("IdGeneratorConfig{%s}", strings.Join(parts, ", "))
+}
+
+func (c *Config) String() string {
+	parts := []string{
+		fmt.Sprintf("SERVER_PORT: %d", c.ServerPort),
+		fmt.Sprintf("LOGGER: %s", c.LogConfig),
+		fmt.Sprintf("ENV: %s", c.Env),
+		fmt.Sprintf("USER_SERVICE_CONFIG: %s", c.UserServiceConfig),
+		fmt.Sprintf("JWT: %s", c.JwtTokenConfig),
+		fmt.Sprintf("DOMAIN_NAME: %s", c.DomainName),
+		fmt.Sprintf("COST: %d", c.Cost),
+		fmt.Sprintf("ID_GENERATOR_CONFIG: %s", c.IdGeneratorConfig),
+	}
+
+	return fmt.Sprintf("Config{%s}", strings.Join(parts, ", "))
+}
+
+func (c *Config) setIdGeneratorConfig() error {
+	c.IdGeneratorConfig = IdGeneratorConfig{}
 
 	addr, has := os.LookupEnv("ID_GENERATOR_SERVICE_ADDR")
 	if !has {
@@ -142,8 +145,8 @@ func (c *Config) setSnowflakeConfig() error {
 		certDir = ""
 	}
 
-	c.SnowflakeConfig.Addr = addr
-	c.SnowflakeConfig.CertDir = certDir
+	c.IdGeneratorConfig.Addr = addr
+	c.IdGeneratorConfig.CertDir = certDir
 
 	return nil
 }
@@ -214,7 +217,7 @@ func (c *Config) setJwtTokenConfig() error {
 		return fmt.Errorf("Refresh token duration must be non-negative")
 	}
 
-	tokConfig := &JwtTokenConfig{
+	tokConfig := JwtTokenConfig{
 		JwtSecret:    secretKey,
 		RTDurationMs: rtDurationMs,
 		ATDurationMs: atDurationMs,
@@ -224,40 +227,39 @@ func (c *Config) setJwtTokenConfig() error {
 	return nil
 }
 
-func (c *Config) setUserServiceURL() error {
+func (c *Config) setUserServiceConfig() error {
 	log.Println("Setting USER_SERVICE_URL")
 	userServiceURL, has := os.LookupEnv("USER_SERVICE_URL")
 	if !has {
 		return fmt.Errorf("USER_SERVICE_URL is required")
 	}
 
-	c.UserServiceURL = userServiceURL
+	c.UserServiceConfig.URL = userServiceURL
 	return nil
 }
 
 func (c *Config) setLogConfig() error {
-	c.LogConfig = &LogConfig{}
+	logLevel := logging.INFO // Default log level
+	logKind := logging.TEXT  // Default log kind
 
-	logLevel, has := os.LookupEnv("LOG_LEVEL")
-	if !has {
-		logLevel = "INFO"
-	}
-	if logLevel != "INFO" && logLevel != "DEBUG" && logLevel != "WARN" && logLevel != "ERROR" {
-		return fmt.Errorf("`LOG_LEVEL=%s` is invalid. It can only be `INFO`, `DEBUG`, `WARN` or `ERROR`\n", logLevel)
+	logLevelStr, has := os.LookupEnv("LOG_LEVEL")
+	if has {
+		if !logging.IsValidLoggerLevel(logLevelStr) {
+			return fmt.Errorf("`LOG_LEVEL=%s` is invalid", logLevelStr)
+		}
+		logLevel = logging.LoggerLevel(logLevelStr)
 	}
 
 	kind, has := os.LookupEnv("LOG_KIND")
-	if !has {
-		kind = "TEXT"
-	}
-
-	if kind != "TEXT" && kind != "JSON" {
-		return fmt.Errorf("`LOG_KIND=%s` is invalid, it can only be `TEXT` or `JSON`", kind)
+	if has {
+		if !logging.IsValidLoggerKind(kind) {
+			return fmt.Errorf("`LOG_KIND=%s` is invalid", kind)
+		}
+		logKind = logging.LoggerKind(kind)
 	}
 
 	c.LogConfig.Level = logLevel
-	c.LogConfig.Kind = kind
-
+	c.LogConfig.Kind = logKind
 	return nil
 }
 
@@ -283,10 +285,10 @@ func (c *Config) setServerPort() error {
 }
 
 func (c *Config) setEnv() error {
-	log.Println("Setting ENV")
-	env, has := os.LookupEnv("ENV")
+	log.Println("Setting ENVIRONMENT")
+	env, has := os.LookupEnv("ENVIRONMENT")
 	if !has {
-		log.Println("ENV not found, setting to dev")
+		log.Println("ENVIRONMENT not found, setting to dev")
 		env = "dev"
 	}
 	c.Env = env

@@ -16,7 +16,7 @@ PORT=${PORT:-8400}
 API_VERSION=${API_VERSION:-"v1"}
 LOG_LEVEL=${LOG_LEVEL:-"DEBUG"}
 LOG_KIND=${LOG_KIND:-"TEXT"}
-ENV=${ENV:-"test"}
+ENVIRONMENT=${ENVIRONMENT:-"test"}
 USER_SERVICE_URL=${USER_SERVICE_URL:-"http://localhost:8600"}
 JWT_SECRET=${JWT_SECRET:-"secret"}
 # set low for testing expiration, but don't set too low
@@ -26,11 +26,29 @@ DOMAIN_NAME=${DOMAIN_NAME:-"localhost"}
 COST=${COST:-12}
 ORIGIN=${ORIGIN:-"http://localhost:5174"}
 ID_GENERATOR_SERVICE_ADDR=${ID_GENERATOR_SERVICE_ADDR:-"localhost:9000"}
-ID_GENERATOR_SERVICE_CERT_DIR=${ID_GENERATOR_SERVICE_CERT_DIR:-"$ROOT_DIR/environments/test/auth/services/snowflake/ssl"}
+ID_GENERATOR_SERVICE_CERT_DIR=${ID_GENERATOR_SERVICE_CERT_DIR:-"$ROOT_DIR/environments/test/snowflake/ssl/certs"}
 
 # Test's specific environment variables
 ADMIN_DATABASE_URL=${ADMIN_DATABASE_URL:-"postgresql://admin:testpass123@localhost:6000/chat-app?sslmode=disable"}
-AUTH_URL=${AUTH_URL:-"http://localhost:8400/auth"}
+AUTH_URL=${AUTH_URL:-"http://localhost:8400"}
+ID_GENERATOR_TLS_ADDR=${ID_GENERATOR_TLS_ADDR:-"localhost:9000"}
+ID_GENERATOR_NON_TLS_ADDR=${ID_GENERATOR_NON_TLS_ADDR:-"localhost:9001"}
+ID_GENERATOR_FAKE_CERT_DIR=${ID_GENERATOR_FAKE_CERT_DIR:-"$ROOT_DIR/environments/test/conversation/services/snowflake/fake_ssl/certs"}
+DATA_FILE_DIR=${DATA_FILE_DIR:-"$ROOT_DIR/tests/data"}
+
+LOG_META="
+$ROOT_DIR/tests/logs/user_service.log=chat-app-user-service;
+$ROOT_DIR/tests/logs/database_service.log=chat-app-db-service;
+$ROOT_DIR/tests/logs/snowflake_tls_service.log=chat-app-snowflake-tls-service;
+$ROOT_DIR/tests/logs/snowflake_non_tls_service.log=chat-app-snowflake-non-tls-service;
+$ROOT_DIR/tests/logs/topic_init_service.log=chat-app-kafka-topics-init;
+$ROOT_DIR/tests/logs/controller_1.log=chat-app-kafka-controller-1;
+$ROOT_DIR/tests/logs/controller_2.log=chat-app-kafka-controller-2;
+$ROOT_DIR/tests/logs/controller_3.log=chat-app-kafka-controller-3;
+$ROOT_DIR/tests/logs/broker_1.log=chat-app-kafka-broker-1;
+$ROOT_DIR/tests/logs/broker_2.log=chat-app-kafka-broker-2;
+$ROOT_DIR/tests/logs/broker_3.log=chat-app-kafka-broker-3
+"
 
 command="$1"
 extraArgs="${@:2}"
@@ -52,8 +70,8 @@ function export_envs() {
     export LOG_LEVEL
     printf "export LOG_KIND=%s\n" $LOG_KIND
     export LOG_KIND
-    printf "export ENV=%s\n" $ENV
-    export ENV
+    printf "export ENVIRONMENT=%s\n" $ENVIRONMENT
+    export ENVIRONMENT
     printf "export USER_SERVICE_URL=%s\n" $USER_SERVICE_URL
     export USER_SERVICE_URL
     printf "export JWT_SECRET=%s\n" $JWT_SECRET
@@ -77,6 +95,16 @@ function export_envs() {
     export ADMIN_DATABASE_URL
     printf "export AUTH_URL=%s\n" $AUTH_URL
     export AUTH_URL
+    printf "export ID_GENERATOR_TLS_ADDR=%s\n" $ID_GENERATOR_TLS_ADDR
+    export ID_GENERATOR_TLS_ADDR
+    printf "export ID_GENERATOR_NON_TLS_ADDR=%s\n" $ID_GENERATOR_NON_TLS_ADDR
+    export ID_GENERATOR_NON_TLS_ADDR
+    printf "export ID_GENERATOR_FAKE_CERT_DIR=%s\n" $ID_GENERATOR_FAKE_CERT_DIR
+    export ID_GENERATOR_FAKE_CERT_DIR
+    printf "export DATA_FILE_DIR=%s\n" $DATA_FILE_DIR
+    export DATA_FILE_DIR
+    printf "export LOG_META=%s\n" "$LOG_META"
+    export LOG_META
 }
 
 function main() {

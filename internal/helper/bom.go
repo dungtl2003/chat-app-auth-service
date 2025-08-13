@@ -25,8 +25,8 @@ func CreateNewTokenPair(secret string, user model.ChatUser, atDurationMs int64, 
 	return accessTokenStr, refreshTokenStr, nil
 }
 
-// GetTokExpStr returns the expiration time of the token as a string in the format "2006-01-02T15:04:05.999Z".
-func GetTokExpStr(tokenStr string, secret string) (string, error) {
+// GetTokenExpirationStr returns the expiration time of the token as a string in the format "2006-01-02T15:04:05.999Z".
+func GetTokenExpirationStr(tokenStr string, secret string) (string, error) {
 	token, err := jwthandler.DecodeToken(secret, tokenStr)
 	if err != nil {
 		return "", fmt.Errorf("DecodeToken(): %v", err)

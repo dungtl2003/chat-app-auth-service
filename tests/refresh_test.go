@@ -2,24 +2,29 @@ package tests
 
 import (
 	"bytes"
+	"dungtl2003/chat-app-auth-service/internal/api"
+	"dungtl2003/chat-app-auth-service/internal/services/database"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
 
+const (
+	USERS__REFRESH_TEST_FILENAME = "users__refresh_test.json"
+)
+
 func TestRefreshShouldWorkAsExpected(t *testing.T) {
-	helper := NewHelper()
-	err := helper.Snapshot()
-	require.NoError(t, err)
-	defer func() {
-		err := helper.Rollback()
-		require.NoError(t, err)
-		err = helper.Db.Close()
-		require.NoError(t, err)
-	}()
+	helper := NewTestHelper()
+	SetUp(helper, &SetUpOptions{
+		DataFile: &database.DataFile{
+			UserFile: USERS__REFRESH_TEST_FILENAME,
+		},
+	})
+	defer TearDown(helper)
 
 	identifier := "normaluser"
 	password := "normalpassword"
@@ -32,32 +37,36 @@ func TestRefreshShouldWorkAsExpected(t *testing.T) {
 			}`, identifier, password, deviceInfo)
 
 	URL := fmt.Sprintf("%s/login", helper.AuthURL)
-	resp, err := helper.Client.Post(URL, nil, bytes.NewBuffer(payloadJson))
+	resp, err := Post(helper.Client, URL, nil, bytes.NewBuffer(payloadJson))
 	require.NoError(t, err)
 	require.EqualValues(t, http.StatusOK, resp.StatusCode)
 
 	refreshToken := GetRTFromResponse(resp)
 	require.NotEmpty(t, refreshToken)
-	respJson, err := GetRespJson(resp)
+
+	var loginResponseBody api.LoginResponseBody
+	err = json.NewDecoder(resp.Body).Decode(&loginResponseBody)
 	require.NoError(t, err)
-	accessToken := respJson["access_token"].(string)
+	accessToken := loginResponseBody.AccessToken
 	require.NotEmpty(t, accessToken)
 
-	SuckDelay(1000) // wait for 1 second to make sure no duplicate token
+	<-time.After(1 * time.Second) // wait for 1 second to make sure no duplicate token
 
 	URL = fmt.Sprintf("%s/refresh", helper.AuthURL)
 	// pass cookie to next request
 	header := http.Header{
 		"Cookie": {fmt.Sprintf("refresh_token=%s", refreshToken)},
 	}
-	resp, err = helper.Client.Post(URL, header, nil)
+	resp, err = Post(helper.Client, URL, header, nil)
 	require.NoError(t, err)
 	require.EqualValues(t, http.StatusOK, resp.StatusCode)
 
-	respJson, err = GetRespJson(resp)
+	var refreshResponseBody api.RefreshTokenResponseBody
+	err = json.NewDecoder(resp.Body).Decode(&refreshResponseBody)
 	require.NoError(t, err)
-	newAccessToken := respJson["access_token"].(string)
+	newAccessToken := refreshResponseBody.AccessToken
 	require.NotEmpty(t, newAccessToken)
+
 	require.NotEqual(t, accessToken, newAccessToken)
 	newRefreshToken := GetRTFromResponse(resp)
 	require.NotEmpty(t, newRefreshToken)
@@ -65,20 +74,18 @@ func TestRefreshShouldWorkAsExpected(t *testing.T) {
 }
 
 func TestRefreshShouldNotWorkWithInvalidToken(t *testing.T) {
-	helper := NewHelper()
-	err := helper.Snapshot()
-	require.NoError(t, err)
-	defer func() {
-		err := helper.Rollback()
-		require.NoError(t, err)
-		err = helper.Db.Close()
-		require.NoError(t, err)
-	}()
+	helper := NewTestHelper()
+	SetUp(helper, &SetUpOptions{
+		DataFile: &database.DataFile{
+			UserFile: USERS__REFRESH_TEST_FILENAME,
+		},
+	})
+	defer TearDown(helper)
 
 	URL := fmt.Sprintf("%s/refresh", helper.AuthURL)
 
 	// no cookie
-	resp, err := helper.Client.Post(URL, nil, nil)
+	resp, err := Post(helper.Client, URL, nil, nil)
 	require.NoError(t, err)
 	require.EqualValues(t, http.StatusUnauthorized, resp.StatusCode)
 
@@ -86,9 +93,9 @@ func TestRefreshShouldNotWorkWithInvalidToken(t *testing.T) {
 	header := http.Header{
 		"Cookie": {fmt.Sprintf("refresh_token=%s", "invalidtoken")},
 	}
-	resp, err = helper.Client.Post(URL, header, nil)
+	resp, err = Post(helper.Client, URL, header, nil)
 	require.NoError(t, err)
-	require.EqualValues(t, 401, resp.StatusCode)
+	require.EqualValues(t, http.StatusUnauthorized, resp.StatusCode)
 
 	// expired refresh token
 	identifier := "normaluser"
@@ -102,31 +109,32 @@ func TestRefreshShouldNotWorkWithInvalidToken(t *testing.T) {
 			}`, identifier, password, deviceInfo)
 
 	URL = fmt.Sprintf("%s/login", helper.AuthURL)
-	resp, err = helper.Client.Post(URL, nil, bytes.NewBuffer(payloadJson))
+	resp, err = Post(helper.Client, URL, nil, bytes.NewBuffer(payloadJson))
 	require.NoError(t, err)
 	require.EqualValues(t, http.StatusOK, resp.StatusCode)
 
 	refreshToken := GetRTFromResponse(resp)
 	require.NotEmpty(t, refreshToken)
-	SuckDelay(helper.RTDurationMs) // wait for refresh token to expire
+
+	<-time.After(time.Millisecond * time.Duration(helper.RTDurationMs))
 
 	URL = fmt.Sprintf("%s/refresh", helper.AuthURL)
 	header = http.Header{
 		"Cookie": {fmt.Sprintf("refresh_token=%s", refreshToken)},
 	}
-	resp, err = helper.Client.Post(URL, header, nil)
+	resp, err = Post(helper.Client, URL, header, nil)
 	require.NoError(t, err)
 	require.EqualValues(t, http.StatusUnauthorized, resp.StatusCode)
 }
 
 func TestRefreshShouldHaveReuseDetection(t *testing.T) {
-	helper := NewHelper()
-	err := helper.Snapshot()
-	require.NoError(t, err)
-	defer func() {
-		err := helper.Rollback()
-		require.NoError(t, err)
-	}()
+	helper := NewTestHelper()
+	SetUp(helper, &SetUpOptions{
+		DataFile: &database.DataFile{
+			UserFile: USERS__REFRESH_TEST_FILENAME,
+		},
+	})
+	defer TearDown(helper)
 
 	identifier := "normaluser"
 	password := "normalpassword"
@@ -145,7 +153,7 @@ func TestRefreshShouldHaveReuseDetection(t *testing.T) {
 				}`, identifier, password, devInfo)
 
 		URL := fmt.Sprintf("%s/login", helper.AuthURL)
-		resp, err := helper.Client.Post(URL, nil, bytes.NewBuffer(payloadJson))
+		resp, err := Post(helper.Client, URL, nil, bytes.NewBuffer(payloadJson))
 		require.NoError(t, err)
 		require.EqualValues(t, http.StatusOK, resp.StatusCode)
 		refreshToken := GetRTFromResponse(resp)
@@ -154,12 +162,11 @@ func TestRefreshShouldHaveReuseDetection(t *testing.T) {
 
 		if i == 0 {
 			// consume the first refresh token
-			// SuckDelay(1000)
 			URL = fmt.Sprintf("%s/refresh", helper.AuthURL)
 			header := http.Header{
 				"Cookie": {fmt.Sprintf("refresh_token=%s", refreshToken)},
 			}
-			resp, err = helper.Client.Post(URL, header, nil)
+			resp, err = Post(helper.Client, URL, header, nil)
 			require.NoError(t, err)
 			refreshToken = GetRTFromResponse(resp)
 			require.NotEmpty(t, refreshToken)
@@ -172,7 +179,7 @@ func TestRefreshShouldHaveReuseDetection(t *testing.T) {
 	header := http.Header{
 		"Cookie": {fmt.Sprintf("refresh_token=%s", refreshToken)},
 	}
-	resp, err := helper.Client.Post(URL, header, nil)
+	resp, err := Post(helper.Client, URL, header, nil)
 	require.NoError(t, err)
 	require.EqualValues(t, http.StatusUnauthorized, resp.StatusCode)
 
@@ -182,7 +189,7 @@ func TestRefreshShouldHaveReuseDetection(t *testing.T) {
 		header := http.Header{
 			"Cookie": {fmt.Sprintf("refresh_token=%s", refreshToken)},
 		}
-		resp, err = helper.Client.Post(URL, header, nil)
+		resp, err = Post(helper.Client, URL, header, nil)
 		require.NoError(t, err)
 		require.EqualValues(t, http.StatusUnauthorized, resp.StatusCode)
 	}

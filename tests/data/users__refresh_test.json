@@ -1,0 +1,30 @@
+[
+    {
+        "id": "9223372036854775800",
+        "email": "admin@gmail.com",
+        "username": "admin",
+        "password": "adminpassword",
+        "role": "ADMIN"
+    },
+    {
+        "id": "2",
+        "email": "normaluser@gmail.com",
+        "username": "normaluser",
+        "password": "normalpassword",
+        "role": "USER"
+    },
+    {
+        "id": "3",
+        "email": "normaluser3@gmail.com",
+        "username": "normaluser3",
+        "password": "normalpassword3",
+        "role": "USER"
+    },
+    {
+        "id": "4",
+        "email": "normaluser4@gmail.com",
+        "username": "john doe",
+        "password": "normalpassword4",
+        "role": "USER"
+    }
+]

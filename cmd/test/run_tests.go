@@ -2,82 +2,173 @@ package main
 
 import (
 	"database/sql"
-	"dungtl2003/chat-app-auth-service/internal/model"
-	"dungtl2003/chat-app-auth-service/internal/password"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
-	"path"
-	"strconv"
-	"sync"
+	"path/filepath"
+	"strings"
 
 	_ "github.com/lib/pq" // postgresql driver support
 )
 
-const (
-	USER_DATA_FILE = "chat_users.json"
-)
+type LogFile struct {
+	ServiceName string `json:"service_name"`
+	LogFilePath string `json:"log_file_path"`
+}
 
-func runSetup(client *sql.DB, passwordManager password.PasswordManager) error {
-	fmt.Println("Setting up...")
-	err := cleanDb(client)
-	if err != nil {
-		return err
-	}
-
-	projectDir, err := os.Getwd()
-	if err != nil {
-		return err
+func main() {
+	adminDatabaseURL, has := os.LookupEnv("ADMIN_DATABASE_URL")
+	if !has {
+		fmt.Println("Missing ADMIN_DATABASE_URL")
+		os.Exit(1)
 	}
 
-	userDataFilePath := path.Join(projectDir, "tests", "data", USER_DATA_FILE)
-	userData, err := os.ReadFile(userDataFilePath)
+	client, err := sql.Open("postgres", adminDatabaseURL)
 	if err != nil {
-		return err
+		fmt.Printf("Error connecting to database: %v\n", err)
+		os.Exit(1)
 	}
-	var users []model.ChatUser
-	err = json.Unmarshal(userData, &users)
-	if err != nil {
-		fmt.Println(err)
-		return err
-	}
+	defer client.Close()
 
-	tx, err := client.Begin()
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if err != nil {
-			tx.Rollback()
+	logFiles := createLogFiles()
+
+	if err := runTests(); err != nil {
+		fmt.Printf("Error running tests: %v\n", err)
+		if err := runTearDown(client); err != nil {
+			fmt.Printf("Error during tear down: %v\n", err)
 		}
-	}()
+		exit(1, logFiles)
+	}
+	fmt.Println("Tests completed successfully")
 
-	fmt.Println("Creating temporary users")
-	for _, user := range users {
-		password, err := passwordManager.Hash(user.Password)
-		if err != nil {
-			return fmt.Errorf("Error hashing password: %v\n", err)
+	if err := runTearDown(client); err != nil {
+		fmt.Printf("Error during tear down: %v\n", err)
+		exit(1, logFiles)
+	}
+	fmt.Println("Tear down completed successfully")
+
+	exit(0, logFiles)
+}
+
+func createLogFiles() []LogFile {
+	logFiles := []LogFile{}
+
+	raw := os.Getenv("LOG_META")
+	if raw == "" {
+		fmt.Println("LOG_META not set")
+		return logFiles
+	}
+
+	logToService := make(map[string]string)
+
+	for entry := range strings.SplitSeq(raw, ";") {
+		entry = strings.TrimSpace(entry)
+		if entry == "" {
+			continue
 		}
+		parts := strings.SplitN(entry, "=", 2)
+		if len(parts) != 2 {
+			fmt.Printf("Invalid entry: %s\n", entry)
+			continue
+		}
+		logPath := strings.TrimSpace(parts[0])
+		serviceName := strings.TrimSpace(parts[1])
+		logToService[logPath] = serviceName
+	}
 
-		_, err = tx.Exec(`INSERT INTO chat_user.chat_user (
-            id, email, username, password, role
-        ) VALUES (
-            $1, $2, $3, $4, $5
-        );`, user.Id, user.Email, user.Username, password, user.Role)
-		if err != nil {
-			return err
+	for logPath, serviceName := range logToService {
+		logFiles = append(logFiles, LogFile{
+			ServiceName: serviceName,
+			LogFilePath: logPath,
+		})
+	}
+
+	return logFiles
+}
+
+func exit(code int, logFiles []LogFile) {
+	for _, logFile := range logFiles {
+		fmt.Printf("Log file for service %s: %s\n", logFile.ServiceName, logFile.LogFilePath)
+		if err := saveLog(logFile); err != nil {
+			fmt.Printf("Error saving log for service %s: %v\n", logFile.ServiceName, err)
+		} else {
+			fmt.Printf("Log for service %s saved successfully\n", logFile.ServiceName)
 		}
 	}
 
-	err = tx.Commit()
+	if code != 0 {
+		fmt.Printf("Exiting with code %d\n", code)
+	}
+	os.Exit(code)
+}
+
+func runTests() error {
+	var cmd *exec.Cmd
+	isJson := flag.Bool("json", false, "Output test results in json format")
+	flag.Parse()
+
+	if *isJson {
+		fmt.Println("Running tests with json format")
+		cmd = exec.Command("go", "test", "-json", "-v", "./...")
+
+	} else {
+		fmt.Println("Running tests")
+		cmd = exec.Command("go", "test", "-v", "./...")
+	}
+
+	outputFile, has := os.LookupEnv("TEST_OUT")
+	if !has {
+		outputFile = "test_output"
+		fmt.Printf("Warning: `TEST_OUT` is not set, output to default file: %s\n", outputFile)
+	}
+
+	dir := filepath.Dir(outputFile)
+	// Create the directory if it doesn't exist
+	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
+		return fmt.Errorf("Error creating directory for output file: %v\n", err)
+	}
+	file, err := os.Create(outputFile)
 	if err != nil {
-		return err
+		return fmt.Errorf("Error creating file: %v\n", err)
+	}
+	defer file.Close()
+
+	// Write output to both stdout and file
+	mw := io.MultiWriter(os.Stdout, file)
+	cmd.Stdout = mw
+	cmd.Stderr = os.Stderr // Optional: pipe stderr to terminal
+
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("Error running go test: %v\n", err)
 	}
 
 	return nil
+}
+
+func saveLog(logFile LogFile) error {
+	serviceName := logFile.ServiceName
+	logFilePath := logFile.LogFilePath
+
+	dir := filepath.Dir(logFilePath)
+
+	// Create the directory if it doesn't exist
+	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
+		return err
+	}
+
+	file, err := os.Create(logFilePath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	cmd := exec.Command("docker", "logs", serviceName)
+	cmd.Stdout = file
+	cmd.Stderr = file
+	fmt.Printf("Running command: %s\n", cmd.String())
+	return cmd.Run()
 }
 
 func runTearDown(client *sql.DB) error {
@@ -90,245 +181,36 @@ func runTearDown(client *sql.DB) error {
 	return nil
 }
 
-func runTests() error {
-	isJson := flag.Bool("json", false, "Output test results in json format")
-	flag.Parse()
-
-	if *isJson {
-		fmt.Println("Running tests with json format")
-		cmd := exec.Command("go", "test", "-json", "-v", "./...")
-		outputFile, has := os.LookupEnv("TEST_OUT")
-		if !has {
-			outputFile = "test_output.json"
-			fmt.Printf("Warning: `TEST_OUT` is not set, output json to default file: %s\n", outputFile)
-		}
-
-		var err error
-		teeCmd := exec.Command("tee", outputFile)
-		teeCmd.Stdin, err = cmd.StdoutPipe()
-		if err != nil {
-			return fmt.Errorf("Error creating pipe: %v\n", err)
-		}
-		teeCmd.Stdout = os.Stdout // Output to terminal as well
-
-		err = teeCmd.Start()
-		if err != nil {
-			return fmt.Errorf("Error starting tee: %v\n", err)
-		}
-
-		err = cmd.Run()
-		if err != nil {
-			return fmt.Errorf("Error running go test: %v\n", err)
-		}
-
-		err = teeCmd.Wait()
-		if err != nil {
-			return fmt.Errorf("Error waiting for tee command: %v\n", err)
-		}
-	} else {
-		fmt.Println("Running tests")
-		cmd := exec.Command("go", "test", "-v", "./...")
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		err := cmd.Run()
-		if err != nil {
-			return fmt.Errorf("Error running go test: %v\n", err)
-		}
-	}
-
-	return nil
-}
-
-func main() {
-	costStr, has := os.LookupEnv("COST")
-	cost := 12
-	if has {
-		var err error
-		cost, err = strconv.Atoi(costStr)
-		if err != nil {
-			fmt.Printf("Invalid cost = %s\n", costStr)
-			os.Exit(1)
-		}
-	}
-
-	passwordManager, err := password.NewBcryptPasswordManager(cost)
-	if err != nil {
-		fmt.Printf("Error creating password manager: %v\n", err)
-		os.Exit(1)
-	}
-
-	adminDbURL, has := os.LookupEnv("ADMIN_DATABASE_URL")
-	if !has {
-		fmt.Println("Missing ADMIN_DATABASE_URL")
-		os.Exit(1)
-	}
-
-	dbLog, has := os.LookupEnv("DB_LOG")
-	if has {
-		defer func() {
-			err = saveLog("chat-app-db-service", dbLog)
-			if err != nil {
-				fmt.Printf("saveLog(): %v\n", err)
-			}
-		}()
-	}
-
-	userLog, has := os.LookupEnv("USER_SERVICE_LOG")
-	if has {
-		defer func() {
-			err = saveLog("chat-app-user-service", userLog)
-			if err != nil {
-				fmt.Printf("saveLog(): %v\n", err)
-			}
-		}()
-	}
-
-	snowflakeLog, has := os.LookupEnv("SNOWFLAKE_SERVICE_LOG")
-	if has {
-		defer func() {
-			err = saveLog("chat-app-snowflake-service", snowflakeLog)
-			if err != nil {
-				fmt.Printf("saveLog(): %v\n", err)
-			}
-		}()
-	}
-
-	client, err := sql.Open("postgres", adminDbURL)
-	if err != nil {
-		fmt.Println("Error opening database connection:", err)
-		os.Exit(1)
-	}
-	defer func() {
-		fmt.Println("Closing database connection")
-		client.Close()
-	}()
-
-	err = runSetup(client, passwordManager)
-	if err != nil {
-		fmt.Println("Error running setup:", err)
-		os.Exit(1)
-	}
-	// fmt.Println("Press any key to continue")
-	// input := bufio.NewScanner(os.Stdin)
-	// input.Scan()
-
-	err = runTests()
-	if err != nil {
-		fmt.Println("Error running tests:", err)
-		os.Exit(1)
-	}
-
-	err = runTearDown(client)
-	if err != nil {
-		fmt.Println("Error running teardown:", err)
-		os.Exit(1)
-	}
-}
-
-func saveLog(serviceName string, logFilePath string) error {
-	file, err := os.Create(logFilePath)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	cmd := exec.Command("docker", "logs", serviceName)
-	cmd.Stdout = file
-	cmd.Stderr = file
-	return cmd.Run()
-}
-
 func cleanDb(client *sql.DB) error {
 	tx, err := client.Begin()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
+
 	defer func() {
 		if err != nil {
 			tx.Rollback()
 		}
 	}()
 
-	_, err = tx.Exec(`DELETE FROM chat_user.chat_user;`) // this will also delete conversations, participants, and messages (cascade)
-	if err != nil {
-		return err
+	queries := []string{
+		"DELETE FROM chat_user.chat_user;",
+		"DELETE FROM media.asset;",
+		"DELETE FROM conversation.conversation;",
+	}
+
+	for _, query := range queries {
+		_, err = tx.Exec(query)
+		if err != nil {
+			return fmt.Errorf("failed to execute query %q: %w", query, err)
+		}
 	}
 
 	err = tx.Commit()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
 	return nil
-}
 
-type LogCapture struct {
-	cmd  *exec.Cmd
-	file *os.File
-	done chan struct{}
-	wg   sync.WaitGroup
-	err  error
-}
-
-func StartLogCapture(serviceName string, logFilePath string) (*LogCapture, error) {
-	// Open file for writing logs
-	fmt.Printf("Capturing %s and save in %s\n", serviceName, logFilePath)
-	file, err := os.Create(logFilePath)
-	if err != nil {
-		return nil, err
-	}
-
-	// Start docker logs command with --follow
-	cmd := exec.Command("docker", "logs", serviceName, "--follow")
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		file.Close()
-		return nil, err
-	}
-
-	lc := &LogCapture{
-		cmd:  cmd,
-		file: file,
-		done: make(chan struct{}),
-	}
-
-	// Start copying logs to file in a goroutine
-	lc.wg.Add(1)
-	go func() {
-		defer lc.wg.Done()
-		_, lc.err = io.Copy(file, stdout)
-	}()
-
-	// Start the command
-	if err := cmd.Start(); err != nil {
-		file.Close()
-		return nil, err
-	}
-
-	return lc, nil
-}
-
-func (lc *LogCapture) Stop() error {
-	// Signal the command to stop
-	lc.cmd.Process.Signal(os.Interrupt)
-	close(lc.done)
-
-	// Wait for the copy goroutine to finish
-	lc.wg.Wait()
-
-	// Close the file
-	fileErr := lc.file.Close()
-
-	// Wait for the command to exit and get any error
-	cmdErr := lc.cmd.Wait()
-
-	if lc.err != nil {
-		fmt.Printf("lc")
-		return lc.err
-	}
-	if fileErr != nil {
-		fmt.Printf("file")
-		return fileErr
-	}
-	return cmdErr
 }

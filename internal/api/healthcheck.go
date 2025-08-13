@@ -1,4 +1,4 @@
-package healthcheck
+package api
 
 import (
 	"dungtl2003/chat-app-auth-service/internal/context"

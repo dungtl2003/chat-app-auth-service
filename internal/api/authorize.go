@@ -4,19 +4,25 @@ import (
 	"dungtl2003/chat-app-auth-service/internal/context"
 	"dungtl2003/chat-app-auth-service/internal/helper"
 	"dungtl2003/chat-app-auth-service/internal/jwthandler"
+	"dungtl2003/chat-app-auth-service/internal/model"
+	"fmt"
 	"net/http"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 )
 
+type AuthorizeResponseBody struct {
+	User model.ChatUser `json:"user"`
+}
+
 func Authorize(appCtx *context.AppContext) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Bearer <token>
 		authHeader := c.GetHeader("Authorization")
-		appCtx.Logger.Debugfln("authorization header: %s", authHeader)
+		appCtx.Logger.Debugfln("Authorization header: %s", authHeader)
 		if authHeader == "" {
-			appCtx.Logger.Debugfln("missing authorization header")
+			appCtx.Logger.Debugfln("Missing authorization header")
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Missing authorization header"})
 			c.Abort()
 			return
@@ -24,14 +30,14 @@ func Authorize(appCtx *context.AppContext) gin.HandlerFunc {
 
 		parts := strings.Split(authHeader, " ")
 		if len(parts) != 2 {
-			appCtx.Logger.Debugfln("authorization header should have 2 parts")
+			appCtx.Logger.Debugfln("Authorization header should have 2 parts")
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization header should have 2 parts"})
 			c.Abort()
 			return
 		}
 
 		if parts[0] != "Bearer" {
-			appCtx.Logger.Debugfln("authorization header should start with `Bearer`")
+			appCtx.Logger.Debugfln("Authorization header should start with `Bearer`")
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization header should start with `Bearer`"})
 			c.Abort()
 			return
@@ -86,13 +92,30 @@ func Authorize(appCtx *context.AppContext) gin.HandlerFunc {
 		}
 
 		// get user information
-		user := helper.HandleGetUserSecure(appCtx, c, userId)
-		if user == nil {
+		userResponse, err := appCtx.UserService.GetUserById(c, userId)
+		if err != nil {
+			appCtx.Logger.Errorfln("GetUserById(): %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
+			c.Abort()
+			return
+		}
+		if userResponse.Body.Error != "" {
+			appCtx.Logger.Errorfln("GetUserById() returned error: %v", userResponse.Body.Error)
+			c.JSON(userResponse.StatusCode, gin.H{"error": userResponse.Body.Error})
+			c.Abort()
 			return
 		}
 
+		user := userResponse.Body.User
+		// sanitize user data
+		if user.Password != "" {
+			appCtx.Logger.Warnfln("User password should not be returned in response")
+			user.Password = ""
+		}
 		// replace user token with internal token for internal service
-		c.Header("Authorization", "Bearer "+internalToken)
-		c.JSON(http.StatusOK, gin.H{"user": *user})
+		c.Header("Authorization", fmt.Sprintf("Bearer %s", internalToken))
+		c.JSON(http.StatusOK, AuthorizeResponseBody{
+			User: user,
+		})
 	}
 }

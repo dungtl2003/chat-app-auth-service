@@ -2,8 +2,10 @@ package tests
 
 import (
 	"bytes"
+	"dungtl2003/chat-app-auth-service/internal/api"
 	"dungtl2003/chat-app-auth-service/internal/jwthandler"
 	"dungtl2003/chat-app-auth-service/internal/model"
+	"dungtl2003/chat-app-auth-service/internal/services/database"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -13,14 +15,18 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const (
+	USERS__LOGIN_TEST_FILENAME = "users__login_test.json"
+)
+
 func TestLoginReturnCorrectStatus(t *testing.T) {
-	helper := NewHelper()
-	err := helper.Snapshot()
-	require.NoError(t, err)
-	defer func() {
-		err := helper.Rollback()
-		require.NoError(t, err)
-	}()
+	helper := NewTestHelper()
+	SetUp(helper, &SetUpOptions{
+		DataFile: &database.DataFile{
+			UserFile: USERS__LOGIN_TEST_FILENAME,
+		},
+	})
+	defer TearDown(helper)
 
 	// we will use user's information in fixed json file
 	testcases := []struct {
@@ -76,7 +82,7 @@ func TestLoginReturnCorrectStatus(t *testing.T) {
 
 			URL := fmt.Sprintf("%s/login", helper.AuthURL)
 
-			resp, err := helper.Client.Post(URL, nil, bytes.NewBuffer(payloadJson))
+			resp, err := Post(helper.Client, URL, nil, bytes.NewBuffer(payloadJson))
 			require.NoError(t, err)
 			require.EqualValues(t, tc.expectedStatus, resp.StatusCode)
 		})
@@ -84,13 +90,13 @@ func TestLoginReturnCorrectStatus(t *testing.T) {
 }
 
 func TestLoginSuccessfully(t *testing.T) {
-	helper := NewHelper()
-	err := helper.Snapshot()
-	require.NoError(t, err)
-	defer func() {
-		err := helper.Rollback()
-		require.NoError(t, err)
-	}()
+	helper := NewTestHelper()
+	SetUp(helper, &SetUpOptions{
+		DataFile: &database.DataFile{
+			UserFile: USERS__LOGIN_TEST_FILENAME,
+		},
+	})
+	defer TearDown(helper)
 
 	uid := 2
 	identifier := "normaluser"
@@ -107,18 +113,18 @@ func TestLoginSuccessfully(t *testing.T) {
 
 	URL := fmt.Sprintf("%s/login", helper.AuthURL)
 
-	resp, err := helper.Client.Post(URL, nil, bytes.NewBuffer(payloadJson))
+	resp, err := Post(helper.Client, URL, nil, bytes.NewBuffer(payloadJson))
 	require.NoError(t, err)
-	require.EqualValues(t, 200, resp.StatusCode)
+	require.EqualValues(t, http.StatusOK, resp.StatusCode)
 
 	// cookie: "refresh_token": "%s"
 	refreshToken := GetRTFromResponse(resp)
 	require.NotEmpty(t, refreshToken)
 
 	// validate RT
-	tok, err := jwthandler.DecodeToken(helper.JwtSecret, refreshToken)
+	decodedRT, err := jwthandler.DecodeToken(helper.JwtSecret, refreshToken)
 	require.NoError(t, err)
-	claims := tok.Claims.(*jwthandler.UserJWTClaim)
+	claims := decodedRT.Claims.(*jwthandler.UserJWTClaim)
 	subStr, err := claims.GetSubject()
 	require.NoError(t, err)
 	sub, err := strconv.Atoi(subStr)
@@ -131,17 +137,16 @@ func TestLoginSuccessfully(t *testing.T) {
 	require.NoError(t, err)
 	require.EqualValues(t, role, r)
 
-	respJson, err := GetRespJson(resp)
+	var responseBody api.LoginResponseBody
+	err = json.NewDecoder(resp.Body).Decode(&responseBody)
 	require.NoError(t, err)
-	require.NotEmpty(t, respJson["user"])
-	require.NotEmpty(t, respJson["session_id"])
-	accessToken := respJson["access_token"].(string)
+	accessToken := responseBody.AccessToken
 	require.NotEmpty(t, accessToken)
 
 	// validate AT
-	tok, err = jwthandler.DecodeToken(helper.JwtSecret, accessToken)
+	decodedRT, err = jwthandler.DecodeToken(helper.JwtSecret, accessToken)
 	require.NoError(t, err)
-	claims = tok.Claims.(*jwthandler.UserJWTClaim)
+	claims = decodedRT.Claims.(*jwthandler.UserJWTClaim)
 	subStr, err = claims.GetSubject()
 	require.NoError(t, err)
 	sub, err = strconv.Atoi(subStr)

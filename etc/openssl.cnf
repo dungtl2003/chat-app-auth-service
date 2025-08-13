@@ -21,6 +21,7 @@ subjectAltName = @server_alt_names
 [ server_alt_names ]
 DNS.1 = localhost
 DNS.2 = chat-app-snowflake-service
+DNS.2 = chat-app-snowflake-tls-service
 DNS.3 = chat-app-user-service
 
 [ client ]

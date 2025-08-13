@@ -25,18 +25,14 @@ type ChatUser struct {
 	Gender         types.JsonNullString `json:"gender"`
 	PhoneNumber    types.JsonNullString `json:"phone_number"`
 	Privacy        types.JsonNullString `json:"privacy"`
-	Avatar         types.JsonNullString `json:"avatar"`
+	AvatarId       types.JsonNullInt64  `json:"avatar_id"`
 	SessionVersion types.JsonInt64      `json:"session_version"`
 	CreatedAt      types.JsonTime       `json:"created_at"`
 	UpdatedAt      types.JsonNullTime   `json:"updated_at"`
 	DeletedAt      types.JsonNullTime   `json:"deleted_at"`
 
 	Sessions []Session `json:"sessions"`
-
-	TotalFriends               int64 `json:"total_friends"`
-	TotalPendingFriendRequests int64 `json:"total_pending_friend_requests"`
-	TotalSentFriendRequests    int64 `json:"total_sent_friend_requests"`
-	TotalBlockedUsers          int64 `json:"total_blocked_users"`
+	Avatar   *Asset    `json:"avatar"`
 }
 
 func IsRole(role string) bool {

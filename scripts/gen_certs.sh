@@ -17,9 +17,19 @@
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 ROOT_DIR="$SCRIPT_DIR/.."
 OPENSSL_CONFIG_FILE=${OPENSSL_CONFIG_FILE:="$ROOT_DIR/etc/openssl.cnf"}
-CERT_DIRS=("$ROOT_DIR/environments/dev/snowflake/ssl" "$ROOT_DIR/environments/dev/user/ssl" "$ROOT_DIR/environments/test/snowflake/ssl" "$ROOT_DIR/environments/test/user/ssl" "$ROOT_DIR/environments/test/auth/services/snowflake/ssl")
+CERT_DIRS=(
+    "$ROOT_DIR/environments/test/snowflake/ssl/certs" 
+    "$ROOT_DIR/environments/test/user/services/snowflake/ssl/certs" 
+    "$ROOT_DIR/environments/test/media/services/snowflake/ssl/certs" 
+)
+FAKE_CERT_DIRS=(
+    "$ROOT_DIR/environments/test/snowflake/fake_ssl/certs" 
+)
 
 TEMP_CERT_DIR=$(mktemp -d)
+
+# user can choose: generate for all or just for test environment
+options=("all" "test")
 
 function gen() {
     rm -f $TEMP_CERT_DIR/* 
@@ -112,12 +122,17 @@ function init_dirs_if_not_exist() {
 
 function main() {
     cert_dirs=("${CERT_DIRS[@]}")
+    fake_cert_dirs=("${FAKE_CERT_DIRS[@]}")
 
-    init_dirs_if_not_exist "${cert_dirs[@]}"
+    init_dirs_if_not_exist "${cert_dirs[@]}" "${fake_cert_dirs[@]}"
 
     printf "Generating certificates...\n"
     gen
     copy_certs "${cert_dirs[@]}"
+
+    printf "Generating fake certificates...\n"
+    gen
+    copy_certs "${fake_cert_dirs[@]}"
 }
 
 main

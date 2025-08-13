@@ -2,6 +2,8 @@ package tests
 
 import (
 	"bytes"
+	"dungtl2003/chat-app-auth-service/internal/api"
+	"dungtl2003/chat-app-auth-service/internal/services/database"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -10,14 +12,18 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const (
+	USERS__LOGOUT_TEST_FILENAME = "users__logout_test.json"
+)
+
 func TestLogoutShouldLogoutOneDevice(t *testing.T) {
-	helper := NewHelper()
-	err := helper.Snapshot()
-	require.NoError(t, err)
-	defer func() {
-		err := helper.Rollback()
-		require.NoError(t, err)
-	}()
+	helper := NewTestHelper()
+	SetUp(helper, &SetUpOptions{
+		DataFile: &database.DataFile{
+			UserFile: USERS__LOGOUT_TEST_FILENAME,
+		},
+	})
+	defer TearDown(helper)
 
 	identifier := "normaluser"
 	password := "normalpassword"
@@ -38,17 +44,18 @@ func TestLogoutShouldLogoutOneDevice(t *testing.T) {
 			}`, identifier, password, devInfo)
 
 		URL := fmt.Sprintf("%s/login", helper.AuthURL)
-		resp, err := helper.Client.Post(URL, nil, bytes.NewBuffer(payloadJson))
+		resp, err := Post(helper.Client, URL, nil, bytes.NewBuffer(payloadJson))
 		require.NoError(t, err)
 		require.EqualValues(t, http.StatusOK, resp.StatusCode)
 
-		respJson, err := GetRespJson(resp)
+		var responseBody api.LoginResponseBody
+		err = json.NewDecoder(resp.Body).Decode(&responseBody)
 		require.NoError(t, err)
 
-		sessionId := int64(respJson["session_id"].(float64))
+		sessionId := responseBody.SessionId
 		sessionIds = append(sessionIds, sessionId)
 
-		accessToken := respJson["access_token"].(string)
+		accessToken := responseBody.AccessToken
 		require.NotEmpty(t, accessToken)
 		accessTokens = append(accessTokens, accessToken)
 
@@ -62,7 +69,7 @@ func TestLogoutShouldLogoutOneDevice(t *testing.T) {
 	header := http.Header{
 		"Authorization": {fmt.Sprintf("Bearer %s", accessTokens[0])},
 	}
-	resp, err := helper.Client.Post(URL, header, nil)
+	resp, err := Post(helper.Client, URL, header, nil)
 	require.NoError(t, err)
 	require.EqualValues(t, http.StatusOK, resp.StatusCode)
 
@@ -73,7 +80,7 @@ func TestLogoutShouldLogoutOneDevice(t *testing.T) {
 			header = http.Header{
 				"Cookie": {fmt.Sprintf("refresh_token=%s", refreshToken)},
 			}
-			resp, err = helper.Client.Post(URL, header, nil)
+			resp, err = Post(helper.Client, URL, header, nil)
 			require.NoError(t, err)
 			require.EqualValues(t, http.StatusOK, resp.StatusCode)
 		}
@@ -86,7 +93,7 @@ func TestLogoutShouldLogoutOneDevice(t *testing.T) {
 	header = http.Header{
 		"Cookie": {fmt.Sprintf("refresh_token=%s", refreshTokens[0])},
 	}
-	resp, err = helper.Client.Post(URL, header, nil)
+	resp, err = Post(helper.Client, URL, header, nil)
 	require.NoError(t, err)
 	require.EqualValues(t, http.StatusUnauthorized, resp.StatusCode)
 }

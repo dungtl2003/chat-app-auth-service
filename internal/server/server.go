@@ -5,13 +5,12 @@ import (
 	"dungtl2003/chat-app-auth-service/internal/api"
 	"dungtl2003/chat-app-auth-service/internal/config"
 	ctx "dungtl2003/chat-app-auth-service/internal/context"
-	"dungtl2003/chat-app-auth-service/internal/healthcheck"
-	"dungtl2003/chat-app-auth-service/internal/httpclient"
 	"dungtl2003/chat-app-auth-service/internal/logging"
 	"dungtl2003/chat-app-auth-service/internal/password"
 	"dungtl2003/chat-app-auth-service/internal/router"
 	"dungtl2003/chat-app-auth-service/internal/services"
-	"dungtl2003/chat-app-auth-service/internal/services/snowflake"
+	"dungtl2003/chat-app-auth-service/internal/services/idgen"
+	"dungtl2003/chat-app-auth-service/internal/services/user"
 	"dungtl2003/chat-app-auth-service/internal/validate"
 	"fmt"
 	"log"
@@ -22,146 +21,186 @@ import (
 	"time"
 )
 
-type Server struct {
+type AuthServer struct {
 	srv    *http.Server
 	appCtx *ctx.AppContext
+}
+
+type AuthServerOptions struct {
+	UserService        user.UserService
+	IdGeneratorService idgen.IdGeneratorService // Optional ID generator service
 }
 
 // New creates a new AuthServer instance. The function will load the configuration
 // and set up all necessary components. Call Run() to start the server. This function
 // will exit the program if there is an error when creating.
-func New() *Server {
+func New(opts *AuthServerOptions) (*AuthServer, error) {
 	log.Println("Loading configuration")
 	config, err := config.LoadConfig()
 	if err != nil {
-		log.Fatalf("NewConfig(): %v", err)
+		return nil, fmt.Errorf("error when loading configuration: %w", err)
 	}
 	log.Printf("Configuration: %s\n", config)
+
+	log.Println("Creating logger")
 	logger, err := logging.NewLogger(config.LogConfig.Level, config.LogConfig.Kind)
 	if err != nil {
-		log.Fatalf("failed to create logger, error: %v", err)
+		return nil, fmt.Errorf("error when creating logger: %w", err)
 	}
 	loggerWrapper := logging.NewLoggerWrapper(logger)
+	loggerWrapper.Infofln("Logger created successfully, switch to this logger")
 
-	log.Println("Creating validator")
+	loggerWrapper.Infofln("Creating validator")
 	validator := validate.NewValidator()
 
-	log.Println("Creating http client")
-	client := httpclient.New()
-
-	log.Println("Creating password manager")
+	loggerWrapper.Infofln("Creating password manager")
 	pm, err := password.NewBcryptPasswordManager(config.Cost)
 	if err != nil {
 		log.Fatalf("NewBcryptPasswordManager(): %v", err)
 	}
 
-	// Create a new ID generator service
-	idGeneratorService, err := snowflake.New(config.SnowflakeConfig.Addr, config.SnowflakeConfig.CertDir, loggerWrapper)
-	if err != nil {
-		loggerWrapper.Errorfln("snowflake.New(): %v", err)
-		os.Exit(1)
+	var idGeneratorService idgen.IdGeneratorService
+	if opts != nil && opts.IdGeneratorService != nil {
+		loggerWrapper.Infofln("Using provided ID generator service")
+		idGeneratorService = opts.IdGeneratorService
+	} else {
+		loggerWrapper.Infofln("Creating ID generator service")
+		idGeneratorService, err = idgen.NewSnowflakeService(config.IdGeneratorConfig.Addr, &idgen.SnowflakeServiceOptions{
+			Logger:  loggerWrapper,
+			CertDir: config.IdGeneratorConfig.CertDir,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("error when creating ID generator service: %w", err)
+		}
 	}
 
-	appCtx := ctx.NewAppCtx(loggerWrapper, validator, client, config.UserServiceURL, *config.JwtTokenConfig, config.DomainName, pm, idGeneratorService, []services.Service{idGeneratorService})
+	var userService user.UserService
+	if opts != nil && opts.UserService != nil {
+		loggerWrapper.Infofln("Using provided user service")
+		userService = opts.UserService
+	} else {
+		loggerWrapper.Infofln("Creating user service")
+		userService, err = user.NewUSerServiceV1(config.UserServiceConfig.URL, &user.UserServiceV1Options{
+			Logger: loggerWrapper,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("error when creating user service: %w", err)
+		}
+	}
 
-	log.Println("Creating router")
+	loggerWrapper.Infofln("Creating application context")
+	appCtx := &ctx.AppContext{
+		Logger:          loggerWrapper,
+		Validator:       validator,
+		DomainName:      config.DomainName,
+		PasswordManager: pm,
+		JwtConfig:       config.JwtTokenConfig,
+
+		IdGeneratorService: idGeneratorService,
+		UserService:        userService,
+		Services: []services.Service{
+			idGeneratorService,
+			userService,
+		},
+	}
+	loggerWrapper.Infofln("Application context: %#v", appCtx)
+
+	loggerWrapper.Infofln("Creating API handlers")
 	handlers := []router.Handler{
 		{
 			Method: router.GET,
 			Path:   "/healthcheck",
-			H:      healthcheck.HealthCheck(appCtx),
+			H:      api.HealthCheck(appCtx),
 		},
 		{
 			Method: router.GET,
-			Path:   "/auth/check",
+			Path:   "/check",
 			H:      api.Authorize(appCtx),
 		},
 		{
 			Method: router.POST,
-			Path:   "/auth/refresh",
+			Path:   "/refresh",
 			H:      api.Refresh(appCtx),
 		},
 		{
 			Method: router.POST,
-			Path:   "/auth/logout",
+			Path:   "/logout",
 			H:      api.Logout(appCtx),
 		},
 
 		{
 			Method: router.POST,
-			Path:   "/auth/login",
+			Path:   "/login",
 			H:      api.Login(appCtx),
 		},
 		{
 			Method: router.POST,
-			Path:   "/auth/signup",
+			Path:   "/signup",
 			H:      api.SignUp(appCtx),
 		},
 	}
+	loggerWrapper.Infofln("Creating router with %d handlers", len(handlers))
 	r := router.New(logger, handlers...)
 
-	log.Println("Creating server")
+	loggerWrapper.Infofln("Creating HTTP server")
 	srv := &http.Server{
 		Addr:    fmt.Sprintf("0.0.0.0:%d", config.ServerPort),
 		Handler: r,
 	}
 
-	return &Server{
+	return &AuthServer{
 		appCtx: appCtx,
 		srv:    srv,
-	}
+	}, nil
 }
 
-// Run starts the server. The function will start the server and listen for signals
-// to shut down the server. The function will exit the program if there is an error
-// when starting the server. Call Close() to shut down the server.
-func (s *Server) Run() {
-	logger := s.appCtx.Logger
+// Run starts the server. It listens for incoming HTTP requests and handles
+// them according to the defined routes. Remember to call Close() to shut down
+// the server gracefully.
+func (s *AuthServer) Run() error {
+	errSignal := make(chan error, 1)
+	quit := make(chan os.Signal, 1)
 
 	go func() {
 		if err := s.srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			logger.Error("error when starting server", "error", err)
-			os.Exit(1)
+			s.appCtx.Logger.Error("error when starting server", "error", err)
+			errSignal <- fmt.Errorf("error when starting server: %w", err)
 		}
 	}()
-
-	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
 
-	logger.Info("received signal to shut down server")
-	s.Close()
+	select {
+	case err := <-errSignal:
+		return err
+	case <-quit:
+		s.appCtx.Logger.Info("Received signal to shut down server")
+		return s.Close()
+	}
+
 }
 
-// Close shuts down the server. The function will close the database connection and
-// shut down the server. The function will exit the program with status code 0 if
-// the server is shut down successfully. The function will exit the program with
-// status code 1 if there is an error when shutting down the server.
-func (s *Server) Close() {
+// Close shuts down the server and closes all services.
+func (s *AuthServer) Close() error {
 	s.appCtx.Logger.Info("shutting down server")
 
 	var err error
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer func() {
-		cancel()
-		if err != nil {
-			os.Exit(1)
-		}
-
-		os.Exit(0)
-	}()
 
 	for _, service := range s.appCtx.Services {
 		if err = service.Close(); err != nil {
-			s.appCtx.Logger.Errorfln("error when closing service [%s]: %v", service.Name(), err)
-		} else {
-			s.appCtx.Logger.Debugfln("service [%s] closed successfully", service.Name())
+			s.appCtx.Logger.Errorfln("Error when closing service [%s]: %v", service.Name(), err)
+			return err
 		}
+
+		s.appCtx.Logger.Debugfln("Service [%s] closed successfully", service.Name())
 	}
 
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 	if err = s.srv.Shutdown(ctx); err != nil {
-		s.appCtx.Logger.Errorfln("error when shutting down server: %v", err)
-	} else {
-		s.appCtx.Logger.Infofln("server shut down")
+		s.appCtx.Logger.Errorfln("Error when shutting down server: %v", err)
+		return err
 	}
+
+	s.appCtx.Logger.Infofln("Server shut down")
+	return nil
 }
