@@ -54,7 +54,7 @@ func New(opts *AuthServerOptions) (*AuthServer, error) {
 	validator := validate.NewValidator()
 
 	loggerWrapper.Infofln("Creating password manager")
-	pm, err := password.NewBcryptPasswordManager(config.Cost)
+	pm, err := password.NewBcryptPasswordManager(config.PasswordManagerConfig.Cost)
 	if err != nil {
 		log.Fatalf("NewBcryptPasswordManager(): %v", err)
 	}

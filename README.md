@@ -1,6 +1,8 @@
 # Auth service
 
-## Table of Contents
+Last updated: 2025-08-13
+
+# Table of Contents
 
 - [Description](#description)
 - [Endpoints](#endpoints)
@@ -11,9 +13,9 @@
   - [GET /logout](#get-logout)
   - [POST /signup](#post-signup)
 - [Configuration](#configuration)
-- [Running](#running)
-- [Dockerize](#dockerize)
 - [Testing](#testing)
+- [Docker](#docker)
+- [Attention](#attention)
 
 ## Description
 
@@ -23,63 +25,62 @@ This service is responsible for authorizing users.
 
 ### GET /healthcheck
 
-Check if the service is up and running. Always returns 200.
+- **Description**: Check the health status of the service.
+- **Response**: JSON object with the health status.
 
 ### POST /login
 
-Login a user. The request body should contain the following fields:
-
-- `identifier`: The identifier of the user (email or username)
-- `password`: The password of the user
-- `device_id`: The device id of the user
-
-The response will contain the following fields:
-
-- `access_token`: The access token of the user
-- `user`: The user object (with some fields removed for security reasons)
-
-This endpoint will also set the `refresh_token` cookie in the response.
+- **Description**: Login a user and return an access token and refresh token.
+- **Request Body**: JSON object with the following fields:
+  - `identifier`: The identifier of the user (email or username)
+  - `password`: The password of the user
+  - `device_info`: The device information of the user (in the format of a JSON object)
+- **Response**: JSON object with the following fields:
+  - `access_token`: The access token of the user
+  - `session_id`: The current session id of the user
+  - `user`: The user object (with some fields removed for security reasons)
+- **Cookies**: This endpoint will also set the `refresh_token` cookie in the response.
 
 ### GET /check
 
-Authorize a user. The request header should contain the following fields:
-
-- `Authorization`: The access token of the user (Bearer token)
-
-The response will contain the following fields:
-
-- `user`: The user object (with some fields removed for security reasons)
+- **Description**: Authorize a user.
+- **Request Header**: The request should contain the following fields:
+  - `Authorization`: The access token of the user (Bearer token)
+- **Response**: JSON object with the following fields:
+    - `user`: The user object (with some fields removed for security reasons)
 
 ### GET /refresh
 
-Refresh the access token and refresh token of the user. The request header should contain the following fields:
-
-- `Cookie`: The refresh token of the user. This should be set in the `refresh_token` cookie.
-
-The response will contain the following fields:
-
-- `access_token`: The access token of the user
-- `user`: The user object (with some fields removed for security reasons)
-
-This endpoint will also set the `refresh_token` cookie in the response.
+- **Description**: Refresh the access token and refresh token of the user.
+- **Request Header**: The request should contain the following fields:
+  - `Cookie`: The refresh token of the user. This should be set in the `refresh_token` cookie.
+- **Response**: JSON object with the following fields:
+    - `access_token`: The access token of the user
+    - `user`: The user object (with some fields removed for security reasons)
+    - `session_id`: The current session id of the user
+- **Cookies**: This endpoint will also set the `refresh_token` cookie in the response.
 
 ### GET /logout
 
-Logout a user. The request header should contain the following fields:
-
-- `Authorization`: The access token of the user (Bearer token)
+- **Description**: Logout a user and invalidate the session.
+- **Request Header**: The request should contain the following fields:
+  - `Authorization`: The access token of the user (Bearer token)
+- **Response**: message indicating that the user has been logged out successfully.
 
 ### POST /signup
 
-Sign up and also login a user. The request body should contain the required fields
-for creating a user (check the user service for the required fields).
-
-The response will contain the following fields:
-
-- `access_token`: The access token of the user
-- `user`: The user object (with some fields removed for security reasons)
-
-This endpoint will also set the `refresh_token` cookie in the response.
+- **Description**: Sign up a new user and log them in.
+- **Request Body**: JSON object with the following fields:
+  - `email`: The email of the user
+  - `username`: The username of the user
+  - `password`: The password of the user
+  - `device_info`: The device information of the user (in the format of a JSON object)
+  - `role`: The role of the user
+- **Response**: JSON object with the following fields:
+  - `access_token`: The access token of the user
+  - `session_id`: The current session id of the user
+  - `user`: The user object (with some fields removed for security reasons)
+- **Cookies**: This endpoint will also set the `refresh_token` cookie in the response.
 
 ## Configuration
 
@@ -90,50 +91,42 @@ The service can be configured using the following environment variables:
 | PORT | The port to run the service | No | 8400 | int | any valid port number |
 | LOG_LEVEL | The log level of the service | No | INFO | string | DEBUG, INFO, WARN, ERROR |
 | LOG_KIND | The kind of log to output | No | TEXT | string | TEXT, JSON |
-| ENV | The environment to run the service | No | dev | string | any valid string |
+| ENVIRONMENT | The environment to run the service | No | dev | string | any valid string |
 | USER_SERVICE_URL | The URL of the user service endpoint | Yes | | string | any valid URL |
 | JWT_SECRET | The secret key to sign the JWT tokens | Yes | | string | any valid string |
 | ACCESS_TOKEN_DURATION_MS | The duration of the access token in milliseconds | No | 900000 (15 minutes) | int | any valid unsigned int |
 | REFRESH_TOKEN_DURATION_MS | The duration of the refresh token in milliseconds | No | 172800000 (2 days) | int | any valid unsigned int |
+| PASSWORD_HASH_COST | The cost of the password hash | No | 12 | int | any valid unsigned int |
 | DOMAIN_NAME | The domain name of the service | No | localhost | string | any valid string |
-| COST | The cost of the password bcrypt hashing algorithm | No | 12 | int | any valid unsigned int |
+| ID_GENERATOR_ADDR | The address of the id generator service | Yes | | string | any valid string made of address and port (e.g. localhost:8501) |
+| ID_GENERATOR_CERT_DIR | The directory to the certificate of the id generator service | No | | string | any valid directory |
 
-## Running
-
-First, run the following command to generate certificates:
-
-``` bash
-./scripts/gen_certs.sh
-```
-
-Then, run the following command to run the service:
-
-``` bash
-make run # or make run ENV=? for a specific environment
-```
-
-If you want to run multiple dependencies (e.g. database, id generator), you can run the following command:
-
-``` bash
-make run_with_services # or make run_with_services ENV=? for a specific environment
-```
-
-Make sure to have the coresponding compose file in the `compose` directory and correct `env.%ENV%` file in the `environments` directory (details on environment variables can be found in the [Configuration](#configuration) section).
-
-## Dockerize
-
-There are many useful commands in makefile (e.g. `make dbuild_%ENV%`, `make dpush_%ENV%`, `make drun_%ENV%`, etc.) that can be used to build, push and run the service in Docker. You can also use `make ci_%ENV%` to build, push, release the service on Docker Hub.
+You can see the full configuration example in `./template/env-template` file.
 
 ## Testing
 
-First, run the following command to generate certificates:
+Run the tests with the following command:
 
-``` bash
-./scripts/gen_certs.sh
+```bash
+make test
 ```
 
-Then, run the following command to run the tests:
+Or run the tests with analysis enabled:
 
-``` bash
-make test # or make test JSON=1 for json output (this can be used to get statistics as well)
+```bash
+make test JSON=1
 ```
+
+## Docker
+
+Use this command to build the Docker image:
+
+```bash
+make ci_%env # e.g. make ci_dev
+```
+
+There are scripts that support logging services and result to file. If in the future, you want to add a new service log, you need to update `LOG_META` variable in `./scripts/test_local.sh` script.
+
+## Attention
+
+2025-08-13: `__test_with_services` script container healthcheck sometimes fails due to the fact that the service is not ready yet but for some reason, docker still said that the container is healthy. This will be fixed in the future.

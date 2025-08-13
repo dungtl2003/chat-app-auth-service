@@ -29,15 +29,19 @@ type IdGeneratorConfig struct {
 	CertDir string
 }
 
+type PasswordManagerConfig struct {
+	Cost int
+}
+
 type Config struct {
-	ServerPort        int
-	Env               string
-	LogConfig         LogConfig
-	UserServiceConfig UserServiceConfig
-	JwtTokenConfig    JwtTokenConfig
-	DomainName        string
-	Cost              int
-	IdGeneratorConfig IdGeneratorConfig
+	ServerPort            int
+	Env                   string
+	LogConfig             LogConfig
+	UserServiceConfig     UserServiceConfig
+	JwtTokenConfig        JwtTokenConfig
+	DomainName            string
+	PasswordManagerConfig PasswordManagerConfig
+	IdGeneratorConfig     IdGeneratorConfig
 }
 
 // LoadConfig loads the configuration from env file. It will return Config instance
@@ -68,7 +72,7 @@ func LoadConfig() (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = c.setCost()
+	err = c.setPasswordManagerConfig()
 	if err != nil {
 		return nil, err
 	}
@@ -90,7 +94,7 @@ func (t JwtTokenConfig) String() string {
 	return fmt.Sprintf("JwtTokenConfig{%s}", strings.Join(parts, ", "))
 }
 
-func (u *UserServiceConfig) String() string {
+func (u UserServiceConfig) String() string {
 	parts := []string{
 		fmt.Sprintf("URL: %s", u.URL),
 	}
@@ -98,7 +102,7 @@ func (u *UserServiceConfig) String() string {
 	return fmt.Sprintf("UserServiceConfig{%s}", strings.Join(parts, ", "))
 }
 
-func (l *LogConfig) String() string {
+func (l LogConfig) String() string {
 	parts := []string{
 		fmt.Sprintf("LEVEL: %s", l.Level),
 		fmt.Sprintf("KIND: %s", l.Kind),
@@ -107,13 +111,20 @@ func (l *LogConfig) String() string {
 	return fmt.Sprintf("LogConfig{%s}", strings.Join(parts, ", "))
 }
 
-func (s *IdGeneratorConfig) String() string {
+func (s IdGeneratorConfig) String() string {
 	parts := []string{
 		fmt.Sprintf("ADDR: %s", s.Addr),
 		fmt.Sprintf("CERT_DIR: %s", s.CertDir),
 	}
 
 	return fmt.Sprintf("IdGeneratorConfig{%s}", strings.Join(parts, ", "))
+}
+
+func (p PasswordManagerConfig) String() string {
+	parts := []string{
+		fmt.Sprintf("PASSWORD_HASH_COST: %d", p.Cost),
+	}
+	return fmt.Sprintf("PasswordManagerConfig{%s}", strings.Join(parts, ", "))
 }
 
 func (c *Config) String() string {
@@ -124,7 +135,7 @@ func (c *Config) String() string {
 		fmt.Sprintf("USER_SERVICE_CONFIG: %s", c.UserServiceConfig),
 		fmt.Sprintf("JWT: %s", c.JwtTokenConfig),
 		fmt.Sprintf("DOMAIN_NAME: %s", c.DomainName),
-		fmt.Sprintf("COST: %d", c.Cost),
+		fmt.Sprintf("PASSWORD_MANAGER_CONFIG: %s", c.PasswordManagerConfig),
 		fmt.Sprintf("ID_GENERATOR_CONFIG: %s", c.IdGeneratorConfig),
 	}
 
@@ -151,11 +162,11 @@ func (c *Config) setIdGeneratorConfig() error {
 	return nil
 }
 
-func (c *Config) setCost() error {
-	log.Println("Setting COST")
-	costStr, has := os.LookupEnv("COST")
+func (c *Config) setPasswordManagerConfig() error {
+	log.Println("Setting PASSWORD_HASH_COST")
+	costStr, has := os.LookupEnv("PASSWORD_HASH_COST")
 	if !has {
-		log.Println("COST not found, setting to 12")
+		log.Println("PASSWORD_HASH_COST not found, setting to 12")
 		costStr = "12"
 	}
 
@@ -168,7 +179,7 @@ func (c *Config) setCost() error {
 		return fmt.Errorf("Cost number out of range: %s (4-31)", costStr)
 	}
 
-	c.Cost = cost
+	c.PasswordManagerConfig.Cost = cost
 	return nil
 }
 
