@@ -16,9 +16,9 @@ import (
 )
 
 type RefreshTokenResponseBody struct {
-	AccessToken string         `json:"access_token"`
-	SessionId   int64          `json:"session_id"`
-	User        model.ChatUser `json:"user"`
+	AccessToken string          `json:"access_token"`
+	SessionId   types.JsonInt64 `json:"session_id"`
+	User        model.ChatUser  `json:"user"`
 }
 
 type ExpiredTokenError struct {
@@ -247,7 +247,7 @@ func Refresh(appCtx *context.AppContext) gin.HandlerFunc {
 		// set cookie
 		refreshResponseBody := RefreshTokenResponseBody{
 			AccessToken: newAccessTokenStr,
-			SessionId:   newSessId,
+			SessionId:   types.NewJsonInt64(newSessId),
 			User:        user,
 		}
 		appCtx.Logger.Debugfln("New session created: %d", newSessId)

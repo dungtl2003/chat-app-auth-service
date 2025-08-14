@@ -20,9 +20,9 @@ type SignUpRequestBody struct {
 }
 
 type SignUpResponseBody struct {
-	AccessToken string         `json:"access_token"`
-	SessionId   int64          `json:"session_id"`
-	User        model.ChatUser `json:"user"`
+	AccessToken string          `json:"access_token"`
+	SessionId   types.JsonInt64 `json:"session_id"`
+	User        model.ChatUser  `json:"user"`
 }
 
 func SignUp(appCtx *context.AppContext) gin.HandlerFunc {
@@ -125,7 +125,7 @@ func SignUp(appCtx *context.AppContext) gin.HandlerFunc {
 		helper.SetCookie(c, "refresh_token", refreshTokenStr, appCtx.DomainName, appCtx.JwtConfig.RTDurationMs)
 		signUpResponseBody := SignUpResponseBody{
 			AccessToken: accessTokenStr,
-			SessionId:   sessId,
+			SessionId:   types.NewJsonInt64(sessId),
 			User:        user,
 		}
 		appCtx.Logger.Debugfln("Response body: %#v", signUpResponseBody)

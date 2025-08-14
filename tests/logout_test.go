@@ -53,7 +53,7 @@ func TestLogoutShouldLogoutOneDevice(t *testing.T) {
 		require.NoError(t, err)
 
 		sessionId := responseBody.SessionId
-		sessionIds = append(sessionIds, sessionId)
+		sessionIds = append(sessionIds, sessionId.Int64())
 
 		accessToken := responseBody.AccessToken
 		require.NotEmpty(t, accessToken)

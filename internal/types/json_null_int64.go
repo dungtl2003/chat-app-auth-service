@@ -12,7 +12,7 @@ type JsonNullInt64 struct {
 
 func (j JsonNullInt64) MarshalJSON() ([]byte, error) {
 	if j.Valid {
-		return json.Marshal(j.Int64)
+		return json.Marshal(strconv.FormatInt(j.Int64, 10))
 	} else {
 		return json.Marshal(nil)
 	}
