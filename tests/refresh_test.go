@@ -36,7 +36,7 @@ func TestRefreshShouldWorkAsExpected(t *testing.T) {
 				"device_info": %s
 			}`, identifier, password, deviceInfo)
 
-	URL := fmt.Sprintf("%s/login", helper.AuthURL)
+	URL := fmt.Sprintf("%s/auth/login", helper.AuthURL)
 	resp, err := Post(helper.Client, URL, nil, bytes.NewBuffer(payloadJson))
 	require.NoError(t, err)
 	require.EqualValues(t, http.StatusOK, resp.StatusCode)
@@ -52,7 +52,7 @@ func TestRefreshShouldWorkAsExpected(t *testing.T) {
 
 	<-time.After(1 * time.Second) // wait for 1 second to make sure no duplicate token
 
-	URL = fmt.Sprintf("%s/refresh", helper.AuthURL)
+	URL = fmt.Sprintf("%s/auth/refresh", helper.AuthURL)
 	// pass cookie to next request
 	header := http.Header{
 		"Cookie": {fmt.Sprintf("refresh_token=%s", refreshToken)},
@@ -82,7 +82,7 @@ func TestRefreshShouldNotWorkWithInvalidToken(t *testing.T) {
 	})
 	defer TearDown(helper)
 
-	URL := fmt.Sprintf("%s/refresh", helper.AuthURL)
+	URL := fmt.Sprintf("%s/auth/refresh", helper.AuthURL)
 
 	// no cookie
 	resp, err := Post(helper.Client, URL, nil, nil)
@@ -108,7 +108,7 @@ func TestRefreshShouldNotWorkWithInvalidToken(t *testing.T) {
 				"device_info": %s
 			}`, identifier, password, deviceInfo)
 
-	URL = fmt.Sprintf("%s/login", helper.AuthURL)
+	URL = fmt.Sprintf("%s/auth/login", helper.AuthURL)
 	resp, err = Post(helper.Client, URL, nil, bytes.NewBuffer(payloadJson))
 	require.NoError(t, err)
 	require.EqualValues(t, http.StatusOK, resp.StatusCode)
@@ -118,7 +118,7 @@ func TestRefreshShouldNotWorkWithInvalidToken(t *testing.T) {
 
 	<-time.After(time.Millisecond * time.Duration(helper.RTDurationMs))
 
-	URL = fmt.Sprintf("%s/refresh", helper.AuthURL)
+	URL = fmt.Sprintf("%s/auth/refresh", helper.AuthURL)
 	header = http.Header{
 		"Cookie": {fmt.Sprintf("refresh_token=%s", refreshToken)},
 	}
@@ -152,7 +152,7 @@ func TestRefreshShouldHaveReuseDetection(t *testing.T) {
 					"device_info": %s
 				}`, identifier, password, devInfo)
 
-		URL := fmt.Sprintf("%s/login", helper.AuthURL)
+		URL := fmt.Sprintf("%s/auth/login", helper.AuthURL)
 		resp, err := Post(helper.Client, URL, nil, bytes.NewBuffer(payloadJson))
 		require.NoError(t, err)
 		require.EqualValues(t, http.StatusOK, resp.StatusCode)
@@ -162,7 +162,7 @@ func TestRefreshShouldHaveReuseDetection(t *testing.T) {
 
 		if i == 0 {
 			// consume the first refresh token
-			URL = fmt.Sprintf("%s/refresh", helper.AuthURL)
+			URL = fmt.Sprintf("%s/auth/refresh", helper.AuthURL)
 			header := http.Header{
 				"Cookie": {fmt.Sprintf("refresh_token=%s", refreshToken)},
 			}
@@ -175,7 +175,7 @@ func TestRefreshShouldHaveReuseDetection(t *testing.T) {
 
 	// the first refresh token is used, if we try to use it again, it should fail
 	refreshToken := refreshTokens[0]
-	URL := fmt.Sprintf("%s/refresh", helper.AuthURL)
+	URL := fmt.Sprintf("%s/auth/refresh", helper.AuthURL)
 	header := http.Header{
 		"Cookie": {fmt.Sprintf("refresh_token=%s", refreshToken)},
 	}
@@ -185,7 +185,7 @@ func TestRefreshShouldHaveReuseDetection(t *testing.T) {
 
 	// all other refresh tokens should NOT work because server invalidated them
 	for _, refreshToken := range refreshTokens[1:] {
-		URL = fmt.Sprintf("%s/refresh", helper.AuthURL)
+		URL = fmt.Sprintf("%s/auth/refresh", helper.AuthURL)
 		header := http.Header{
 			"Cookie": {fmt.Sprintf("refresh_token=%s", refreshToken)},
 		}

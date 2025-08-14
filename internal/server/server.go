@@ -114,28 +114,28 @@ func New(opts *AuthServerOptions) (*AuthServer, error) {
 		},
 		{
 			Method: router.GET,
-			Path:   "/check",
+			Path:   "/auth/check",
 			H:      api.Authorize(appCtx),
 		},
 		{
 			Method: router.POST,
-			Path:   "/refresh",
+			Path:   "/auth/refresh",
 			H:      api.Refresh(appCtx),
 		},
 		{
 			Method: router.POST,
-			Path:   "/logout",
+			Path:   "/auth/logout",
 			H:      api.Logout(appCtx),
 		},
 
 		{
 			Method: router.POST,
-			Path:   "/login",
+			Path:   "/auth/login",
 			H:      api.Login(appCtx),
 		},
 		{
 			Method: router.POST,
-			Path:   "/signup",
+			Path:   "/auth/signup",
 			H:      api.SignUp(appCtx),
 		},
 	}

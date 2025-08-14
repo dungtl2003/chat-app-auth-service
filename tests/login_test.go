@@ -80,7 +80,7 @@ func TestLoginReturnCorrectStatus(t *testing.T) {
 				"device_info": %s
 			}`, tc.identifier, tc.password, tc.deviceInfo)
 
-			URL := fmt.Sprintf("%s/login", helper.AuthURL)
+			URL := fmt.Sprintf("%s/auth/login", helper.AuthURL)
 
 			resp, err := Post(helper.Client, URL, nil, bytes.NewBuffer(payloadJson))
 			require.NoError(t, err)
@@ -111,7 +111,7 @@ func TestLoginSuccessfully(t *testing.T) {
 				"device_info": %s
 			}`, identifier, password, deviceInfo)
 
-	URL := fmt.Sprintf("%s/login", helper.AuthURL)
+	URL := fmt.Sprintf("%s/auth/login", helper.AuthURL)
 
 	resp, err := Post(helper.Client, URL, nil, bytes.NewBuffer(payloadJson))
 	require.NoError(t, err)

@@ -36,7 +36,7 @@ func TestSignUpSuccessShouldAutoLogin(t *testing.T) {
 	}
 	payloadJson, err := json.Marshal(signUpPayload)
 	require.NoError(t, err)
-	URL := fmt.Sprintf("%s/signup", helper.AuthURL)
+	URL := fmt.Sprintf("%s/auth/signup", helper.AuthURL)
 	header := http.Header{
 		"Content-Type": []string{"application/json"},
 	}

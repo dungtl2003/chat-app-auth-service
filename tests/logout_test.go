@@ -43,7 +43,7 @@ func TestLogoutShouldLogoutOneDevice(t *testing.T) {
 				"device_info": %s
 			}`, identifier, password, devInfo)
 
-		URL := fmt.Sprintf("%s/login", helper.AuthURL)
+		URL := fmt.Sprintf("%s/auth/login", helper.AuthURL)
 		resp, err := Post(helper.Client, URL, nil, bytes.NewBuffer(payloadJson))
 		require.NoError(t, err)
 		require.EqualValues(t, http.StatusOK, resp.StatusCode)
@@ -65,7 +65,7 @@ func TestLogoutShouldLogoutOneDevice(t *testing.T) {
 	}
 
 	// we will logout the first session
-	URL := fmt.Sprintf("%s/logout", helper.AuthURL)
+	URL := fmt.Sprintf("%s/auth/logout", helper.AuthURL)
 	header := http.Header{
 		"Authorization": {fmt.Sprintf("Bearer %s", accessTokens[0])},
 	}
@@ -76,7 +76,7 @@ func TestLogoutShouldLogoutOneDevice(t *testing.T) {
 	// other refresh tokens should work just fine
 	for i, refreshToken := range refreshTokens {
 		if i != 0 {
-			URL = fmt.Sprintf("%s/refresh", helper.AuthURL)
+			URL = fmt.Sprintf("%s/auth/refresh", helper.AuthURL)
 			header = http.Header{
 				"Cookie": {fmt.Sprintf("refresh_token=%s", refreshToken)},
 			}
@@ -89,7 +89,7 @@ func TestLogoutShouldLogoutOneDevice(t *testing.T) {
 	// the first one cannot work
 	// we have to test this one last because the server can misunderstood that
 	// the token is reused or something
-	URL = fmt.Sprintf("%s/refresh", helper.AuthURL)
+	URL = fmt.Sprintf("%s/auth/refresh", helper.AuthURL)
 	header = http.Header{
 		"Cookie": {fmt.Sprintf("refresh_token=%s", refreshTokens[0])},
 	}

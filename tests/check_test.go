@@ -55,7 +55,7 @@ func TestCheckReturnCorrectStatus(t *testing.T) {
 	for _, tc := range testcases {
 		t.Run(fmt.Sprintf("authHeader: %s, status: %d", tc.authHeader, tc.expectedStatus), func(t *testing.T) {
 
-			URL := fmt.Sprintf("%s/check", helper.AuthURL)
+			URL := fmt.Sprintf("%s/auth/check", helper.AuthURL)
 			header := http.Header{
 				"Authorization": {tc.authHeader},
 			}
@@ -84,7 +84,7 @@ func TestCheckWithRealToken(t *testing.T) {
 	bodyBytes, err := json.Marshal(requestPayload)
 	require.NoError(t, err)
 
-	URL := fmt.Sprintf("%s/login", helper.AuthURL)
+	URL := fmt.Sprintf("%s/auth/login", helper.AuthURL)
 	resp, err := Post(helper.Client, URL, nil, io.Reader(bytes.NewBuffer(bodyBytes)))
 	require.NoError(t, err)
 	require.EqualValues(t, http.StatusOK, resp.StatusCode)
@@ -96,7 +96,7 @@ func TestCheckWithRealToken(t *testing.T) {
 	accessToken := responseBody.AccessToken
 	require.NotEmpty(t, accessToken)
 
-	URL = fmt.Sprintf("%s/check", helper.AuthURL)
+	URL = fmt.Sprintf("%s/auth/check", helper.AuthURL)
 	header := http.Header{
 		"Authorization": {fmt.Sprintf("Bearer %s", accessToken)},
 	}
@@ -126,7 +126,7 @@ func TestCheckWithInternalTokenShouldFail(t *testing.T) {
 	internalToken, err := jwthandler.CreateInternalToken(helper.JwtSecret, 5_000_000, 2)
 	require.NoError(t, err)
 
-	URL := fmt.Sprintf("%s/check", helper.AuthURL)
+	URL := fmt.Sprintf("%s/auth/check", helper.AuthURL)
 	header := http.Header{
 		"Authorization": {fmt.Sprintf("Bearer %s", internalToken)},
 	}
