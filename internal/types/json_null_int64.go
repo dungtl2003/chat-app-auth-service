@@ -2,7 +2,9 @@ package types
 
 import (
 	"database/sql"
+	"database/sql/driver"
 	"encoding/json"
+	"fmt"
 	"strconv"
 )
 
@@ -47,8 +49,35 @@ func (j *JsonNullInt64) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// Scan implements the [Scanner] interface.
+func (j *JsonNullInt64) Scan(value any) error {
+	if value == nil {
+		j.Valid = false
+		j.Int64 = 0
+		return nil
+	}
+
+	switch value := value.(type) {
+	case int64:
+		j.Valid = true
+		j.Int64 = value
+		return nil
+	default:
+		return fmt.Errorf("jsonNullInt64: unsupported type: %T", value)
+	}
+}
+
+// Value implements the [driver.Valuer] interface.
+func (j JsonNullInt64) Value() (driver.Value, error) {
+	if !j.Valid {
+		return nil, nil // Return nil for null value
+	}
+
+	return j.Int64, nil
+}
+
 func (j JsonNullInt64) String() string {
-	return strconv.FormatInt(j.Int64, 10)
+	return fmt.Sprintf("JsonNullInt64{Int64: %d, Valid: %t}", j.Int64, j.Valid)
 }
 
 func NewJsonNullInt64(i int64) JsonNullInt64 {
