@@ -123,9 +123,11 @@ func (s *SnowflakeService) Close() error {
 
 // GenerateId generates a new ID.
 func (s *SnowflakeService) GenerateId(ctx context.Context) (int64, error) {
+	if s.status == services.STOPPED {
+		return 0, fmt.Errorf("service is stopped")
+	}
 	if s.status != services.READY {
-		s.logger.Errorfln("[%s] ID generator service is not running", s.Name())
-		return 0, fmt.Errorf("ID generator service is not running")
+		s.logger.Warnfln("[%s] Service is not ready", s.Name())
 	}
 
 	s.logger.Debugfln("[%s] Generating ID", s.Name())

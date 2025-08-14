@@ -124,6 +124,13 @@ func (s *UserServiceV1) Close() error {
 }
 
 func (s *UserServiceV1) GetUserAuth(context context.Context, identifier string) (*UserGetAuthResponse, error) {
+	if s.status == services.STOPPED {
+		return nil, fmt.Errorf("service is stopped")
+	}
+	if s.status != services.READY {
+		s.logger.Warnfln("[%s] Service is not ready", s.Name())
+	}
+
 	url := helper.EncodeURLPath(fmt.Sprintf(`%s/users/auth-info?identifier=%s`, s.userURL, identifier))
 	method := http.MethodGet
 	header := http.Header{
@@ -157,6 +164,13 @@ func (s *UserServiceV1) GetUserAuth(context context.Context, identifier string) 
 }
 
 func (s *UserServiceV1) GetUserById(context context.Context, userId int64) (*UserGetResponse, error) {
+	if s.status == services.STOPPED {
+		return nil, fmt.Errorf("service is stopped")
+	}
+	if s.status != services.READY {
+		s.logger.Warnfln("[%s] Service is not ready", s.Name())
+	}
+
 	url := helper.EncodeURLPath(fmt.Sprintf(`%s/users/%d`, s.userURL, userId))
 	method := http.MethodGet
 	header := http.Header{
@@ -190,6 +204,13 @@ func (s *UserServiceV1) GetUserById(context context.Context, userId int64) (*Use
 }
 
 func (s *UserServiceV1) IncrementSessionVersion(context context.Context, userId int64) error {
+	if s.status == services.STOPPED {
+		return fmt.Errorf("service is stopped")
+	}
+	if s.status != services.READY {
+		s.logger.Warnfln("[%s] Service is not ready", s.Name())
+	}
+
 	url := helper.EncodeURLPath(fmt.Sprintf(`%s/users/%d/session-version/increment`, s.userURL, userId))
 	method := http.MethodPost
 	header := http.Header{}
@@ -219,6 +240,13 @@ func (s *UserServiceV1) IncrementSessionVersion(context context.Context, userId 
 }
 
 func (s *UserServiceV1) RevokeAllSessions(context context.Context, userId int64) error {
+	if s.status == services.STOPPED {
+		return fmt.Errorf("service is stopped")
+	}
+	if s.status != services.READY {
+		s.logger.Warnfln("[%s] Service is not ready", s.Name())
+	}
+
 	url := helper.EncodeURLPath(fmt.Sprintf(`%s/users/%d/sessions/revoke`, s.userURL, userId))
 	method := http.MethodPost
 	header := http.Header{}
@@ -248,6 +276,13 @@ func (s *UserServiceV1) RevokeAllSessions(context context.Context, userId int64)
 }
 
 func (s *UserServiceV1) RevokeSession(context context.Context, userId int64, sessionId int64) error {
+	if s.status == services.STOPPED {
+		return fmt.Errorf("service is stopped")
+	}
+	if s.status != services.READY {
+		s.logger.Warnfln("[%s] Service is not ready", s.Name())
+	}
+
 	url := helper.EncodeURLPath(fmt.Sprintf(`%s/users/%d/sessions/%d/revoke`, s.userURL, userId, sessionId))
 	method := http.MethodPost
 	header := http.Header{}
@@ -277,6 +312,13 @@ func (s *UserServiceV1) RevokeSession(context context.Context, userId int64, ses
 }
 
 func (s *UserServiceV1) CreateUser(context context.Context, payload UserPostRequestBody) (*UserPostResponse, error) {
+	if s.status == services.STOPPED {
+		return nil, fmt.Errorf("service is stopped")
+	}
+	if s.status != services.READY {
+		s.logger.Warnfln("[%s] Service is not ready", s.Name())
+	}
+
 	url := helper.EncodeURLPath(fmt.Sprintf(`%s/users`, s.userURL))
 	method := http.MethodPost
 	header := http.Header{
@@ -316,6 +358,13 @@ func (s *UserServiceV1) CreateUser(context context.Context, payload UserPostRequ
 }
 
 func (s *UserServiceV1) CreateSession(context context.Context, userId int64, payload SessionPostRequestBody) (*SessionPostResponse, error) {
+	if s.status == services.STOPPED {
+		return nil, fmt.Errorf("service is stopped")
+	}
+	if s.status != services.READY {
+		s.logger.Warnfln("[%s] Service is not ready", s.Name())
+	}
+
 	url := helper.EncodeURLPath(fmt.Sprintf(`%s/users/%d/sessions`, s.userURL, userId))
 	method := http.MethodPost
 	header := http.Header{

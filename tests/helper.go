@@ -155,7 +155,12 @@ func SetUp(t *TestHelper, opts *SetUpOptions) {
 	t.server = server
 
 	t.Logger.Info("Starting server")
-	go server.Run()
+	go func() {
+		err := server.Run()
+		if err != nil {
+			log.Fatalf("Error when running server: %v", err)
+		}
+	}()
 
 	err = waitForServer(fmt.Sprintf("%s/healthcheck", t.AuthURL), 5*time.Second)
 	if err != nil {
@@ -169,18 +174,18 @@ func TearDown(t *TestHelper) {
 
 	t.Logger.Info("Clearing all data")
 	if err := t.clearAllData(); err != nil {
-		t.Logger.Errorfln("Failed to clear all data: %v", err)
+		log.Fatalf("Error when clearing all data: %v", err)
 	}
 
 	t.Logger.Info("Closing admin database service")
 	if err := t.AdminDatabaseService.Close(); err != nil {
-		t.Logger.Errorfln("Failed to close admin database service: %v", err)
+		log.Fatalf("Error when closing admin database service: %v", err)
 	}
 
 	t.Logger.Info("Closing server")
 	err := t.server.Close()
 	if err != nil {
-		t.Logger.Errorfln("Failed to close server: %v", err)
+		log.Fatalf("Error when closing server: %v", err)
 	}
 
 	t.Logger.Info("Test helper torn down successfully")
