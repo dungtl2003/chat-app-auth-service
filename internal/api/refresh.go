@@ -59,7 +59,10 @@ func Refresh(appCtx *context.AppContext) gin.HandlerFunc {
 		if err != nil {
 			if err == http.ErrNoCookie {
 				appCtx.Logger.Errorfln("Missing refresh token")
-				c.JSON(http.StatusUnauthorized, gin.H{"error": "Missing refresh token"})
+				c.JSON(http.StatusUnauthorized, gin.H{
+					"error": "Missing refresh token",
+					"code":  constants.REFRESH_TOKEN_NOT_FOUND,
+				})
 			} else {
 				appCtx.Logger.Errorfln("Cookie(): %v", err)
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})

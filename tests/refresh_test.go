@@ -3,6 +3,7 @@ package tests
 import (
 	"bytes"
 	"dungtl2003/chat-app-auth-service/internal/api"
+	"dungtl2003/chat-app-auth-service/internal/constants"
 	"dungtl2003/chat-app-auth-service/internal/services/database"
 	"encoding/json"
 	"fmt"
@@ -88,6 +89,13 @@ func TestRefreshShouldNotWorkWithInvalidToken(t *testing.T) {
 	resp, err := Post(helper.Client, URL, nil, nil)
 	require.NoError(t, err)
 	require.EqualValues(t, http.StatusUnauthorized, resp.StatusCode)
+	var errResponseBody struct {
+		Error string `json:"error"`
+		Code  string `json:"code"`
+	}
+	err = json.NewDecoder(resp.Body).Decode(&errResponseBody)
+	require.NoError(t, err)
+	require.EqualValues(t, constants.REFRESH_TOKEN_NOT_FOUND, errResponseBody.Code)
 
 	// invalid refresh token
 	header := http.Header{
