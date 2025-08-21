@@ -64,6 +64,7 @@ type UserPostRequestBody struct {
 type UserPostResponseBody struct {
 	User  model.ChatUser `json:"user"`
 	Error string         `json:"error"`
+	Code  string         `json:"code"`
 }
 
 type UserPostResponse struct {

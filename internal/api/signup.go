@@ -58,7 +58,7 @@ func SignUp(appCtx *context.AppContext) gin.HandlerFunc {
 		}
 		if userResponse.Body.Error != "" {
 			appCtx.Logger.Errorfln("CreateUser() returned error: %v", userResponse.Body.Error)
-			c.JSON(userResponse.StatusCode, gin.H{"error": userResponse.Body.Error})
+			c.JSON(userResponse.StatusCode, gin.H{"error": userResponse.Body.Error, "code": userResponse.Body.Code})
 			c.Abort()
 			return
 		}
