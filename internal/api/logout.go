@@ -66,6 +66,7 @@ func Logout(appCtx *context.AppContext) gin.HandlerFunc {
 		}
 
 		appCtx.Logger.Debugfln("Revoked session %d for user %d", sessId, userId)
+		helper.ClearCookie(c, "refresh_token", appCtx.DomainName)
 		c.JSON(http.StatusOK, gin.H{"message": "Logged out successfully"})
 		c.Abort()
 	}

@@ -3,6 +3,7 @@ package tests
 import (
 	"bytes"
 	"dungtl2003/chat-app-auth-service/internal/api"
+	"dungtl2003/chat-app-auth-service/internal/constants"
 	"dungtl2003/chat-app-auth-service/internal/services/database"
 	"encoding/json"
 	"fmt"
@@ -68,10 +69,13 @@ func TestLogoutShouldLogoutOneDevice(t *testing.T) {
 	URL := fmt.Sprintf("%s/auth/logout", helper.AuthURL)
 	header := http.Header{
 		"Authorization": {fmt.Sprintf("Bearer %s", accessTokens[0])},
+		"Cookie":        {fmt.Sprintf("refresh_token=%s", refreshTokens[0])},
 	}
 	resp, err := Post(helper.Client, URL, header, nil)
 	require.NoError(t, err)
 	require.EqualValues(t, http.StatusOK, resp.StatusCode)
+	// check if the refresh token is cleared
+	require.Empty(t, GetRTFromResponse(resp))
 
 	// other refresh tokens should work just fine
 	for i, refreshToken := range refreshTokens {
@@ -85,6 +89,18 @@ func TestLogoutShouldLogoutOneDevice(t *testing.T) {
 			require.EqualValues(t, http.StatusOK, resp.StatusCode)
 		}
 	}
+
+	URL = fmt.Sprintf("%s/auth/refresh", helper.AuthURL)
+	resp, err = Post(helper.Client, URL, resp.Header, nil)
+	require.NoError(t, err)
+	require.EqualValues(t, http.StatusUnauthorized, resp.StatusCode)
+	var refreshResponseBody struct {
+		Error string `json:"error"`
+		Code  string `json:"code"`
+	}
+	err = json.NewDecoder(resp.Body).Decode(&refreshResponseBody)
+	require.NoError(t, err)
+	require.EqualValues(t, constants.REFRESH_TOKEN_NOT_FOUND, refreshResponseBody.Code)
 
 	// the first one cannot work
 	// we have to test this one last because the server can misunderstood that
