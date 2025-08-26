@@ -3,8 +3,8 @@ package types
 import (
 	"database/sql/driver"
 	"encoding/json"
-	"errors"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -17,8 +17,7 @@ func NewJsonTime(t time.Time) JsonTime {
 }
 
 func NewJsonTimeStrUnsafe(s string) JsonTime {
-	layout := "2006-01-02T15:04:05.999Z"
-	t, err := time.Parse(layout, s)
+	t, err := time.Parse(MICRO_LAYOUT, s)
 	if err != nil {
 		return JsonTime{}
 	}
@@ -41,9 +40,9 @@ func (j *JsonTime) Scan(value any) error {
 		return fmt.Errorf("jsonTime: Scan(nil)")
 	}
 
-	switch value.(type) {
+	switch value := value.(type) {
 	case time.Time:
-		j.Time = value.(time.Time)
+		j.Time = value
 		return nil
 	default:
 		return fmt.Errorf("jsonTime: unsupported type: %T", value)
@@ -51,30 +50,63 @@ func (j *JsonTime) Scan(value any) error {
 }
 
 func (j JsonTime) MarshalJSON() ([]byte, error) {
-	return json.Marshal(j.Time.Format("2006-01-02T15:04:05.999Z"))
+	// Force UTC, drop sub-microsecond noise, emit exactly 6 fractional digits.
+	s := j.Time.UTC().Truncate(time.Microsecond).Format(MICRO_LAYOUT)
+	return []byte(`"` + s + `"`), nil
 }
 
 func (j *JsonTime) UnmarshalJSON(data []byte) error {
 	if string(data) == "null" {
-		return errors.New("jsonTime: UnmarshalJSON(nil)")
+		j.Time = time.Time{}
+		return nil // or return an error if "null" is invalid for you
 	}
 
-	var t string = ""
-	if err := json.Unmarshal(data, &t); err != nil {
+	var s string
+	if err := json.Unmarshal(data, &s); err != nil {
 		return err
 	}
-
-	// we will assume that the time is in UTC
-	if t[len(t)-1] != 'Z' {
-		t += "Z"
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return fmt.Errorf("jsonTime: empty string")
 	}
 
-	layout := "2006-01-02T15:04:05.999Z"
-	time, err := time.Parse(layout, t)
+	// 1) Try full RFC3339Nano (handles "…Z" and "…+07:00" with 0–9 fractional digits)
+	if t, err := time.Parse(time.RFC3339Nano, s); err == nil {
+		j.Time = t.UTC() // normalize if you want a consistent zone
+		return nil
+	}
+
+	// 2) Accept bare timestamp WITHOUT timezone, with optional fractional seconds.
+	//    Normalize fractional seconds to exactly 6 digits for parsing.
+	//    Examples accepted: "2025-08-26T06:33:59", "…59.9", "…59.9986", "…59.123456789"
+	//    Result stored with microsecond precision.
+	i := strings.IndexByte(s, '.')
+	if i == -1 {
+		// No fractional seconds -> add .000000
+		s = s + ".000000"
+	} else {
+		frac := s[i+1:]
+		// strip any trailing timezone (shouldn't be present for bare timestamps,
+		// but guard anyway)
+		if j := strings.IndexAny(frac, "Z+-"); j != -1 {
+			// If we find a zone here, it wasn't a bare timestamp, so bail out
+			// to a clear error instead of parsing wrong.
+			return fmt.Errorf("jsonTime: unexpected timezone in bare timestamp: %q", s)
+		}
+		switch {
+		case len(frac) > 6:
+			frac = frac[:6] // truncate to microseconds
+		case len(frac) < 6:
+			frac = frac + strings.Repeat("0", 6-len(frac)) // right-pad
+		}
+		s = s[:i] + "." + frac
+	}
+
+	// Parse as bare timestamp (no zone).
+	t, err := time.Parse(MICRO_LAYOUT, s)
 	if err != nil {
 		return err
 	}
-
-	j.Time = time
+	j.Time = t
 	return nil
 }
