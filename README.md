@@ -1,6 +1,6 @@
 # Auth service
 
-Last updated: 2025-08-13
+Last updated: 2025-10-18
 
 # Table of Contents
 
@@ -91,7 +91,7 @@ The service can be configured using the following environment variables:
 | PORT | The port to run the service | No | 8400 | int | any valid port number |
 | LOG_LEVEL | The log level of the service | No | INFO | string | DEBUG, INFO, WARN, ERROR |
 | LOG_KIND | The kind of log to output | No | TEXT | string | TEXT, JSON |
-| ENVIRONMENT | The environment to run the service | No | dev | string | any valid string |
+| ENVIRONMENT | The environment to run the service | No | dev | string | dev, prod, test |
 | USER_SERVICE_URL | The URL of the user service endpoint | Yes | | string | any valid URL |
 | JWT_SECRET | The secret key to sign the JWT tokens | Yes | | string | any valid string |
 | ACCESS_TOKEN_DURATION_MS | The duration of the access token in milliseconds | No | 900000 (15 minutes) | int | any valid unsigned int |

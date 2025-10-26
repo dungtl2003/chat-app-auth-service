@@ -11,6 +11,7 @@ import (
 )
 
 type AppContext struct {
+	Env             config.Env
 	Logger          *logging.LoggerWrapper
 	Validator       *validate.Validator
 	UserService     user.UserService

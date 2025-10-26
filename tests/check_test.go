@@ -89,11 +89,13 @@ func TestCheckWithRealToken(t *testing.T) {
 	require.NoError(t, err)
 	require.EqualValues(t, http.StatusOK, resp.StatusCode)
 
-	var responseBody api.LoginResponseBody
+	var responseBody types.Response[api.LoginResponseBody]
 	err = json.NewDecoder(resp.Body).Decode(&responseBody)
 	require.NoError(t, err)
+	require.Nil(t, responseBody.Error)
+	require.NotNil(t, responseBody.Data)
 
-	accessToken := responseBody.AccessToken
+	accessToken := responseBody.Data.Item.AccessToken
 	require.NotEmpty(t, accessToken)
 
 	URL = fmt.Sprintf("%s/auth/check", helper.AuthURL)

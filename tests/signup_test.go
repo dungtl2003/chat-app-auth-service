@@ -31,7 +31,7 @@ func TestSignUpSuccessShouldAutoLogin(t *testing.T) {
 		Email:      "you@example.com",
 		Username:   "you",
 		Password:   "password",
-		Role:       model.USER,
+		Role:       model.UserRoleUser,
 		DeviceInfo: types.NewJson([]byte(`{"user-agent": "Mozilla/5.0"}`)),
 	}
 	payloadJson, err := json.Marshal(signUpPayload)
@@ -49,13 +49,17 @@ func TestSignUpSuccessShouldAutoLogin(t *testing.T) {
 	refreshToken := GetRTFromResponse(resp)
 	require.NotEmpty(t, refreshToken)
 
-	var respBody api.SignUpResponseBody
+	var respBody types.Response[api.SignUpResponseBody]
 	err = json.NewDecoder(resp.Body).Decode(&respBody)
 	require.NoError(t, err)
-	require.NotEmpty(t, respBody.AccessToken)
-	require.NotEmpty(t, respBody.SessionId)
-	require.EqualValues(t, signUpPayload.Email, respBody.User.Email)
-	require.EqualValues(t, signUpPayload.Username, respBody.User.Username)
-	require.EqualValues(t, signUpPayload.Role, respBody.User.Role)
-	require.Empty(t, respBody.User.Password)
+	require.Nil(t, respBody.Error)
+	require.NotNil(t, respBody.Data)
+
+	respBodyData := respBody.Data.Item
+	require.NotEmpty(t, respBodyData.AccessToken)
+	require.NotEmpty(t, respBodyData.SessionId)
+	require.EqualValues(t, signUpPayload.Email, respBodyData.User.Email)
+	require.EqualValues(t, signUpPayload.Username, respBodyData.User.Username)
+	require.EqualValues(t, signUpPayload.Role, respBodyData.User.Role)
+	require.Empty(t, respBodyData.User.Password)
 }

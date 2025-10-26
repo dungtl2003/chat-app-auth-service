@@ -6,6 +6,7 @@ import (
 	"dungtl2003/chat-app-auth-service/internal/jwthandler"
 	"dungtl2003/chat-app-auth-service/internal/model"
 	"dungtl2003/chat-app-auth-service/internal/services/database"
+	"dungtl2003/chat-app-auth-service/internal/types"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -101,7 +102,7 @@ func TestLoginSuccessfully(t *testing.T) {
 	uid := 2
 	identifier := "normaluser"
 	password := "normalpassword"
-	role := model.USER
+	role := model.UserRoleUser
 	deviceInfo := json.RawMessage(`{"user-agent": "Mozilla/5.0"}`)
 
 	payloadJson := fmt.Appendf(nil, `
@@ -137,10 +138,13 @@ func TestLoginSuccessfully(t *testing.T) {
 	require.NoError(t, err)
 	require.EqualValues(t, role, r)
 
-	var responseBody api.LoginResponseBody
+	var responseBody types.Response[api.LoginResponseBody]
 	err = json.NewDecoder(resp.Body).Decode(&responseBody)
 	require.NoError(t, err)
-	accessToken := responseBody.AccessToken
+	require.Nil(t, responseBody.Error)
+	require.NotNil(t, responseBody.Data)
+
+	accessToken := responseBody.Data.Item.AccessToken
 	require.NotEmpty(t, accessToken)
 
 	// validate AT

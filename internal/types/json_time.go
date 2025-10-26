@@ -12,6 +12,10 @@ type JsonTime struct {
 	time.Time
 }
 
+func (j JsonTime) String() string {
+	return j.Time.Format(MICRO_LAYOUT)
+}
+
 func NewJsonTime(t time.Time) JsonTime {
 	return JsonTime{t}
 }
@@ -25,13 +29,16 @@ func NewJsonTimeStrUnsafe(s string) JsonTime {
 	return JsonTime{t}
 }
 
+func (j *JsonTime) Dereference() JsonTime {
+	if j == nil {
+		return JsonTime{}
+	}
+	return *j
+}
+
 // Value implements the [driver.Valuer] interface.
 func (j JsonTime) Value() (driver.Value, error) {
 	return j.Time, nil
-}
-
-func (j JsonTime) String() string {
-	return j.Time.String()
 }
 
 // Scan implements the [Scanner] interface.
@@ -49,16 +56,25 @@ func (j *JsonTime) Scan(value any) error {
 	}
 }
 
+// MarshalJSON follows RFC 3339, with microsecond precision, in UTC.
 func (j JsonTime) MarshalJSON() ([]byte, error) {
-	// Force UTC, drop sub-microsecond noise, emit exactly 6 fractional digits.
-	s := j.Time.UTC().Truncate(time.Microsecond).Format(MICRO_LAYOUT)
+	// Encode zero time as JSON null for symmetry with UnmarshalJSON.
+	if j.Time.IsZero() {
+		return []byte("null"), nil
+	}
+
+	// Normalize: strip monotonic, force UTC, and truncate to microseconds.
+	t := j.Time.Round(0).UTC().Truncate(time.Microsecond)
+
+	// RFC 3339-compliant string. RFC3339Nano prints fractional seconds only if needed.
+	// Because we truncated to µs, at most 6 fractional digits will appear.
+	s := t.Format(time.RFC3339Nano)
 	return []byte(`"` + s + `"`), nil
 }
 
 func (j *JsonTime) UnmarshalJSON(data []byte) error {
-	if string(data) == "null" {
-		j.Time = time.Time{}
-		return nil // or return an error if "null" is invalid for you
+	if IsNull(data) {
+		return fmt.Errorf("jsonTime: UnmarshalJSON(null)")
 	}
 
 	var s string

@@ -5,6 +5,7 @@ import (
 	"dungtl2003/chat-app-auth-service/internal/model"
 	"dungtl2003/chat-app-auth-service/internal/services"
 	"dungtl2003/chat-app-auth-service/internal/types"
+	"fmt"
 )
 
 const (
@@ -16,27 +17,27 @@ type HealthResponse struct {
 	Status string `json:"status"`
 }
 
-type UserGetResponseBody struct {
-	User  model.ChatUser `json:"user"`
-	Error string         `json:"error"`
+func (r HealthResponse) String() string {
+	return fmt.Sprintf("HealthResponse{Status: %s}", r.Status)
 }
 
 type UserGetResponse struct {
-	StatusCode int                 `json:"status_code"`
-	Body       UserGetResponseBody `json:"body"`
+	User model.ChatUser `json:"user"`
 }
 
-type UserGetAuthResponseBody struct {
-	User  model.ChatUser `json:"user"`
-	Error string         `json:"error"`
+func (r UserGetResponse) String() string {
+	return fmt.Sprintf("UserGetResponse{User: %+v}", r.User)
 }
 
 type UserGetAuthResponse struct {
-	StatusCode int                     `json:"status_code"`
-	Body       UserGetAuthResponseBody `json:"body"`
+	User model.ChatUser `json:"user"`
 }
 
-type SessionPostRequestBody struct {
+func (r UserGetAuthResponse) String() string {
+	return fmt.Sprintf("UserGetAuthResponse{User: %+v}", r.User)
+}
+
+type SessionPostRequest struct {
 	Id               int64      `json:"id"`
 	Version          int64      `json:"version"`
 	DeviceInfo       types.Json `json:"device_info"`
@@ -44,41 +45,44 @@ type SessionPostRequestBody struct {
 	ExpiresAt        string     `json:"expires_at"`
 }
 
-type SessionPostResponseBody struct {
-	Session model.Session `json:"session"`
-	Error   string        `json:"error"`
+func (r SessionPostRequest) String() string {
+	return fmt.Sprintf("SessionPostRequestBody{Id: %d, Version: %d, DeviceInfo: %s, RefreshTokenHash (hashed): %s, ExpiresAt: %s}", r.Id, r.Version, r.DeviceInfo, r.RefreshTokenHash, r.ExpiresAt)
 }
 
 type SessionPostResponse struct {
-	StatusCode int                     `json:"status_code"`
-	Body       SessionPostResponseBody `json:"body"`
+	Session model.Session `json:"session"`
 }
 
-type UserPostRequestBody struct {
+func (r SessionPostResponse) String() string {
+	return fmt.Sprintf("SessionPostResponse{Session: %+v}", r.Session)
+}
+
+type UserPostRequest struct {
 	Email    string         `json:"email"`
 	Username string         `json:"username"`
 	Password string         `json:"password"`
 	Role     model.UserRole `json:"role"`
 }
 
-type UserPostResponseBody struct {
-	User  model.ChatUser `json:"user"`
-	Error string         `json:"error"`
-	Code  string         `json:"code"`
+func (r UserPostRequest) String() string {
+	return fmt.Sprintf("UserPostRequest{Email: %s, Username: %s, Role: %s, Password (hashed): %s}", r.Email, r.Username, r.Role, r.Password)
 }
 
 type UserPostResponse struct {
-	StatusCode int                  `json:"status_code"`
-	Body       UserPostResponseBody `json:"body"`
+	User model.ChatUser `json:"user"`
+}
+
+func (r UserPostResponse) String() string {
+	return fmt.Sprintf("UserPostResponse{User: %+v}", r.User)
 }
 
 type UserService interface {
 	services.Service
-	CreateUser(context context.Context, payload UserPostRequestBody) (*UserPostResponse, error)
+	CreateUser(context context.Context, payload UserPostRequest) (*UserPostResponse, error)
 	GetUserAuth(context context.Context, identifier string) (*UserGetAuthResponse, error)
 	GetUserById(context context.Context, userId int64) (*UserGetResponse, error)
 	IncrementSessionVersion(context context.Context, userId int64) error
 	RevokeAllSessions(context context.Context, userId int64) error
 	RevokeSession(context context.Context, userId int64, sessionId int64) error
-	CreateSession(context context.Context, userId int64, payload SessionPostRequestBody) (*SessionPostResponse, error)
+	CreateSession(context context.Context, userId int64, payload SessionPostRequest) (*SessionPostResponse, error)
 }

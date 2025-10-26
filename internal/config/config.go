@@ -9,6 +9,14 @@ import (
 	"strings"
 )
 
+type Env string
+
+const (
+	Dev  Env = "dev"
+	Prod Env = "prod"
+	Test Env = "test"
+)
+
 type JwtTokenConfig struct {
 	JwtSecret    string
 	ATDurationMs int64
@@ -35,7 +43,7 @@ type PasswordManagerConfig struct {
 
 type Config struct {
 	ServerPort            int
-	Env                   string
+	Env                   Env
 	LogConfig             LogConfig
 	UserServiceConfig     UserServiceConfig
 	JwtTokenConfig        JwtTokenConfig
@@ -297,12 +305,21 @@ func (c *Config) setServerPort() error {
 
 func (c *Config) setEnv() error {
 	log.Println("Setting ENVIRONMENT")
-	env, has := os.LookupEnv("ENVIRONMENT")
+	envStr, has := os.LookupEnv("ENVIRONMENT")
 	if !has {
 		log.Println("ENVIRONMENT not found, setting to dev")
-		env = "dev"
+		envStr = "dev"
 	}
-	c.Env = env
 
+	switch strings.ToLower(envStr) {
+	case "dev":
+		c.Env = Dev
+	case "prod":
+		c.Env = Prod
+	case "test":
+		c.Env = Test
+	default:
+		return fmt.Errorf("ENVIRONMENT=%s is invalid", envStr)
+	}
 	return nil
 }

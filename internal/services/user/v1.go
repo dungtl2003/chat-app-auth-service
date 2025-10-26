@@ -5,7 +5,9 @@ import (
 	"context"
 	"dungtl2003/chat-app-auth-service/internal/helper"
 	"dungtl2003/chat-app-auth-service/internal/logging"
+	"dungtl2003/chat-app-auth-service/internal/model"
 	"dungtl2003/chat-app-auth-service/internal/services"
+	"dungtl2003/chat-app-auth-service/internal/types"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -62,7 +64,7 @@ func NewUSerServiceV1(userURL string, opts *UserServiceV1Options) (*UserServiceV
 	}
 
 	service := &UserServiceV1{
-		status:  services.READY,
+		status:  services.ServiceReady,
 		client:  client,
 		logger:  loggerWrapper,
 		userURL: userURL,
@@ -75,31 +77,34 @@ func NewUSerServiceV1(userURL string, opts *UserServiceV1Options) (*UserServiceV
 // Status checks the health of the service by making a request to the
 // healthcheck endpoint. It returns the service status based on the response.
 func (s *UserServiceV1) Status() services.ServiceStatus {
-	if s.status == services.STOPPED {
+	if s.status == services.ServiceStopped {
 		s.logger.Errorfln("[%s] Service is stopped", s.Name())
 		return s.status
+	}
+	if s.status != services.ServiceReady {
+		s.logger.Warnfln("[%s] Service is not ready, current status: %d", s.Name(), s.status)
 	}
 
 	resp, err := s.client.Get(fmt.Sprintf("%s/healthcheck", s.userURL))
 	if err != nil {
 		s.logger.Errorfln("[%s] Failed to check service status: %v", s.Name(), err)
-		s.status = services.ERROR
+		s.status = services.ServiceError
 		return s.status
 	}
 
 	var healthResp HealthResponse
 	if err := json.NewDecoder(resp.Body).Decode(&healthResp); err != nil {
 		s.logger.Errorfln("[%s] Failed to decode service health response: %v", s.Name(), err)
-		s.status = services.ERROR
+		s.status = services.ServiceError
 		return s.status
 	}
 
 	if healthResp.Status == UP {
 		s.logger.Infofln("[%s] Service is up and running", s.Name())
-		s.status = services.READY
+		s.status = services.ServiceReady
 	} else {
 		s.logger.Errorfln("[%s] Service is down, status: %s", s.Name(), healthResp.Status)
-		s.status = services.ERROR
+		s.status = services.ServiceError
 	}
 
 	return s.status
@@ -112,22 +117,22 @@ func (s *UserServiceV1) Name() string {
 
 // Close stops the service and releases any resources it holds.
 func (s *UserServiceV1) Close() error {
-	if s.status == services.STOPPED {
+	if s.status == services.ServiceStopped {
 		s.logger.Errorfln("[%s] Service is already stopped", s.Name())
 		return nil
 	}
 
 	s.logger.Infofln("[%s] Closing service", s.Name())
-	s.status = services.STOPPED
+	s.status = services.ServiceStopped
 	s.logger.Infofln("[%s] Service stopped", s.Name())
 	return nil
 }
 
 func (s *UserServiceV1) GetUserAuth(context context.Context, identifier string) (*UserGetAuthResponse, error) {
-	if s.status == services.STOPPED {
+	if s.status == services.ServiceStopped {
 		return nil, fmt.Errorf("service is stopped")
 	}
-	if s.status != services.READY {
+	if s.status != services.ServiceReady {
 		s.logger.Warnfln("[%s] Service is not ready", s.Name())
 	}
 
@@ -152,22 +157,32 @@ func (s *UserServiceV1) GetUserAuth(context context.Context, identifier string) 
 	}
 	defer resp.Body.Close()
 
-	var userGetAuthResponse UserGetAuthResponse
-	userGetAuthResponse.StatusCode = resp.StatusCode
-	if err := json.NewDecoder(resp.Body).Decode(&userGetAuthResponse.Body); err != nil {
+	var userGetAuthResponseBody types.Response[model.ChatUser]
+	if err := json.NewDecoder(resp.Body).Decode(&userGetAuthResponseBody); err != nil {
 		s.logger.Errorfln("[%s] Error decoding response: %v", s.Name(), err)
 		return nil, fmt.Errorf("error decoding response: %w", err)
 	}
 
-	s.logger.Debugfln("[%s] Received response: %v", s.Name(), userGetAuthResponse)
-	return &userGetAuthResponse, nil
+	if resp.StatusCode != http.StatusOK {
+		s.logger.Errorfln("[%s] Received non-OK status code: %d, response body: %v", s.Name(), resp.StatusCode, userGetAuthResponseBody)
+		return nil, services.BadResponseError{
+			ErrBlock: *userGetAuthResponseBody.Error,
+		}
+	}
+
+	userGetAuthResponse := &UserGetAuthResponse{
+		User: *userGetAuthResponseBody.Data.Item,
+	}
+
+	s.logger.Debugfln("[%s] Received response: %s", s.Name(), userGetAuthResponse)
+	return userGetAuthResponse, nil
 }
 
 func (s *UserServiceV1) GetUserById(context context.Context, userId int64) (*UserGetResponse, error) {
-	if s.status == services.STOPPED {
+	if s.status == services.ServiceStopped {
 		return nil, fmt.Errorf("service is stopped")
 	}
-	if s.status != services.READY {
+	if s.status != services.ServiceReady {
 		s.logger.Warnfln("[%s] Service is not ready", s.Name())
 	}
 
@@ -192,22 +207,32 @@ func (s *UserServiceV1) GetUserById(context context.Context, userId int64) (*Use
 	}
 	defer resp.Body.Close()
 
-	var userGetResponse UserGetResponse
-	userGetResponse.StatusCode = resp.StatusCode
-	if err := json.NewDecoder(resp.Body).Decode(&userGetResponse.Body); err != nil {
+	var userGetResponseBody types.Response[model.ChatUser]
+	if err := json.NewDecoder(resp.Body).Decode(&userGetResponseBody); err != nil {
 		s.logger.Errorfln("[%s] Error decoding response: %v", s.Name(), err)
 		return nil, fmt.Errorf("error decoding response: %w", err)
 	}
 
-	s.logger.Debugfln("[%s] Received response: %v", s.Name(), userGetResponse)
-	return &userGetResponse, nil
+	if resp.StatusCode != http.StatusOK {
+		s.logger.Errorfln("[%s] Received non-OK status code: %d, response body: %v", s.Name(), resp.StatusCode, userGetResponseBody)
+		return nil, services.BadResponseError{
+			ErrBlock: *userGetResponseBody.Error,
+		}
+	}
+
+	userGetResponse := &UserGetResponse{
+		User: *userGetResponseBody.Data.Item,
+	}
+
+	s.logger.Debugfln("[%s] Received response: %s", s.Name(), userGetResponse)
+	return userGetResponse, nil
 }
 
 func (s *UserServiceV1) IncrementSessionVersion(context context.Context, userId int64) error {
-	if s.status == services.STOPPED {
+	if s.status == services.ServiceStopped {
 		return fmt.Errorf("service is stopped")
 	}
-	if s.status != services.READY {
+	if s.status != services.ServiceReady {
 		s.logger.Warnfln("[%s] Service is not ready", s.Name())
 	}
 
@@ -230,9 +255,17 @@ func (s *UserServiceV1) IncrementSessionVersion(context context.Context, userId 
 	}
 	defer resp.Body.Close()
 
+	var responseBody types.Response[any]
+	if err := json.NewDecoder(resp.Body).Decode(&responseBody); err != nil {
+		s.logger.Errorfln("[%s] Error decoding response: %v", s.Name(), err)
+		return fmt.Errorf("error decoding response: %w", err)
+	}
+
 	if resp.StatusCode != http.StatusOK {
-		s.logger.Errorfln("[%s] Failed to increment session version, status code: %d", s.Name(), resp.StatusCode)
-		return fmt.Errorf("failed to increment session version, status code: %d", resp.StatusCode)
+		s.logger.Errorfln("[%s] Failed to increment session version for user %d, status code: %d, response body: %v", s.Name(), userId, resp.StatusCode, responseBody)
+		return services.BadResponseError{
+			ErrBlock: *responseBody.Error,
+		}
 	}
 
 	s.logger.Debugfln("[%s] Successfully incremented session version for user %d", s.Name(), userId)
@@ -240,10 +273,10 @@ func (s *UserServiceV1) IncrementSessionVersion(context context.Context, userId 
 }
 
 func (s *UserServiceV1) RevokeAllSessions(context context.Context, userId int64) error {
-	if s.status == services.STOPPED {
+	if s.status == services.ServiceStopped {
 		return fmt.Errorf("service is stopped")
 	}
-	if s.status != services.READY {
+	if s.status != services.ServiceReady {
 		s.logger.Warnfln("[%s] Service is not ready", s.Name())
 	}
 
@@ -266,9 +299,17 @@ func (s *UserServiceV1) RevokeAllSessions(context context.Context, userId int64)
 	}
 	defer resp.Body.Close()
 
+	var responseBody types.Response[any]
+	if err := json.NewDecoder(resp.Body).Decode(&responseBody); err != nil {
+		s.logger.Errorfln("[%s] Error decoding response: %v", s.Name(), err)
+		return fmt.Errorf("error decoding response: %w", err)
+	}
+
 	if resp.StatusCode != http.StatusOK {
-		s.logger.Errorfln("[%s] Failed to revoke all sessions for user %d, status code: %d", s.Name(), userId, resp.StatusCode)
-		return fmt.Errorf("failed to revoke all sessions for user %d, status code: %d", userId, resp.StatusCode)
+		s.logger.Errorfln("[%s] Failed to revoke all sessions for user %d, status code: %d, response body: %v", s.Name(), userId, resp.StatusCode, responseBody)
+		return services.BadResponseError{
+			ErrBlock: *responseBody.Error,
+		}
 	}
 
 	s.logger.Debugfln("[%s] Successfully revoked all sessions for user %d", s.Name(), userId)
@@ -276,10 +317,10 @@ func (s *UserServiceV1) RevokeAllSessions(context context.Context, userId int64)
 }
 
 func (s *UserServiceV1) RevokeSession(context context.Context, userId int64, sessionId int64) error {
-	if s.status == services.STOPPED {
+	if s.status == services.ServiceStopped {
 		return fmt.Errorf("service is stopped")
 	}
-	if s.status != services.READY {
+	if s.status != services.ServiceReady {
 		s.logger.Warnfln("[%s] Service is not ready", s.Name())
 	}
 
@@ -302,20 +343,28 @@ func (s *UserServiceV1) RevokeSession(context context.Context, userId int64, ses
 	}
 	defer resp.Body.Close()
 
+	var responseBody types.Response[any]
+	if err := json.NewDecoder(resp.Body).Decode(&responseBody); err != nil {
+		s.logger.Errorfln("[%s] Error decoding response: %v", s.Name(), err)
+		return fmt.Errorf("error decoding response: %w", err)
+	}
+
 	if resp.StatusCode != http.StatusOK {
-		s.logger.Errorfln("[%s] Failed to revoke session %d for user %d, status code: %d", s.Name(), sessionId, userId, resp.StatusCode)
-		return fmt.Errorf("failed to revoke session %d for user %d, status code: %d", sessionId, userId, resp.StatusCode)
+		s.logger.Errorfln("[%s] Failed to revoke session %d for user %d, status code: %d, response body: %v", s.Name(), sessionId, userId, resp.StatusCode, responseBody)
+		return services.BadResponseError{
+			ErrBlock: *responseBody.Error,
+		}
 	}
 
 	s.logger.Debugfln("[%s] Successfully revoked session %d for user %d", s.Name(), sessionId, userId)
 	return nil
 }
 
-func (s *UserServiceV1) CreateUser(context context.Context, payload UserPostRequestBody) (*UserPostResponse, error) {
-	if s.status == services.STOPPED {
+func (s *UserServiceV1) CreateUser(context context.Context, payload UserPostRequest) (*UserPostResponse, error) {
+	if s.status == services.ServiceStopped {
 		return nil, fmt.Errorf("service is stopped")
 	}
-	if s.status != services.READY {
+	if s.status != services.ServiceReady {
 		s.logger.Warnfln("[%s] Service is not ready", s.Name())
 	}
 
@@ -346,22 +395,32 @@ func (s *UserServiceV1) CreateUser(context context.Context, payload UserPostRequ
 	}
 	defer resp.Body.Close()
 
-	var userResp UserPostResponse
-	userResp.StatusCode = resp.StatusCode
-	if err := json.NewDecoder(resp.Body).Decode(&userResp.Body); err != nil {
+	var userCreateResponseBody types.Response[model.ChatUser]
+	if err := json.NewDecoder(resp.Body).Decode(&userCreateResponseBody); err != nil {
 		s.logger.Errorfln("[%s] Error decoding response: %v", s.Name(), err)
 		return nil, fmt.Errorf("error decoding response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusCreated {
+		s.logger.Errorfln("[%s] Received non-Created status code: %d, response body: %v", s.Name(), resp.StatusCode, userCreateResponseBody)
+		return nil, services.BadResponseError{
+			ErrBlock: *userCreateResponseBody.Error,
+		}
+	}
+
+	userResp := UserPostResponse{
+		User: *userCreateResponseBody.Data.Item,
 	}
 
 	s.logger.Debugfln("[%s] Received response: %v", s.Name(), userResp)
 	return &userResp, nil
 }
 
-func (s *UserServiceV1) CreateSession(context context.Context, userId int64, payload SessionPostRequestBody) (*SessionPostResponse, error) {
-	if s.status == services.STOPPED {
+func (s *UserServiceV1) CreateSession(context context.Context, userId int64, payload SessionPostRequest) (*SessionPostResponse, error) {
+	if s.status == services.ServiceStopped {
 		return nil, fmt.Errorf("service is stopped")
 	}
-	if s.status != services.READY {
+	if s.status != services.ServiceReady {
 		s.logger.Warnfln("[%s] Service is not ready", s.Name())
 	}
 
@@ -392,11 +451,21 @@ func (s *UserServiceV1) CreateSession(context context.Context, userId int64, pay
 	}
 	defer resp.Body.Close()
 
-	var sessionResp SessionPostResponse
-	sessionResp.StatusCode = resp.StatusCode
-	if err := json.NewDecoder(resp.Body).Decode(&sessionResp.Body); err != nil {
+	var sessionCreateResponseBody types.Response[model.Session]
+	if err := json.NewDecoder(resp.Body).Decode(&sessionCreateResponseBody); err != nil {
 		s.logger.Errorfln("[%s] Error decoding response: %v", s.Name(), err)
 		return nil, fmt.Errorf("error decoding response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusCreated {
+		s.logger.Errorfln("[%s] Received non-Created status code: %d, response body: %v", s.Name(), resp.StatusCode, sessionCreateResponseBody)
+		return nil, services.BadResponseError{
+			ErrBlock: *sessionCreateResponseBody.Error,
+		}
+	}
+
+	sessionResp := SessionPostResponse{
+		Session: *sessionCreateResponseBody.Data.Item,
 	}
 
 	s.logger.Debugfln("[%s] Received response: %v", s.Name(), sessionResp)

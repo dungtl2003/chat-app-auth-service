@@ -11,6 +11,13 @@ type JsonNullString struct {
 	sql.NullString
 }
 
+func (j JsonNullString) ToString() string {
+	if j.Valid {
+		return j.NullString.String
+	}
+	return "NULL"
+}
+
 func NewJsonNullString(s string) JsonNullString {
 	return JsonNullString{
 		sql.NullString{
@@ -38,13 +45,14 @@ func (j JsonNullString) MarshalJSON() ([]byte, error) {
 }
 
 func (j *JsonNullString) UnmarshalJSON(data []byte) error {
+	// use pointer so json null will be unmarshaled to nil instead of ""
 	var str *string
 	if err := json.Unmarshal(data, &str); err != nil {
 		return err
 	}
 	if str != nil {
 		j.Valid = true
-		j.String = *str
+		j.NullString.String = *str
 	} else {
 		j.Valid = false
 	}
@@ -54,18 +62,18 @@ func (j *JsonNullString) UnmarshalJSON(data []byte) error {
 func (j *JsonNullString) Scan(value any) error {
 	if value == nil {
 		j.Valid = false
-		j.String = ""
+		j.NullString.String = ""
 		return nil
 	}
 
 	switch value := value.(type) {
 	case string:
 		j.Valid = true
-		j.String = value
+		j.NullString.String = value
 		return nil
 	case []byte:
 		j.Valid = true
-		j.String = string(value)
+		j.NullString.String = string(value)
 		return nil
 	default:
 		return fmt.Errorf("jsonNullString: unsupported type: %T", value)

@@ -13,6 +13,9 @@ type JsonNullTime struct {
 }
 
 func (j JsonNullTime) String() string {
+	if !j.Valid {
+		return "NULL"
+	}
 	return j.Time.Format(MICRO_LAYOUT)
 }
 
@@ -52,17 +55,28 @@ func NewJsonNullTimeStrUnsafe(s string) JsonNullTime {
 	}
 }
 
+// MarshalJSON follows RFC 3339, with microsecond precision, in UTC.
 func (j JsonNullTime) MarshalJSON() ([]byte, error) {
-	if j.Valid {
-		s := j.Time.UTC().Truncate(time.Microsecond).Format(MICRO_LAYOUT)
-		return []byte(`"` + s + `"`), nil
-	} else {
-		return json.Marshal(nil)
+	if !j.Valid {
+		return []byte("null"), nil
 	}
+
+	// Encode zero time as JSON null for symmetry with UnmarshalJSON.
+	if j.Time.IsZero() {
+		return []byte("null"), nil
+	}
+
+	// Normalize: strip monotonic, force UTC, and truncate to microseconds.
+	t := j.Time.Round(0).UTC().Truncate(time.Microsecond)
+
+	// RFC 3339-compliant string. RFC3339Nano prints fractional seconds only if needed.
+	// Because we truncated to µs, at most 6 fractional digits will appear.
+	s := t.Format(time.RFC3339Nano)
+	return []byte(`"` + s + `"`), nil
 }
 
 func (j *JsonNullTime) UnmarshalJSON(data []byte) error {
-	if string(data) == "null" {
+	if IsNull(data) {
 		j.Time = time.Time{}
 		j.Valid = false
 		return nil // or return an error if "null" is invalid for you

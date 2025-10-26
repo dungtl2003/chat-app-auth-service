@@ -5,6 +5,7 @@ import (
 	"dungtl2003/chat-app-auth-service/internal/api"
 	"dungtl2003/chat-app-auth-service/internal/constants"
 	"dungtl2003/chat-app-auth-service/internal/services/database"
+	"dungtl2003/chat-app-auth-service/internal/types"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -49,14 +50,15 @@ func TestLogoutShouldLogoutOneDevice(t *testing.T) {
 		require.NoError(t, err)
 		require.EqualValues(t, http.StatusOK, resp.StatusCode)
 
-		var responseBody api.LoginResponseBody
+		var responseBody types.Response[api.LoginResponseBody]
 		err = json.NewDecoder(resp.Body).Decode(&responseBody)
 		require.NoError(t, err)
+		require.NotNil(t, responseBody.Data)
 
-		sessionId := responseBody.SessionId
+		sessionId := responseBody.Data.Item.SessionId
 		sessionIds = append(sessionIds, sessionId.Int64())
 
-		accessToken := responseBody.AccessToken
+		accessToken := responseBody.Data.Item.AccessToken
 		require.NotEmpty(t, accessToken)
 		accessTokens = append(accessTokens, accessToken)
 
@@ -94,13 +96,12 @@ func TestLogoutShouldLogoutOneDevice(t *testing.T) {
 	resp, err = Post(helper.Client, URL, resp.Header, nil)
 	require.NoError(t, err)
 	require.EqualValues(t, http.StatusUnauthorized, resp.StatusCode)
-	var refreshResponseBody struct {
-		Error string `json:"error"`
-		Code  string `json:"code"`
-	}
+
+	var refreshResponseBody types.Response[api.RefreshTokenResponseBody]
 	err = json.NewDecoder(resp.Body).Decode(&refreshResponseBody)
 	require.NoError(t, err)
-	require.EqualValues(t, constants.REFRESH_TOKEN_NOT_FOUND, refreshResponseBody.Code)
+	require.NotNil(t, refreshResponseBody.Error)
+	require.EqualValues(t, constants.REFRESH_TOKEN_NOT_FOUND, refreshResponseBody.Error.Status)
 
 	// the first one cannot work
 	// we have to test this one last because the server can misunderstood that

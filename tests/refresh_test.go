@@ -5,6 +5,7 @@ import (
 	"dungtl2003/chat-app-auth-service/internal/api"
 	"dungtl2003/chat-app-auth-service/internal/constants"
 	"dungtl2003/chat-app-auth-service/internal/services/database"
+	"dungtl2003/chat-app-auth-service/internal/types"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -45,10 +46,13 @@ func TestRefreshShouldWorkAsExpected(t *testing.T) {
 	refreshToken := GetRTFromResponse(resp)
 	require.NotEmpty(t, refreshToken)
 
-	var loginResponseBody api.LoginResponseBody
+	var loginResponseBody types.Response[api.LoginResponseBody]
 	err = json.NewDecoder(resp.Body).Decode(&loginResponseBody)
 	require.NoError(t, err)
-	accessToken := loginResponseBody.AccessToken
+	require.Nil(t, loginResponseBody.Error)
+	require.NotNil(t, loginResponseBody.Data)
+
+	accessToken := loginResponseBody.Data.Item.AccessToken
 	require.NotEmpty(t, accessToken)
 
 	<-time.After(1 * time.Second) // wait for 1 second to make sure no duplicate token
@@ -62,10 +66,13 @@ func TestRefreshShouldWorkAsExpected(t *testing.T) {
 	require.NoError(t, err)
 	require.EqualValues(t, http.StatusOK, resp.StatusCode)
 
-	var refreshResponseBody api.RefreshTokenResponseBody
+	var refreshResponseBody types.Response[api.RefreshTokenResponseBody]
 	err = json.NewDecoder(resp.Body).Decode(&refreshResponseBody)
 	require.NoError(t, err)
-	newAccessToken := refreshResponseBody.AccessToken
+	require.Nil(t, refreshResponseBody.Error)
+	require.NotNil(t, refreshResponseBody.Data)
+
+	newAccessToken := refreshResponseBody.Data.Item.AccessToken
 	require.NotEmpty(t, newAccessToken)
 
 	require.NotEqual(t, accessToken, newAccessToken)
@@ -89,13 +96,12 @@ func TestRefreshShouldNotWorkWithInvalidToken(t *testing.T) {
 	resp, err := Post(helper.Client, URL, nil, nil)
 	require.NoError(t, err)
 	require.EqualValues(t, http.StatusUnauthorized, resp.StatusCode)
-	var errResponseBody struct {
-		Error string `json:"error"`
-		Code  string `json:"code"`
-	}
+	var errResponseBody types.Response[api.RefreshTokenResponseBody]
+
 	err = json.NewDecoder(resp.Body).Decode(&errResponseBody)
 	require.NoError(t, err)
-	require.EqualValues(t, constants.REFRESH_TOKEN_NOT_FOUND, errResponseBody.Code)
+	require.NotNil(t, errResponseBody.Error)
+	require.EqualValues(t, constants.REFRESH_TOKEN_NOT_FOUND, errResponseBody.Error.Status)
 
 	// invalid refresh token
 	header := http.Header{

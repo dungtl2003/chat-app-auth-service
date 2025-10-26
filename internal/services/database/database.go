@@ -34,7 +34,7 @@ func New(url string, logger *logging.LoggerWrapper) (*DatabaseService, error) {
 	d := &DatabaseService{
 		client: client,
 		logger: logger,
-		status: services.READY,
+		status: services.ServiceReady,
 	}
 
 	d.logger.Infofln("[%s] Database connection created", d.Name())
@@ -47,13 +47,13 @@ func (d *DatabaseService) Name() string {
 }
 
 func (d *DatabaseService) Status() services.ServiceStatus {
-	if d.status != services.STOPPED {
+	if d.status != services.ServiceStopped {
 		// check if the database connection is still alive
 		if err := d.client.Ping(); err != nil {
 			d.logger.Errorfln("[%s] Database connection is not alive: %v", d.Name(), err)
-			d.status = services.ERROR
+			d.status = services.ServiceError
 		} else {
-			d.status = services.READY
+			d.status = services.ServiceReady
 		}
 	}
 
@@ -62,7 +62,7 @@ func (d *DatabaseService) Status() services.ServiceStatus {
 
 // Close closes the database connection. The function returns an error.
 func (d *DatabaseService) Close() error {
-	if d.Status() == services.STOPPED {
+	if d.Status() == services.ServiceStopped {
 		d.logger.Errorfln("[%s] Database connection is already closed", d.Name())
 		return nil
 	}
@@ -70,10 +70,10 @@ func (d *DatabaseService) Close() error {
 	err := d.client.Close()
 	if err != nil {
 		d.logger.Errorfln("[%s] Failed to close database connection: %v", d.Name(), err)
-		d.status = services.ERROR
+		d.status = services.ServiceError
 	} else {
 		d.logger.Infofln("[%s] Database connection closed", d.Name())
-		d.status = services.STOPPED
+		d.status = services.ServiceStopped
 	}
 
 	return err
@@ -139,11 +139,11 @@ func (d *DatabaseService) CreateTemporaryData(dataFile DataFile, passwordManager
 				return err
 			}
 			query := `INSERT INTO chat_user.chat_user (
-            id, email, username, password, role, first_name, last_name, birthday, gender, phone_number, privacy, avatar_id, created_at, updated_at, deleted_at
+            id, email, username, password, role, first_name, last_name, birthday, gender, phone_number, privacy, avatar_id, deleted_at
         ) VALUES (
-            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15
+            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13
         );`
-			args := []any{user.Id, user.Email, user.Username, hashedPassword, user.Role, user.FirstName, user.LastName, user.Birthday, user.Gender, user.PhoneNumber, user.Privacy, user.AvatarId, user.CreatedAt, user.UpdatedAt, user.DeletedAt}
+			args := []any{user.Id, user.Email, user.Username, hashedPassword, user.Role, user.FirstName, user.LastName, user.Birthday, user.Gender, user.PhoneNumber, user.Privacy, user.AvatarId, user.DeletedAt}
 			d.logger.Debugfln("[%s] Executing query: %s with args: %v", d.Name(), helper.StripWS(query), args)
 			_, err = tx.Exec(query, args...)
 			if err != nil {
