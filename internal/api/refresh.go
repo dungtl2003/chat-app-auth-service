@@ -82,7 +82,9 @@ func Refresh(appCtx *context.AppContext) gin.HandlerFunc {
 		}
 		// the account was attacked so this refresh token is not valid anymore
 		if sessionVersion < user.SessionVersion.Int64() {
-			handleLowerSessionVersionWithAbort(appCtx, c, userId, sessionVersion, sessId, native)
+			handleLowerSessionVersionWithAbort(
+				appCtx, c, user.SessionVersion.Int64(), sessionVersion, sessId, native,
+			)
 			return
 		}
 
@@ -146,7 +148,7 @@ func Refresh(appCtx *context.AppContext) gin.HandlerFunc {
 			response.Data = &types.DataOrPage[RefreshTokenResponseBody]{
 				Item: &refreshResponseBody,
 			}
-			appCtx.Logger.Debugfln("New session created: %d", newSessId)
+			appCtx.Logger.Debugfln("Response body: %#v", response.Data.Item)
 			helper.SetCookieOverride(c, "refresh_token", newRefreshTokenStr, appCtx.DomainName, appCtx.JwtConfig.RTDurationMs)
 			c.JSON(http.StatusOK, response)
 			c.Abort()
@@ -163,7 +165,7 @@ func Refresh(appCtx *context.AppContext) gin.HandlerFunc {
 		response.Data = &types.DataOrPage[RefreshTokenResponseBody]{
 			Item: &refreshResponseBody,
 		}
-		appCtx.Logger.Debugfln("New session created: %d", newSessId)
+		appCtx.Logger.Debugfln("Response body: %#v", response.Data.Item)
 		c.JSON(http.StatusOK, response)
 		c.Abort()
 	}
@@ -378,15 +380,16 @@ func handleDifferentRTHashWithAbort(
 func handleLowerSessionVersionWithAbort(
 	appCtx *context.AppContext,
 	c *gin.Context,
-	userId int64,
-	sessionVersion int64,
+	expectedSessVersion int64,
+	gotSessVersion int64,
 	sessId int64,
 	native bool,
 ) {
 	response := types.Response[RefreshTokenResponseBody]{}
 
-	appCtx.Logger.Errorfln("Invalid session version (expected: %d, got: %d)", userId, sessionVersion)
-	err := appCtx.UserService.RevokeSession(c, userId, sessId)
+	appCtx.Logger.Errorfln("Invalid session version (expected: %d, got: %d)",
+		expectedSessVersion, gotSessVersion)
+	err := appCtx.UserService.RevokeSession(c, expectedSessVersion, sessId)
 	if err != nil {
 		appCtx.Logger.Errorfln("RevokeSession(): %v", err)
 		response.Error = &types.ErrorBlock{
