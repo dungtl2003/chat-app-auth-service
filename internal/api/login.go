@@ -1,6 +1,7 @@
 package api
 
 import (
+	"dungtl2003/chat-app-auth-service/internal/constants"
 	"dungtl2003/chat-app-auth-service/internal/context"
 	"dungtl2003/chat-app-auth-service/internal/helper"
 	"dungtl2003/chat-app-auth-service/internal/model"
@@ -85,8 +86,9 @@ func Login(appCtx *context.AppContext) gin.HandlerFunc {
 			appCtx.Logger.Errorfln("Invalid password")
 			response.Error = &types.ErrorBlock{
 				Code:    http.StatusForbidden,
+				Status:  constants.INVALID_PASSWORD,
 				Message: "Invalid password",
-				Errors:  []types.ErrorItem{{Message: "Invalid password"}},
+				Errors:  []types.ErrorItem{{Message: "Invalid password", Reason: constants.INVALID_PASSWORD}},
 			}
 			c.JSON(response.Error.Code, response)
 			c.Abort()
