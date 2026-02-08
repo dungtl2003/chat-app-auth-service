@@ -105,7 +105,7 @@ func SignUp(appCtx *context.AppContext) gin.HandlerFunc {
 		appCtx.Logger.Debugfln("Generated session ID: %d", sessId)
 
 		// create tokens
-		accessTokenStr, refreshTokenStr, err := helper.CreateNewTokenPair(appCtx.JwtConfig.JwtSecret, user, appCtx.JwtConfig.ATDurationMs, appCtx.JwtConfig.RTDurationMs, sessId)
+		accessTokenStr, refreshTokenStr, err := helper.CreateNewTokenPair(appCtx.JwtConfig.JwtSecret, user, appCtx.JwtConfig.ATDurationMs, appCtx.JwtConfig.RTDurationMs, sessId, appCtx.IdGenConfig.Epoch)
 		if err != nil {
 			appCtx.Logger.Errorfln("CreateTokens(): error creating tokens: %v", err)
 			response.Error = &types.ErrorBlock{

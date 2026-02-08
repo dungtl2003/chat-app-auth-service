@@ -136,7 +136,7 @@ func (s *UserServiceV1) GetUserAuth(context context.Context, identifier string) 
 		s.logger.Warnfln("[%s] Service is not ready", s.Name())
 	}
 
-	url := helper.EncodeURLPath(fmt.Sprintf(`%s/users/auth-info?identifier=%s`, s.userURL, identifier))
+	url := helper.EncodeURLPath(fmt.Sprintf(`%s/internal/users?identifier=%s`, s.userURL, identifier))
 	method := http.MethodGet
 	header := http.Header{
 		"Content-Type": {"application/json"},
@@ -178,7 +178,7 @@ func (s *UserServiceV1) GetUserAuth(context context.Context, identifier string) 
 	return userGetAuthResponse, nil
 }
 
-func (s *UserServiceV1) GetUserById(context context.Context, userId int64) (*UserGetResponse, error) {
+func (s *UserServiceV1) GetUserById(context context.Context, request *GetUserByIdRequest) (*UserGetResponse, error) {
 	if s.status == services.ServiceStopped {
 		return nil, fmt.Errorf("service is stopped")
 	}
@@ -186,7 +186,12 @@ func (s *UserServiceV1) GetUserById(context context.Context, userId int64) (*Use
 		s.logger.Warnfln("[%s] Service is not ready", s.Name())
 	}
 
-	url := helper.EncodeURLPath(fmt.Sprintf(`%s/users/%d`, s.userURL, userId))
+	url := ""
+	if request.SessionId != nil {
+		url = helper.EncodeURLPath(fmt.Sprintf(`%s/internal/users/%d?session_id=%d`, s.userURL, request.UserId, *request.SessionId))
+	} else {
+		url = helper.EncodeURLPath(fmt.Sprintf(`%s/internal/users/%d`, s.userURL, request.UserId))
+	}
 	method := http.MethodGet
 	header := http.Header{
 		"Content-Type": {"application/json"},
@@ -236,7 +241,7 @@ func (s *UserServiceV1) IncrementSessionVersion(context context.Context, userId 
 		s.logger.Warnfln("[%s] Service is not ready", s.Name())
 	}
 
-	url := helper.EncodeURLPath(fmt.Sprintf(`%s/users/%d/session-version/increment`, s.userURL, userId))
+	url := helper.EncodeURLPath(fmt.Sprintf(`%s/internal/users/%d/session-version/increment`, s.userURL, userId))
 	method := http.MethodPost
 	header := http.Header{}
 
@@ -280,7 +285,7 @@ func (s *UserServiceV1) RevokeAllSessions(context context.Context, userId int64)
 		s.logger.Warnfln("[%s] Service is not ready", s.Name())
 	}
 
-	url := helper.EncodeURLPath(fmt.Sprintf(`%s/users/%d/sessions/revoke`, s.userURL, userId))
+	url := helper.EncodeURLPath(fmt.Sprintf(`%s/internal/users/%d/sessions/revoke`, s.userURL, userId))
 	method := http.MethodPost
 	header := http.Header{}
 
@@ -324,7 +329,7 @@ func (s *UserServiceV1) RevokeSession(context context.Context, userId int64, ses
 		s.logger.Warnfln("[%s] Service is not ready", s.Name())
 	}
 
-	url := helper.EncodeURLPath(fmt.Sprintf(`%s/users/%d/sessions/%d/revoke`, s.userURL, userId, sessionId))
+	url := helper.EncodeURLPath(fmt.Sprintf(`%s/internal/users/%d/sessions/%d/revoke`, s.userURL, userId, sessionId))
 	method := http.MethodPost
 	header := http.Header{}
 
@@ -368,7 +373,7 @@ func (s *UserServiceV1) CreateUser(context context.Context, payload UserPostRequ
 		s.logger.Warnfln("[%s] Service is not ready", s.Name())
 	}
 
-	url := helper.EncodeURLPath(fmt.Sprintf(`%s/users`, s.userURL))
+	url := helper.EncodeURLPath(fmt.Sprintf(`%s/internal/users`, s.userURL))
 	method := http.MethodPost
 	header := http.Header{
 		"Content-Type": {"application/json"},
@@ -424,7 +429,7 @@ func (s *UserServiceV1) CreateSession(context context.Context, userId int64, pay
 		s.logger.Warnfln("[%s] Service is not ready", s.Name())
 	}
 
-	url := helper.EncodeURLPath(fmt.Sprintf(`%s/users/%d/sessions`, s.userURL, userId))
+	url := helper.EncodeURLPath(fmt.Sprintf(`%s/internal/users/%d/sessions`, s.userURL, userId))
 	method := http.MethodPost
 	header := http.Header{
 		"Content-Type": {"application/json"},

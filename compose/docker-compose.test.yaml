@@ -1,42 +1,4 @@
 services:
-  # media:
-  #   container_name: chat-app-media-service
-  #   image: ilikeblue/chat-app-media-service:dev-latest
-  #   labels:
-  #     - 'custom.project=chat'
-  #     - 'custom.service=media'
-  #   ports:
-  #     - "8300:80"
-  #   environment:
-  #     - DATABASE_URL=postgresql://media_service:media1234@chat-app-db-service:5432/chat-app?sslmode=disable
-  #     - PORT=80
-  #     - LOG_LEVEL=DEBUG
-  #     - LOG_KIND=TEXT
-  #     - ID_GENERATOR_ADDR=chat-app-snowflake-tls-service:80
-  #     - ID_GENERATOR_CERT_DIR=/etc/chat-app/services/snowflake/ssl/certs
-  #     - CLOUDINARY_URL=https://fake-cloudinary-url.com
-  #     - ENVIRONMENT=test
-  #     - KAFKA_BROKERS=broker-1:19092,broker-2:19092,broker-3:19092
-  #   volumes:
-  #     - ../environments/test/media/services/snowflake/ssl/certs:/etc/chat-app/services/snowflake/ssl/certs:ro 
-  #   networks:
-  #     - chat-app-media-network
-  #     - chat-app-db-network
-  #     - chat-app-id-generator-network
-  #     - chat-app-kafka-network
-  #   healthcheck:
-  #     test: ["CMD-SHELL", "curl -s http://localhost:80/healthcheck | jq -e '.status == \"UP\"' > /dev/null"]
-  #     retries: 3
-  #     start_period: 15s
-  #     start_interval: 3s
-  #     interval: 30s
-  #     timeout: 5s
-  #   depends_on:
-  #     pgdb:
-  #       condition: service_healthy 
-  #     topics-init:
-  #       condition: service_healthy # it has consumers so it needs to wait for topics to be created
-
   user:
     container_name: chat-app-user-service
     image: ilikeblue/chat-app-user-service:dev-latest
@@ -52,11 +14,15 @@ services:
       - LOG_KIND=TEXT
       - ID_GENERATOR_ADDR=chat-app-snowflake-tls-service:80
       - ID_GENERATOR_CERT_DIR=/etc/chat-app/services/snowflake/ssl/certs
+      - ID_GENERATOR_EPOCH=1654041600000
       - PASSWORD_HASH_COST=10
       - ENVIRONMENT=test
       - KAFKA_BROKERS=broker-1:19092,broker-2:19092,broker-3:19092
       - MEDIA_SERVICE_URL=http://chat-app-media-service:80
       - CONVERSATION_SERVICE_URL=http://chat-app-conversation-service:80
+      - OUTBOX_CHECK_INTERVAL_MS=200
+      - MEILISEARCH_URL=http://chat-app-meilisearch-service:7700
+      - MEILISEARCH_API_KEY=d709d5b7-064b-4f5d-acd0-b0d415b83e21
     volumes:
       - ../environments/test/user/services/snowflake/ssl/certs:/etc/chat-app/services/snowflake/ssl/certs:ro 
     networks:
@@ -73,8 +39,8 @@ services:
       interval: 30s
       timeout: 10s
     depends_on:
-      topics-init:
-        condition: service_healthy # it has consumers so it needs to wait for topics to be created
+      init:
+        condition: service_completed_successfully
       pgdb:
         condition: service_healthy # wait for the database to be healthy before starting the user service
 
@@ -90,6 +56,7 @@ services:
     environment:
       - WORKER_ID=1
       - CERT_DIR=/etc/certs
+      - EPOCH=1654041600000
     volumes:
       - ../environments/test/snowflake/ssl/certs:/etc/certs:ro 
     networks:
@@ -113,11 +80,27 @@ services:
       - chat-app-id-generator-network
     environment:
       - WORKER_ID=2 
+      - EPOCH=1654041600000
     healthcheck:
       test: ["CMD", "/bin/grpc_health_probe", "-addr=:80"]
       interval: 5s
       timeout: 5s
       retries: 5
+
+  redis:
+    container_name: chat-app-redis-service
+    image: redis:8.4.0
+    ports:
+      - "6379:6379"
+    networks:
+      - chat-app-redis-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      retries: 3
+      start_period: 30s
+      start_interval: 5s
+      interval: 60s
+      timeout: 15s
 
   pgdb:
     container_name: chat-app-db-service
@@ -142,6 +125,31 @@ services:
       start_interval: 3s
       interval: 30s
       timeout: 5s
+
+  meilisearch:
+    container_name: chat-app-meilisearch-service
+    image: getmeili/meilisearch:v1.31.0
+    labels:
+      - 'custom.project=chat'
+      - 'custom.service=search'
+    environment:
+      - MEILI_ENV=development
+      - MEILI_HTTP_ADDR=0.0.0.0:7700
+      - MEILI_MASTER_KEY=d709d5b7-064b-4f5d-acd0-b0d415b83e21
+      - MEILI_NO_ANALYTICS=true
+      - MEILI_LOG_LEVEL=info
+    volumes:
+      - chat-app-meili-data:/data.ms
+    ports:
+      - "7700:7700"
+    networks:
+      - chat-app-search-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:7700/health || exit 1"]
+      retries: 3
+      start_period: 30s
+      interval: 60s
+      timeout: 15s
 
   controller-1:
     image: apache/kafka:latest
@@ -320,40 +328,49 @@ services:
       - controller-2
       - controller-3
 
-  topics-init:
-    image: apache/kafka:latest
-    container_name: chat-app-kafka-topics-init
+  init:
+    image: ilikeblue/chat-app-init-service:latest
+    container_name: chat-app-init-service
     labels:
       - 'custom.project=chat'
-      - 'custom.service=topics-init'
-    volumes:
-      - ../scripts/init_topics.sh:/init-topics.sh:ro
-    entrypoint: [ "bash", "/init-topics.sh" ]
+      - 'custom.service=init'
     environment:
-      TOPICS: >
-        participant-avatar-update:1:2
-        participant-avatar-update-dlq:1:1
-        asset-resource-delete:3:3
-        asset-resource-delete-dlq:1:1
-      BOOTSTRAP: broker-1:19092
-    healthcheck:
-      test: ["CMD", "test", "-f", "/tmp/topics-created"]
-      retries: 3
-      start_period: 15s
-      start_interval: 3s
-      interval: 5s
-      timeout: 5s
+      - APP_ENVIRONMENT=development
+      - KAFKA_ENABLED=true
+      - KAFKA_BROKERS=broker-1:19092,broker-2:19092,broker-3:19092
+      - KAFKA_TOPICS=participant-resource-update:3:3,participant-resource-update-dlq:2:2,message-resource-created:3:3,event-resource-created:3:3,asset-resource-confirm:3:3,asset-resource-delete:3:3,asset-resource-delete-dlq:2:2,inbox-resource-created:3:3,conversation-event-resource-created:3:3,user-resource-updated:3:3
+      - MEILISEARCH_ENABLED=true
+      - MEILISEARCH_HOST=http://chat-app-meilisearch-service:7700
+      - MEILISEARCH_API_KEY=d709d5b7-064b-4f5d-acd0-b0d415b83e21
+      - MINIO_ENABLED=false
     networks:
       - chat-app-kafka-network
+      - chat-app-search-network
     depends_on:
-      - broker-1
+      broker-1:
+        condition: service_healthy
+      broker-2:
+        condition: service_healthy
+      broker-3:
+        condition: service_healthy
+      meilisearch:
+        condition: service_healthy
 
 volumes:
   chat-app-db-data:
     external: true
     name: test_chat-app-db-data
+  chat-app-meili-data:
+    external: true
+    name: test_chat-app-meili-data
 
 networks:
+  chat-app-search-network:
+    driver: bridge
+    name: chat-app-search-network
+  chat-app-redis-network:
+    driver: bridge
+    name: chat-app-redis-network
   chat-app-user-network:
     driver: bridge
     name: chat-app-user-network

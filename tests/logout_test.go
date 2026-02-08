@@ -79,6 +79,12 @@ func TestLogoutShouldLogoutOneDevice(t *testing.T) {
 	// check if the refresh token is cleared
 	require.Empty(t, GetRTFromResponse(resp))
 
+	refreshBody := api.RefreshTokenRequestBody{
+		DeviceInfo: types.NewJson([]byte(`{"user-agent": "Mozilla/5.0"}`)),
+	}
+	refreshBodyJson, err := json.Marshal(refreshBody)
+	require.NoError(t, err)
+
 	// other refresh tokens should work just fine
 	for i, refreshToken := range refreshTokens {
 		if i != 0 {
@@ -86,14 +92,14 @@ func TestLogoutShouldLogoutOneDevice(t *testing.T) {
 			header = http.Header{
 				"Cookie": {fmt.Sprintf("refresh_token=%s", refreshToken)},
 			}
-			resp, err = Post(helper.Client, URL, header, nil)
+			resp, err = Post(helper.Client, URL, header, bytes.NewBuffer(refreshBodyJson))
 			require.NoError(t, err)
 			require.EqualValues(t, http.StatusOK, resp.StatusCode)
 		}
 	}
 
 	URL = fmt.Sprintf("%s/auth/refresh", helper.AuthURL)
-	resp, err = Post(helper.Client, URL, resp.Header, nil)
+	resp, err = Post(helper.Client, URL, resp.Header, bytes.NewBuffer(refreshBodyJson))
 	require.NoError(t, err)
 	require.EqualValues(t, http.StatusUnauthorized, resp.StatusCode)
 
@@ -110,7 +116,7 @@ func TestLogoutShouldLogoutOneDevice(t *testing.T) {
 	header = http.Header{
 		"Cookie": {fmt.Sprintf("refresh_token=%s", refreshTokens[0])},
 	}
-	resp, err = Post(helper.Client, URL, header, nil)
+	resp, err = Post(helper.Client, URL, header, bytes.NewBuffer(refreshBodyJson))
 	require.NoError(t, err)
 	require.EqualValues(t, http.StatusUnauthorized, resp.StatusCode)
 }

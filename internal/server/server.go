@@ -95,6 +95,7 @@ func New(opts *AuthServerOptions) (*AuthServer, error) {
 		DomainName:      config.DomainName,
 		PasswordManager: pm,
 		JwtConfig:       config.JwtTokenConfig,
+		IdGenConfig:     config.IdGeneratorConfig,
 
 		IdGeneratorService: idGeneratorService,
 		UserService:        userService,

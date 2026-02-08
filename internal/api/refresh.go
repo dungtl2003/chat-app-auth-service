@@ -7,6 +7,7 @@ import (
 	"dungtl2003/chat-app-auth-service/internal/jwthandler"
 	"dungtl2003/chat-app-auth-service/internal/model"
 	"dungtl2003/chat-app-auth-service/internal/services"
+	"dungtl2003/chat-app-auth-service/internal/services/user"
 	u "dungtl2003/chat-app-auth-service/internal/services/user"
 	"dungtl2003/chat-app-auth-service/internal/types"
 	"fmt"
@@ -16,6 +17,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 )
+
+type RefreshTokenRequestBody struct {
+	DeviceInfo types.Json `json:"device_info" validate:"required"`
+}
 
 type RefreshTokenResponseBody struct {
 	AccessToken string `json:"access_token"`
@@ -62,6 +67,21 @@ func Refresh(appCtx *context.AppContext) gin.HandlerFunc {
 		response := types.Response[RefreshTokenResponseBody]{}
 		native := helper.IsNativeClient(c)
 
+		var refreshRequestBody RefreshTokenRequestBody
+		if err := c.ShouldBindJSON(&refreshRequestBody); err != nil {
+			appCtx.Logger.Errorfln("ShouldBindJSON(): %v", err)
+			response.Error = &types.ErrorBlock{
+				Code:    http.StatusBadRequest,
+				Message: "Invalid payload",
+				Errors: []types.ErrorItem{
+					{Message: "Invalid payload"},
+				},
+			}
+			c.JSON(response.Error.Code, response)
+			c.Abort()
+			return
+		}
+
 		refreshTokenStr, err := extractRTAbort(c, appCtx, native)
 		if err != nil {
 			return
@@ -76,7 +96,7 @@ func Refresh(appCtx *context.AppContext) gin.HandlerFunc {
 		sessionVersion := parsedToken.SessionVersion
 		sessId := parsedToken.SessionId
 
-		user, err := getUserAbort(appCtx, c, userId)
+		user, err := getUserAbort(appCtx, c, userId, sessId)
 		if err != nil {
 			return
 		}
@@ -132,7 +152,14 @@ func Refresh(appCtx *context.AppContext) gin.HandlerFunc {
 
 		newAccessTokenStr, newRefreshTokenStr, err := createNewTokenPairAbort(appCtx, c, *user, newSessId)
 
-		newSession, err := createNewSessionAbort(appCtx, c, *user, newSessId, newRefreshTokenStr, session.DeviceInfo)
+		newSession, err := createNewSessionAbort(
+			appCtx,
+			c,
+			*user,
+			newSessId,
+			newRefreshTokenStr,
+			refreshRequestBody.DeviceInfo,
+		)
 		if err != nil {
 			return
 		}
@@ -177,10 +204,14 @@ func getUserAbort(
 	appCtx *context.AppContext,
 	c *gin.Context,
 	userId int64,
+	sessionId int64,
 ) (*model.ChatUser, error) {
 	response := types.Response[RefreshTokenResponseBody]{}
 
-	userResponse, err := appCtx.UserService.GetUserById(c, userId)
+	userResponse, err := appCtx.UserService.GetUserById(c, &user.GetUserByIdRequest{
+		UserId:    userId,
+		SessionId: &sessionId,
+	})
 	if err != nil {
 		appCtx.Logger.Errorfln("GetUserById(): %v", err)
 		switch err := err.(type) {
@@ -317,7 +348,14 @@ func createNewTokenPairAbort(
 ) (string, string, error) {
 	response := types.Response[RefreshTokenResponseBody]{}
 
-	newAccessTokenStr, newRefreshTokenStr, err := helper.CreateNewTokenPair(appCtx.JwtConfig.JwtSecret, user, appCtx.JwtConfig.ATDurationMs, appCtx.JwtConfig.RTDurationMs, newSessId)
+	newAccessTokenStr, newRefreshTokenStr, err := helper.CreateNewTokenPair(
+		appCtx.JwtConfig.JwtSecret,
+		user,
+		appCtx.JwtConfig.ATDurationMs,
+		appCtx.JwtConfig.RTDurationMs,
+		newSessId,
+		appCtx.IdGenConfig.Epoch,
+	)
 	if err != nil {
 		appCtx.Logger.Errorfln("CreateNewTokenPair(): %v", err)
 		response.Error = &types.ErrorBlock{

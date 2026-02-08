@@ -45,13 +45,23 @@ func (c UserJWTClaim) GetRole() (model.UserRole, error) {
 
 // CreateUserToken will create jwt token with claims of user data, and the token is
 // valid for `duration` milliseconds.
-func CreateUserToken(key string, user model.ChatUser, duration int64, sessionId int64) (string, error) {
-	iat := time.Now().UTC()
+func CreateUserToken(
+	key string,
+	user model.ChatUser,
+	duration int64,
+	sessionId int64,
+	epoch int64,
+) (string, error) {
+	iatTimestamp := extractTimestampFromSnowflake(
+		sessionId,
+		epoch,
+	)
+	iat := types.NewJsonTimeFromMillisTimestamp(iatTimestamp)
 	exp := iat.Add(time.Duration(duration) * time.Millisecond)
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256,
 		&UserJWTClaim{
 			jwt.RegisteredClaims{
-				IssuedAt:  &jwt.NumericDate{Time: iat},
+				IssuedAt:  &jwt.NumericDate{Time: iat.Time},
 				ExpiresAt: &jwt.NumericDate{Time: exp},
 				Subject:   fmt.Sprint(user.Id.Int64()),
 				Issuer:    ISSUER,
@@ -68,7 +78,11 @@ func CreateUserToken(key string, user model.ChatUser, duration int64, sessionId 
 	return signedToken, err
 }
 
-func CreateInternalToken(key string, duration int64, userId int64) (string, error) {
+func CreateInternalToken(
+	key string,
+	duration int64,
+	userId int64,
+) (string, error) {
 	iat := time.Now().UTC()
 	exp := iat.Add(time.Duration(duration) * time.Millisecond)
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256,
@@ -117,4 +131,16 @@ func DecodeTokenWithoutClaimsValidation(key string, tokStr string) (*jwt.Token, 
 	}
 
 	return token, nil
+}
+
+// extractTimestampFromSnowflake extracts the timestamp (in milliseconds)
+// from a Snowflake ID.
+// Snowflake structure:
+// - 1 bit: unused (sign bit)
+// - 41 bits: timestamp (in milliseconds) since custom epoch
+// - 10 bits: machine ID
+// - 12 bits: sequence number
+func extractTimestampFromSnowflake(snowflake int64, epoch int64) int64 {
+	timestamp := (snowflake >> 22) + epoch
+	return timestamp
 }

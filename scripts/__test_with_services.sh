@@ -9,27 +9,27 @@ COMPOSE_FILE=${COMPOSE_FILE:-"docker-compose.yaml"}
 COMPOSE_PATH=${COMPOSE_PATH:-"$COMPOSE_DIR/$COMPOSE_FILE"}
 
 services=(
-    "snowflake TLS" 
-    "snowflake non-TLS" 
-    "user" 
-    "media" 
-    "database" 
-    "controller 1" 
-    "controller 2" 
-    "controller 3" 
-    "broker 1" 
-    "broker 2" 
-    "broker 3" 
-    "topics-init"
+    "snowflake TLS"
+    "snowflake non-TLS"
+    "user"
+    "media"
+    "meilisearch"
+    "database"
+    "controller 1"
+    "controller 2"
+    "controller 3"
+    "broker 1"
+    "broker 2"
+    "broker 3"
 )
 
 command="$1"
 extraArgs="${@:2}"
 
 quit() {
-  echo "Stopping containers..."
-  stop_containers
-  exit 0
+    echo "Stopping containers..."
+    stop_containers
+    exit 0
 }
 
 if [ "$DEBUG" == "true" ]; then
@@ -42,7 +42,7 @@ trap quit SIGINT SIGTERM EXIT
 
 # If DO_NOT_STOP is not set, trap the ERR signal to stop the containers (every command that fails will trigger the trap)
 if [ -z "$DO_NOT_STOP" ]; then
-  trap quit ERR
+    trap quit ERR
 fi
 
 function array_to_string() {
@@ -56,12 +56,12 @@ function array_to_string() {
 }
 
 run_containers() {
-  echo "Running compose file: ${COMPOSE_PATH}:"
-  docker compose -f "${COMPOSE_PATH}" up --force-recreate -d
+    echo "Running compose file: ${COMPOSE_PATH}:"
+    docker compose -f "${COMPOSE_PATH}" up --force-recreate -d
 }
 
 stop_containers() {
-  docker-compose -f "${COMPOSE_PATH}" down --remove-orphans -v
+    docker-compose -f "${COMPOSE_PATH}" down --remove-orphans -v
 }
 
 find_container_id() {
@@ -70,7 +70,7 @@ find_container_id() {
     local cmd="docker ps \
         --filter \"status=running\" \
         --filter \"label=custom.project=chat\" \
-        --filter \"label=custom.service=${node}\"" 
+        --filter \"label=custom.service=${node}\""
 
 
     if [ -n "${option}" ]; then
@@ -132,7 +132,7 @@ wait_for_containers() {
             option=""
         fi
 
-        echo "Finding container ID for ${service} service..." 
+        echo "Finding container ID for ${service} service..."
         container_id=$(find_container_id ${node} ${option})
         container_ids+=(${container_id})
     done

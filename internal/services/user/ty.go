@@ -76,11 +76,16 @@ func (r UserPostResponse) String() string {
 	return fmt.Sprintf("UserPostResponse{User: %+v}", r.User)
 }
 
+type GetUserByIdRequest struct {
+	UserId    int64  `json:"user_id"`
+	SessionId *int64 `json:"session_id"`
+}
+
 type UserService interface {
 	services.Service
 	CreateUser(context context.Context, payload UserPostRequest) (*UserPostResponse, error)
 	GetUserAuth(context context.Context, identifier string) (*UserGetAuthResponse, error)
-	GetUserById(context context.Context, userId int64) (*UserGetResponse, error)
+	GetUserById(context context.Context, request *GetUserByIdRequest) (*UserGetResponse, error)
 	IncrementSessionVersion(context context.Context, userId int64) error
 	RevokeAllSessions(context context.Context, userId int64) error
 	RevokeSession(context context.Context, userId int64, sessionId int64) error

@@ -20,6 +20,15 @@ func NewJsonTime(t time.Time) JsonTime {
 	return JsonTime{t}
 }
 
+func NewJsonTimeFromMillisTimestamp(ms int64) JsonTime {
+	t := time.UnixMilli(ms).UTC()
+	return JsonTime{t}
+}
+
+func NewJsonTimeNow() JsonTime {
+	return JsonTime{time.Now().UTC()}
+}
+
 func NewJsonTimeStrUnsafe(s string) JsonTime {
 	t, err := time.Parse(MICRO_LAYOUT, s)
 	if err != nil {

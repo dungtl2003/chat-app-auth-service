@@ -12,12 +12,31 @@ import (
 )
 
 // CreateNewTokenPair creates a new access token and refresh token pair for the given user.
-func CreateNewTokenPair(secret string, user model.ChatUser, atDurationMs int64, rtDurationMs int64, sessionId int64) (string, string, error) {
-	accessTokenStr, err := jwthandler.CreateUserToken(secret, user, atDurationMs, sessionId)
+func CreateNewTokenPair(
+	secret string,
+	user model.ChatUser,
+	atDurationMs int64,
+	rtDurationMs int64,
+	sessionId int64,
+	epoch int64,
+) (string, string, error) {
+	accessTokenStr, err := jwthandler.CreateUserToken(
+		secret,
+		user,
+		atDurationMs,
+		sessionId,
+		epoch,
+	)
 	if err != nil {
 		return "", "", fmt.Errorf("error creating access token: CreateToken(): %v", err)
 	}
-	refreshTokenStr, err := jwthandler.CreateUserToken(secret, user, rtDurationMs, sessionId)
+	refreshTokenStr, err := jwthandler.CreateUserToken(
+		secret,
+		user,
+		rtDurationMs,
+		sessionId,
+		epoch,
+	)
 	if err != nil {
 		return "", "", fmt.Errorf("error creating refresh token: CreateToken(): %v", err)
 	}

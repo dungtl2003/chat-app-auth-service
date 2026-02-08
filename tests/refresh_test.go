@@ -57,12 +57,18 @@ func TestRefreshShouldWorkAsExpected(t *testing.T) {
 
 	<-time.After(1 * time.Second) // wait for 1 second to make sure no duplicate token
 
+	refreshBody := api.RefreshTokenRequestBody{
+		DeviceInfo: types.NewJson([]byte(`{"user-agent": "Mozilla/5.0"}`)),
+	}
+	refreshBodyJson, err := json.Marshal(refreshBody)
+	require.NoError(t, err)
+
 	URL = fmt.Sprintf("%s/auth/refresh", helper.AuthURL)
 	// pass cookie to next request
 	header := http.Header{
 		"Cookie": {fmt.Sprintf("refresh_token=%s", refreshToken)},
 	}
-	resp, err = Post(helper.Client, URL, header, nil)
+	resp, err = Post(helper.Client, URL, header, bytes.NewBuffer(refreshBodyJson))
 	require.NoError(t, err)
 	require.EqualValues(t, http.StatusOK, resp.StatusCode)
 
@@ -92,8 +98,14 @@ func TestRefreshShouldNotWorkWithInvalidToken(t *testing.T) {
 
 	URL := fmt.Sprintf("%s/auth/refresh", helper.AuthURL)
 
+	refreshBody := api.RefreshTokenRequestBody{
+		DeviceInfo: types.NewJson([]byte(`{"user-agent": "Mozilla/5.0"}`)),
+	}
+	refreshBodyJson, err := json.Marshal(refreshBody)
+	require.NoError(t, err)
+
 	// no cookie
-	resp, err := Post(helper.Client, URL, nil, nil)
+	resp, err := Post(helper.Client, URL, nil, bytes.NewBuffer(refreshBodyJson))
 	require.NoError(t, err)
 	require.EqualValues(t, http.StatusUnauthorized, resp.StatusCode)
 	var errResponseBody types.Response[api.RefreshTokenResponseBody]
@@ -107,7 +119,7 @@ func TestRefreshShouldNotWorkWithInvalidToken(t *testing.T) {
 	header := http.Header{
 		"Cookie": {fmt.Sprintf("refresh_token=%s", "invalidtoken")},
 	}
-	resp, err = Post(helper.Client, URL, header, nil)
+	resp, err = Post(helper.Client, URL, header, bytes.NewBuffer(refreshBodyJson))
 	require.NoError(t, err)
 	require.EqualValues(t, http.StatusUnauthorized, resp.StatusCode)
 
@@ -136,7 +148,7 @@ func TestRefreshShouldNotWorkWithInvalidToken(t *testing.T) {
 	header = http.Header{
 		"Cookie": {fmt.Sprintf("refresh_token=%s", refreshToken)},
 	}
-	resp, err = Post(helper.Client, URL, header, nil)
+	resp, err = Post(helper.Client, URL, header, bytes.NewBuffer(refreshBodyJson))
 	require.NoError(t, err)
 	require.EqualValues(t, http.StatusUnauthorized, resp.StatusCode)
 }
@@ -158,6 +170,13 @@ func TestRefreshShouldHaveReuseDetection(t *testing.T) {
 		json.RawMessage(`{"user-agent": "Firefox/5.0"}`),
 	}
 	refreshTokens := []string{}
+
+	refreshBody := api.RefreshTokenRequestBody{
+		DeviceInfo: types.NewJson([]byte(`{"user-agent": "Mozilla/5.0"}`)),
+	}
+	refreshBodyJson, err := json.Marshal(refreshBody)
+	require.NoError(t, err)
+
 	for i, devInfo := range deviceInfos {
 		payloadJson := fmt.Appendf(nil, `
 				{
@@ -180,7 +199,7 @@ func TestRefreshShouldHaveReuseDetection(t *testing.T) {
 			header := http.Header{
 				"Cookie": {fmt.Sprintf("refresh_token=%s", refreshToken)},
 			}
-			resp, err = Post(helper.Client, URL, header, nil)
+			resp, err = Post(helper.Client, URL, header, bytes.NewBuffer(refreshBodyJson))
 			require.NoError(t, err)
 			refreshToken = GetRTFromResponse(resp)
 			require.NotEmpty(t, refreshToken)
@@ -193,7 +212,7 @@ func TestRefreshShouldHaveReuseDetection(t *testing.T) {
 	header := http.Header{
 		"Cookie": {fmt.Sprintf("refresh_token=%s", refreshToken)},
 	}
-	resp, err := Post(helper.Client, URL, header, nil)
+	resp, err := Post(helper.Client, URL, header, bytes.NewBuffer(refreshBodyJson))
 	require.NoError(t, err)
 	require.EqualValues(t, http.StatusUnauthorized, resp.StatusCode)
 
@@ -203,7 +222,7 @@ func TestRefreshShouldHaveReuseDetection(t *testing.T) {
 		header := http.Header{
 			"Cookie": {fmt.Sprintf("refresh_token=%s", refreshToken)},
 		}
-		resp, err = Post(helper.Client, URL, header, nil)
+		resp, err = Post(helper.Client, URL, header, bytes.NewBuffer(refreshBodyJson))
 		require.NoError(t, err)
 		require.EqualValues(t, http.StatusUnauthorized, resp.StatusCode)
 	}

@@ -35,6 +35,7 @@ type UserServiceConfig struct {
 type IdGeneratorConfig struct {
 	Addr    string
 	CertDir string
+	Epoch   int64
 }
 
 type PasswordManagerConfig struct {
@@ -123,6 +124,7 @@ func (s IdGeneratorConfig) String() string {
 	parts := []string{
 		fmt.Sprintf("ADDR: %s", s.Addr),
 		fmt.Sprintf("CERT_DIR: %s", s.CertDir),
+		fmt.Sprintf("EPOCH: %d", s.Epoch),
 	}
 
 	return fmt.Sprintf("IdGeneratorConfig{%s}", strings.Join(parts, ", "))
@@ -162,6 +164,19 @@ func (c *Config) setIdGeneratorConfig() error {
 	if !has {
 		// return fmt.Errorf("ID_GENERATOR_SERVICE_CERT_DIR not found")
 		certDir = ""
+	}
+
+	log.Println("Setting ID_GENERATOR_SERVICE_EPOCH")
+	epochStr, has := os.LookupEnv("ID_GENERATOR_SERVICE_EPOCH")
+	if !has {
+		log.Println("ID_GENERATOR_SERVICE_EPOCH not found, setting to default 1672531200000 (Jan 1, 2023)")
+		c.IdGeneratorConfig.Epoch = 1672531200000
+	} else {
+		epoch, err := strconv.ParseInt(epochStr, 10, 64)
+		if err != nil {
+			return fmt.Errorf("failed to convert ID_GENERATOR_SERVICE_EPOCH=%s to integer: %w", epochStr, err)
+		}
+		c.IdGeneratorConfig.Epoch = epoch
 	}
 
 	c.IdGeneratorConfig.Addr = addr

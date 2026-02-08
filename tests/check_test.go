@@ -106,7 +106,9 @@ func TestCheckWithRealToken(t *testing.T) {
 	require.NoError(t, err)
 	require.EqualValues(t, http.StatusOK, resp.StatusCode)
 
+	helper.Logger.Debugfln("Current time: %v", time.Now())
 	<-time.After(time.Duration(helper.ATDurationMs) * time.Millisecond)
+	helper.Logger.Debugfln("After wait time: %v", time.Now())
 	header = http.Header{
 		"Authorization": {fmt.Sprintf("Bearer %s", accessToken)},
 	}

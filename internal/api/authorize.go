@@ -6,6 +6,7 @@ import (
 	"dungtl2003/chat-app-auth-service/internal/jwthandler"
 	"dungtl2003/chat-app-auth-service/internal/model"
 	"dungtl2003/chat-app-auth-service/internal/services"
+	"dungtl2003/chat-app-auth-service/internal/services/user"
 	"dungtl2003/chat-app-auth-service/internal/types"
 	"fmt"
 	"net/http"
@@ -137,7 +138,9 @@ func Authorize(appCtx *context.AppContext) gin.HandlerFunc {
 		}
 
 		// get user information
-		userResponse, err := appCtx.UserService.GetUserById(c, userId)
+		userResponse, err := appCtx.UserService.GetUserById(c, &user.GetUserByIdRequest{
+			UserId: userId,
+		})
 		if err != nil {
 			appCtx.Logger.Errorfln("GetUserById(): %v", err)
 			switch err := err.(type) {
