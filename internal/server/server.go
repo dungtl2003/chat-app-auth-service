@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"dungtl2003/chat-app-auth-service/internal/api"
+	"dungtl2003/chat-app-auth-service/internal/cache"
 	"dungtl2003/chat-app-auth-service/internal/config"
 	"dungtl2003/chat-app-auth-service/internal/logging"
 	"dungtl2003/chat-app-auth-service/internal/password"
@@ -103,7 +104,7 @@ func New(opts *AuthServerOptions) (*AuthServer, error) {
 		userService = opts.UserService
 	} else {
 		loggerWrapper.Infofln("Creating user service")
-		userService, err = user.NewUSerServiceV1(config.UserServiceConfig.URL, &user.UserServiceV1Options{
+		userService, err = user.NewUserServiceV1(config.UserServiceConfig.URL, &user.UserServiceV1Options{
 			Logger: loggerWrapper,
 		})
 		if err != nil {
@@ -111,21 +112,46 @@ func New(opts *AuthServerOptions) (*AuthServer, error) {
 		}
 	}
 
+	var mailerService mailer.MailerService
+	if opts != nil && opts.MailerService != nil {
+		loggerWrapper.Infofln("Using provided mailer service")
+		mailerService = opts.MailerService
+	} else {
+		loggerWrapper.Infofln("Creating mailer service")
+		mailerService, err = mailer.NewSmtpMailerService(&mailer.SmtpMailerOptions{
+			Logger: loggerWrapper,
+			Host:   config.SmtpConfig.Host,
+			Port:   config.SmtpConfig.Port,
+		})
+	}
+
+	redisClient, err := cache.NewRedisClient(ctx, cache.Config{
+		Addrs:    config.RedisConfig.Addrs,
+		Password: config.RedisConfig.Password,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("error when creating redis client: %w", err)
+	}
+	loggerWrapper.Infofln("Redis client created successfully")
+
 	loggerWrapper.Infofln("Creating application context")
 	handlerDeps := &api.HandlerDeps{
 		Logger:          loggerWrapper,
 		Config:          config,
 		Validator:       validator,
 		PasswordManager: pm,
+		RedisClient:     redisClient,
 
 		IdGeneratorService: idGeneratorService,
 		UserService:        userService,
+		MailerService:      mailerService,
 	}
 	loggerWrapper.Infofln("Application context: %#v", handlerDeps)
 
 	services := []services.Service{
 		idGeneratorService,
 		userService,
+		mailerService,
 	}
 	s.services = services
 
@@ -161,6 +187,16 @@ func New(opts *AuthServerOptions) (*AuthServer, error) {
 			Method: router.POST,
 			Path:   "/auth/signup",
 			H:      api.SignUp(handlerDeps),
+		},
+		{
+			Method: router.POST,
+			Path:   "/auth/password-reset/request",
+			H:      api.RequestPasswordReset(handlerDeps),
+		},
+		{
+			Method: router.POST,
+			Path:   "/auth/password-reset/confirm",
+			H:      api.ResetPassword(handlerDeps),
 		},
 	}
 	loggerWrapper.Infofln("Creating router with %d handlers", len(handlers))

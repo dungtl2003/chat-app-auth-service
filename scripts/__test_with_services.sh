@@ -15,6 +15,7 @@ services=(
     "media"
     "meilisearch"
     "database"
+    "redis"
     "controller 1"
     "controller 2"
     "controller 3"

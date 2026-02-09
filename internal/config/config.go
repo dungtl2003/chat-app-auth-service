@@ -7,6 +7,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type Env string
@@ -38,6 +39,23 @@ type IdGeneratorConfig struct {
 	Epoch   int64
 }
 
+type RedisConfig struct {
+	Addrs    []string
+	Password string
+}
+
+type SmtpConfig struct {
+	FromNameDisplay string
+	Host            string
+	Port            int
+}
+
+type PasswordResetConfig struct {
+	RateLimitTtl time.Duration
+	RateLimitMax int64
+	ResetCodeTtl time.Duration
+}
+
 type PasswordManagerConfig struct {
 	Cost int
 }
@@ -51,6 +69,9 @@ type Config struct {
 	DomainName            string
 	PasswordManagerConfig PasswordManagerConfig
 	IdGeneratorConfig     IdGeneratorConfig
+	RedisConfig           RedisConfig
+	PasswordResetConfig   PasswordResetConfig
+	SmtpConfig            SmtpConfig
 }
 
 // LoadConfig loads the configuration from env file. It will return Config instance
@@ -89,6 +110,18 @@ func LoadConfig() (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
+	err = c.setRedisConfig()
+	if err != nil {
+		return nil, err
+	}
+	err = c.setPasswordResetConfig()
+	if err != nil {
+		return nil, err
+	}
+	err = c.setSmtpConfig()
+	if err != nil {
+		return nil, err
+	}
 
 	return c, nil
 }
@@ -101,6 +134,35 @@ func (t JwtTokenConfig) String() string {
 	}
 
 	return fmt.Sprintf("JwtTokenConfig{%s}", strings.Join(parts, ", "))
+}
+
+func (e SmtpConfig) String() string {
+	parts := []string{
+		fmt.Sprintf("FROM_ADDRESS: %s", e.FromNameDisplay),
+		fmt.Sprintf("HOST: %s", e.Host),
+		fmt.Sprintf("PORT: %d", e.Port),
+	}
+
+	return fmt.Sprintf("EmailConfig{%s}", strings.Join(parts, ", "))
+}
+
+func (p PasswordResetConfig) String() string {
+	parts := []string{
+		fmt.Sprintf("RATE_LIMIT_TTL: %s", p.RateLimitTtl),
+		fmt.Sprintf("RATE_LIMIT_MAX: %d", p.RateLimitMax),
+		fmt.Sprintf("RESET_CODE_TTL: %s", p.ResetCodeTtl),
+	}
+
+	return fmt.Sprintf("PasswordResetConfig{%s}", strings.Join(parts, ", "))
+}
+
+func (r RedisConfig) String() string {
+	parts := []string{
+		fmt.Sprintf("ADDRS: %v", r.Addrs),
+		fmt.Sprintf("PASSWORD: %s", r.Password),
+	}
+
+	return fmt.Sprintf("RedisConfig{%s}", strings.Join(parts, ", "))
 }
 
 func (u UserServiceConfig) String() string {
@@ -147,6 +209,9 @@ func (c *Config) String() string {
 		fmt.Sprintf("DOMAIN_NAME: %s", c.DomainName),
 		fmt.Sprintf("PASSWORD_MANAGER_CONFIG: %s", c.PasswordManagerConfig),
 		fmt.Sprintf("ID_GENERATOR_CONFIG: %s", c.IdGeneratorConfig),
+		fmt.Sprintf("REDIS_CONFIG: %s", c.RedisConfig),
+		fmt.Sprintf("PASSWORD_RESET_CONFIG: %s", c.PasswordResetConfig),
+		fmt.Sprintf("SMTP_CONFIG: %s", c.SmtpConfig),
 	}
 
 	return fmt.Sprintf("Config{%s}", strings.Join(parts, ", "))
@@ -181,6 +246,98 @@ func (c *Config) setIdGeneratorConfig() error {
 
 	c.IdGeneratorConfig.Addr = addr
 	c.IdGeneratorConfig.CertDir = certDir
+
+	return nil
+}
+
+func (c *Config) setRedisConfig() error {
+	c.RedisConfig = RedisConfig{}
+
+	addrsStr, has := os.LookupEnv("REDIS_ADDRESSES")
+	if !has {
+		return fmt.Errorf("REDIS_ADDRESSES not found")
+	}
+	c.RedisConfig.Addrs = strings.Split(addrsStr, ",")
+
+	password, has := os.LookupEnv("REDIS_PASSWORD")
+	if has {
+		c.RedisConfig.Password = password
+	} else {
+		c.RedisConfig.Password = ""
+	}
+
+	return nil
+}
+
+func (c *Config) setPasswordResetConfig() error {
+	c.PasswordResetConfig = PasswordResetConfig{}
+
+	log.Println("Setting PASSWORD_RESET_RATE_LIMIT_TTL")
+	rateLimitTtlStr, has := os.LookupEnv("PASSWORD_RESET_RATE_LIMIT_TTL")
+	if !has {
+		log.Println("PASSWORD_RESET_RATE_LIMIT_TTL not found, setting to 1 minute")
+		c.PasswordResetConfig.RateLimitTtl = time.Minute
+	} else {
+		rateLimitTtl, err := time.ParseDuration(rateLimitTtlStr)
+		if err != nil {
+			return fmt.Errorf("Invalid PASSWORD_RESET_RATE_LIMIT_TTL: %s", rateLimitTtlStr)
+		}
+		c.PasswordResetConfig.RateLimitTtl = rateLimitTtl
+	}
+
+	log.Println("Setting PASSWORD_RESET_RATE_LIMIT_MAX")
+	rateLimitMaxStr, has := os.LookupEnv("PASSWORD_RESET_RATE_LIMIT_MAX")
+	if !has {
+		log.Println("PASSWORD_RESET_RATE_LIMIT_MAX not found, setting to 5")
+		c.PasswordResetConfig.RateLimitMax = 5
+	} else {
+		rateLimitMax, err := strconv.ParseInt(rateLimitMaxStr, 10, 64)
+		if err != nil {
+			return fmt.Errorf("Invalid PASSWORD_RESET_RATE_LIMIT_MAX: %s", rateLimitMaxStr)
+		}
+		c.PasswordResetConfig.RateLimitMax = rateLimitMax
+	}
+
+	log.Println("Setting PASSWORD_RESET_CODE_TTL")
+	resetCodeTtlStr, has := os.LookupEnv("PASSWORD_RESET_CODE_TTL")
+	if !has {
+		log.Println("PASSWORD_RESET_CODE_TTL not found, setting to 15 minutes")
+		c.PasswordResetConfig.ResetCodeTtl = 15 * time.Minute
+	} else {
+		resetCodeTtl, err := time.ParseDuration(resetCodeTtlStr)
+		if err != nil {
+			return fmt.Errorf("Invalid PASSWORD_RESET_CODE_TTL: %s", resetCodeTtlStr)
+		}
+		c.PasswordResetConfig.ResetCodeTtl = resetCodeTtl
+	}
+
+	return nil
+}
+
+func (c *Config) setSmtpConfig() error {
+	c.SmtpConfig = SmtpConfig{}
+
+	from, has := os.LookupEnv("SMTP_EMAIL_FROM_NAME_DISPLAY")
+	if !has {
+		return fmt.Errorf("SMTP_EMAIL_FROM_NAME_DISPLAY not found")
+	}
+	c.SmtpConfig.FromNameDisplay = from
+
+	host, has := os.LookupEnv("SMTP_HOST")
+	if !has {
+		return fmt.Errorf("SMTP_HOST not found")
+	}
+	c.SmtpConfig.Host = host
+
+	portStr, has := os.LookupEnv("SMTP_PORT")
+	if !has {
+		return fmt.Errorf("SMTP_PORT not found")
+	}
+	port, err := strconv.Atoi(portStr)
+	if err != nil {
+		return fmt.Errorf("Invalid SMTP_PORT: %s", portStr)
+	}
+	c.SmtpConfig.Port = port
 
 	return nil
 }

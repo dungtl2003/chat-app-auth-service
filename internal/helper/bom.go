@@ -1,12 +1,14 @@
 package helper
 
 import (
+	"crypto/rand"
 	"crypto/sha256"
 	"dungtl2003/chat-app-auth-service/internal/jwthandler"
 	"dungtl2003/chat-app-auth-service/internal/model"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"strings"
 	"unicode"
 )
@@ -102,4 +104,19 @@ func Filter[T any](arr []T, f func(T) bool) []T {
 		}
 	}
 	return res
+}
+
+// GenerateSecureOTP generates a string of random digits of length n.
+// It uses crypto/rand for security.
+func GenerateSecureOTP(length int) (string, error) {
+	const digits = "0123456789"
+	ret := make([]byte, length)
+	for i := range length {
+		num, err := rand.Int(rand.Reader, big.NewInt(int64(len(digits))))
+		if err != nil {
+			return "", err
+		}
+		ret[i] = digits[num.Int64()]
+	}
+	return string(ret), nil
 }

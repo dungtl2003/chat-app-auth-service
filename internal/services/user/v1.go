@@ -30,7 +30,7 @@ type UserServiceV1Options struct {
 
 // New creates a new UserServiceV1 instance. Remember to call Close() when done
 // to release resources.
-func NewUSerServiceV1(userURL string, opts *UserServiceV1Options) (*UserServiceV1, error) {
+func NewUserServiceV1(userURL string, opts *UserServiceV1Options) (*UserServiceV1, error) {
 	var loggerWrapper *logging.LoggerWrapper
 	var client *http.Client
 
@@ -475,4 +475,64 @@ func (s *UserServiceV1) CreateSession(context context.Context, userId int64, pay
 
 	s.logger.Debugfln("[%s] Received response: %v", s.Name(), sessionResp)
 	return &sessionResp, nil
+}
+
+func (s *UserServiceV1) ResetPassword(context context.Context, request *ResetPasswordRequest) error {
+	type ResetPasswordRequestBody struct {
+		Email       string `json:"email"`
+		NewPassword string `json:"new_password"`
+	}
+
+	if s.status == services.ServiceStopped {
+		return fmt.Errorf("service is stopped")
+	}
+	if s.status != services.ServiceReady {
+		s.logger.Warnfln("[%s] Service is not ready", s.Name())
+	}
+
+	url := helper.EncodeURLPath(fmt.Sprintf(`%s/internal/users/password/reset`, s.userURL))
+	method := http.MethodPost
+	header := http.Header{
+		"Content-Type": {"application/json"},
+	}
+	body := ResetPasswordRequestBody{
+		Email:       request.Email,
+		NewPassword: request.NewPassword,
+	}
+	bodyBytes, err := json.Marshal(body)
+	if err != nil {
+		s.logger.Errorfln("[%s] Error marshalling request body: %v", s.Name(), err)
+		return fmt.Errorf("error marshalling request body: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(context, method, url, io.Reader(bytes.NewReader(bodyBytes)))
+	if err != nil {
+		s.logger.Errorfln("[%s] Error creating request: %v", s.Name(), err)
+		return fmt.Errorf("error creating request: %w", err)
+	}
+	req.Header = header
+
+	s.logger.Debugfln("[%s] Making %s request to %s with payload: %s", s.Name(), method, url, string(bodyBytes))
+	resp, err := s.client.Do(req)
+	if err != nil {
+		s.logger.Errorfln("[%s] Error making request: %v", s.Name(), err)
+		return fmt.Errorf("error making request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	var responseBody types.Response[any]
+	if err := json.NewDecoder(resp.Body).Decode(&responseBody); err != nil {
+		s.logger.Errorfln("[%s] Error decoding response: %v", s.Name(), err)
+		return fmt.Errorf("error decoding response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		s.logger.Errorfln("[%s] Failed to reset password for email %s, status code: %d, response body: %v", s.Name(), request.Email, resp.StatusCode, responseBody)
+		return services.BadResponseError{
+			ErrBlock: *responseBody.Error,
+		}
+	}
+
+	s.logger.Debugfln("[%s] Successfully reset password for email %s", s.Name(), request.Email)
+	return nil
 }

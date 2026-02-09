@@ -81,6 +81,11 @@ type GetUserByIdRequest struct {
 	SessionId *int64 `json:"session_id"`
 }
 
+type ResetPasswordRequest struct {
+	Email       string `json:"email"`
+	NewPassword string `json:"new_password"`
+}
+
 type UserService interface {
 	services.Service
 	CreateUser(context context.Context, payload UserPostRequest) (*UserPostResponse, error)
@@ -90,4 +95,5 @@ type UserService interface {
 	RevokeAllSessions(context context.Context, userId int64) error
 	RevokeSession(context context.Context, userId int64, sessionId int64) error
 	CreateSession(context context.Context, userId int64, payload SessionPostRequest) (*SessionPostResponse, error)
+	ResetPassword(context context.Context, request *ResetPasswordRequest) error
 }
