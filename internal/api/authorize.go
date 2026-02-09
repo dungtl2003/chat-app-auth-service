@@ -1,7 +1,6 @@
 package api
 
 import (
-	"dungtl2003/chat-app-auth-service/internal/context"
 	"dungtl2003/chat-app-auth-service/internal/helper"
 	"dungtl2003/chat-app-auth-service/internal/jwthandler"
 	"dungtl2003/chat-app-auth-service/internal/model"
@@ -15,15 +14,15 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func Authorize(appCtx *context.AppContext) gin.HandlerFunc {
+func Authorize(handlerDeps *HandlerDeps) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		response := types.Response[model.ChatUser]{}
 
 		// Bearer <token>
 		authHeader := c.GetHeader("Authorization")
-		appCtx.Logger.Debugfln("Authorization header: %s", authHeader)
+		handlerDeps.Logger.Debugfln("Authorization header: %s", authHeader)
 		if authHeader == "" {
-			appCtx.Logger.Errorfln("Missing authorization header")
+			handlerDeps.Logger.Errorfln("Missing authorization header")
 			response.Error = &types.ErrorBlock{
 				Code:    http.StatusUnauthorized,
 				Message: "Missing authorization header",
@@ -36,7 +35,7 @@ func Authorize(appCtx *context.AppContext) gin.HandlerFunc {
 
 		parts := strings.Split(authHeader, " ")
 		if len(parts) != 2 {
-			appCtx.Logger.Errorfln("Authorization header should have 2 parts")
+			handlerDeps.Logger.Errorfln("Authorization header should have 2 parts")
 			response.Error = &types.ErrorBlock{
 				Code:    http.StatusUnauthorized,
 				Message: "Authorization header should have 2 parts",
@@ -48,7 +47,7 @@ func Authorize(appCtx *context.AppContext) gin.HandlerFunc {
 		}
 
 		if parts[0] != "Bearer" {
-			appCtx.Logger.Errorfln("Authorization header should start with `Bearer`")
+			handlerDeps.Logger.Errorfln("Authorization header should start with `Bearer`")
 			response.Error = &types.ErrorBlock{
 				Code:    http.StatusUnauthorized,
 				Message: "Authorization header should start with `Bearer`",
@@ -60,9 +59,12 @@ func Authorize(appCtx *context.AppContext) gin.HandlerFunc {
 		}
 
 		accessTokenString := parts[1]
-		accessToken, err := jwthandler.DecodeToken(appCtx.JwtConfig.JwtSecret, accessTokenString)
+		accessToken, err := jwthandler.DecodeToken(
+			handlerDeps.Config.JwtTokenConfig.JwtSecret,
+			accessTokenString,
+		)
 		if err != nil {
-			appCtx.Logger.Errorfln("DecodeToken(): %v", err)
+			handlerDeps.Logger.Errorfln("DecodeToken(): %v", err)
 			response.Error = &types.ErrorBlock{
 				Code:    http.StatusUnauthorized,
 				Message: "Invalid token",
@@ -76,7 +78,7 @@ func Authorize(appCtx *context.AppContext) gin.HandlerFunc {
 		// make sure token is not internal token
 		audiences, err := accessToken.Claims.GetAudience()
 		if err != nil {
-			appCtx.Logger.Errorfln("GetAudience(): %v", err)
+			handlerDeps.Logger.Errorfln("GetAudience(): %v", err)
 			response.Error = &types.ErrorBlock{
 				Code:    http.StatusInternalServerError,
 				Message: "Internal server error",
@@ -87,7 +89,7 @@ func Authorize(appCtx *context.AppContext) gin.HandlerFunc {
 			return
 		}
 		if len(audiences) == 0 {
-			appCtx.Logger.Errorfln("token has no audience")
+			handlerDeps.Logger.Errorfln("token has no audience")
 			response.Error = &types.ErrorBlock{
 				Code:    http.StatusUnauthorized,
 				Message: "Invalid token",
@@ -98,7 +100,7 @@ func Authorize(appCtx *context.AppContext) gin.HandlerFunc {
 			return
 		}
 		if audiences[0] == jwthandler.INTERNAL_AUDIENCE {
-			appCtx.Logger.Errorfln("token is internal token")
+			handlerDeps.Logger.Errorfln("token is internal token")
 			response.Error = &types.ErrorBlock{
 				Code:    http.StatusUnauthorized,
 				Message: "Invalid token",
@@ -111,7 +113,7 @@ func Authorize(appCtx *context.AppContext) gin.HandlerFunc {
 
 		parsedToken, err := helper.ParseToken(accessToken)
 		if err != nil {
-			appCtx.Logger.Errorfln("ParseToken(): %v", err)
+			handlerDeps.Logger.Errorfln("ParseToken(): %v", err)
 			response.Error = &types.ErrorBlock{
 				Code:    http.StatusInternalServerError,
 				Message: "Internal server error",
@@ -124,9 +126,13 @@ func Authorize(appCtx *context.AppContext) gin.HandlerFunc {
 		userId := parsedToken.UserId
 
 		// create internal token
-		internalToken, err := jwthandler.CreateInternalToken(appCtx.JwtConfig.JwtSecret, appCtx.JwtConfig.ATDurationMs, userId)
+		internalToken, err := jwthandler.CreateInternalToken(
+			handlerDeps.Config.JwtTokenConfig.JwtSecret,
+			handlerDeps.Config.JwtTokenConfig.ATDurationMs,
+			userId,
+		)
 		if err != nil {
-			appCtx.Logger.Errorfln("CreateInternalToken(): %v", err)
+			handlerDeps.Logger.Errorfln("CreateInternalToken(): %v", err)
 			response.Error = &types.ErrorBlock{
 				Code:    http.StatusInternalServerError,
 				Message: "Internal server error",
@@ -138,11 +144,11 @@ func Authorize(appCtx *context.AppContext) gin.HandlerFunc {
 		}
 
 		// get user information
-		userResponse, err := appCtx.UserService.GetUserById(c, &user.GetUserByIdRequest{
+		userResponse, err := handlerDeps.UserService.GetUserById(c, &user.GetUserByIdRequest{
 			UserId: userId,
 		})
 		if err != nil {
-			appCtx.Logger.Errorfln("GetUserById(): %v", err)
+			handlerDeps.Logger.Errorfln("GetUserById(): %v", err)
 			switch err := err.(type) {
 			case services.BadResponseError:
 				response.Error = &err.ErrBlock
@@ -163,7 +169,7 @@ func Authorize(appCtx *context.AppContext) gin.HandlerFunc {
 		user := userResponse.User
 		// sanitize user data
 		if user.Password != "" {
-			appCtx.Logger.Warnfln("User password should not be returned in response")
+			handlerDeps.Logger.Warnfln("User password should not be returned in response")
 			user.Password = ""
 		}
 		// replace user token with internal token for internal service
@@ -173,7 +179,7 @@ func Authorize(appCtx *context.AppContext) gin.HandlerFunc {
 			Item: &user,
 		}
 
-		appCtx.Logger.Debugfln("Response body: %+v", response.Data.Item)
+		handlerDeps.Logger.Debugfln("Response body: %+v", response.Data.Item)
 		c.JSON(http.StatusOK, response)
 	}
 }

@@ -1,7 +1,6 @@
 package api
 
 import (
-	"dungtl2003/chat-app-auth-service/internal/context"
 	"dungtl2003/chat-app-auth-service/internal/helper"
 	"dungtl2003/chat-app-auth-service/internal/model"
 	"dungtl2003/chat-app-auth-service/internal/services"
@@ -28,14 +27,14 @@ type SignUpResponseBody struct {
 	User         model.ChatUser  `json:"user"`
 }
 
-func SignUp(appCtx *context.AppContext) gin.HandlerFunc {
+func SignUp(handlerDeps *HandlerDeps) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		response := types.Response[SignUpResponseBody]{}
 
 		// validate request body
 		var signUpRequestBody SignUpRequestBody
 		if err := c.ShouldBindJSON(&signUpRequestBody); err != nil {
-			appCtx.Logger.Errorfln("ShouldBindJSON(): %v", err)
+			handlerDeps.Logger.Errorfln("ShouldBindJSON(): %v", err)
 			response.Error = &types.ErrorBlock{
 				Code:    http.StatusBadRequest,
 				Message: "Invalid payload",
@@ -48,10 +47,10 @@ func SignUp(appCtx *context.AppContext) gin.HandlerFunc {
 			return
 		}
 
-		appCtx.Logger.Debugfln("Sign up request body: %#v", signUpRequestBody)
+		handlerDeps.Logger.Debugfln("Sign up request body: %#v", signUpRequestBody)
 
-		if err := appCtx.Validator.Validate(signUpRequestBody); err != nil {
-			appCtx.Logger.Errorfln("Error while validating request body: %v", err)
+		if err := handlerDeps.Validator.Validate(signUpRequestBody); err != nil {
+			handlerDeps.Logger.Errorfln("Error while validating request body: %v", err)
 			response.Error = &types.ErrorBlock{
 				Code:    http.StatusBadRequest,
 				Message: "Invalid request body",
@@ -63,14 +62,14 @@ func SignUp(appCtx *context.AppContext) gin.HandlerFunc {
 		}
 
 		// create account
-		userResponse, err := appCtx.UserService.CreateUser(c, u.UserPostRequest{
+		userResponse, err := handlerDeps.UserService.CreateUser(c, u.UserPostRequest{
 			Email:    signUpRequestBody.Email,
 			Username: signUpRequestBody.Username,
 			Password: signUpRequestBody.Password,
 			Role:     model.UserRole(signUpRequestBody.Role),
 		})
 		if err != nil {
-			appCtx.Logger.Errorfln("CreateUser(): %v", err)
+			handlerDeps.Logger.Errorfln("CreateUser(): %v", err)
 			switch err := err.(type) {
 			case services.BadResponseError:
 				response.Error = &err.ErrBlock
@@ -90,9 +89,9 @@ func SignUp(appCtx *context.AppContext) gin.HandlerFunc {
 		user := userResponse.User
 
 		// create session ID
-		sessId, err := appCtx.IdGeneratorService.GenerateId(c)
+		sessId, err := handlerDeps.IdGeneratorService.GenerateId(c)
 		if err != nil {
-			appCtx.Logger.Errorfln("GenerateId(): %v", err)
+			handlerDeps.Logger.Errorfln("GenerateId(): %v", err)
 			response.Error = &types.ErrorBlock{
 				Code:    http.StatusInternalServerError,
 				Message: "Internal server error",
@@ -102,12 +101,19 @@ func SignUp(appCtx *context.AppContext) gin.HandlerFunc {
 			c.Abort()
 			return
 		}
-		appCtx.Logger.Debugfln("Generated session ID: %d", sessId)
+		handlerDeps.Logger.Debugfln("Generated session ID: %d", sessId)
 
 		// create tokens
-		accessTokenStr, refreshTokenStr, err := helper.CreateNewTokenPair(appCtx.JwtConfig.JwtSecret, user, appCtx.JwtConfig.ATDurationMs, appCtx.JwtConfig.RTDurationMs, sessId, appCtx.IdGenConfig.Epoch)
+		accessTokenStr, refreshTokenStr, err := helper.CreateNewTokenPair(
+			handlerDeps.Config.JwtTokenConfig.JwtSecret,
+			user,
+			handlerDeps.Config.JwtTokenConfig.ATDurationMs,
+			handlerDeps.Config.JwtTokenConfig.RTDurationMs,
+			sessId,
+			handlerDeps.Config.IdGeneratorConfig.Epoch,
+		)
 		if err != nil {
-			appCtx.Logger.Errorfln("CreateTokens(): error creating tokens: %v", err)
+			handlerDeps.Logger.Errorfln("CreateTokens(): error creating tokens: %v", err)
 			response.Error = &types.ErrorBlock{
 				Code:    http.StatusInternalServerError,
 				Message: "Internal server error",
@@ -117,13 +123,13 @@ func SignUp(appCtx *context.AppContext) gin.HandlerFunc {
 			c.Abort()
 			return
 		}
-		appCtx.Logger.Debugfln("AT: %s", accessTokenStr)
-		appCtx.Logger.Debugfln("RT: %s", refreshTokenStr)
+		handlerDeps.Logger.Debugfln("AT: %s", accessTokenStr)
+		handlerDeps.Logger.Debugfln("RT: %s", refreshTokenStr)
 
 		// create session
-		expiresAt, err := helper.GetTokenExpirationStr(refreshTokenStr, appCtx.JwtConfig.JwtSecret)
+		expiresAt, err := helper.GetTokenExpirationStr(refreshTokenStr, handlerDeps.Config.JwtTokenConfig.JwtSecret)
 		if err != nil {
-			appCtx.Logger.Errorfln("GetTokenExpirationStr(): %v", err)
+			handlerDeps.Logger.Errorfln("GetTokenExpirationStr(): %v", err)
 			response.Error = &types.ErrorBlock{
 				Code:    http.StatusInternalServerError,
 				Message: "Internal server error",
@@ -134,8 +140,8 @@ func SignUp(appCtx *context.AppContext) gin.HandlerFunc {
 			return
 		}
 		refreshTokenHash := helper.HashWithSHA256(refreshTokenStr)
-		appCtx.Logger.Debugfln("Refresh token hash: %s", refreshTokenHash)
-		sessionResponse, err := appCtx.UserService.CreateSession(c, user.Id.Int64(), u.SessionPostRequest{
+		handlerDeps.Logger.Debugfln("Refresh token hash: %s", refreshTokenHash)
+		sessionResponse, err := handlerDeps.UserService.CreateSession(c, user.Id.Int64(), u.SessionPostRequest{
 			Id:               sessId,
 			Version:          user.SessionVersion.Int64(),
 			DeviceInfo:       signUpRequestBody.DeviceInfo,
@@ -143,7 +149,7 @@ func SignUp(appCtx *context.AppContext) gin.HandlerFunc {
 			ExpiresAt:        expiresAt,
 		})
 		if err != nil {
-			appCtx.Logger.Errorfln("CreateSession(): %v", err)
+			handlerDeps.Logger.Errorfln("CreateSession(): %v", err)
 			switch err := err.(type) {
 			case services.BadResponseError:
 				response.Error = &err.ErrBlock
@@ -170,8 +176,8 @@ func SignUp(appCtx *context.AppContext) gin.HandlerFunc {
 
 		native := helper.IsNativeClient(c)
 		if !native {
-			cfg := helper.GetCookieCfg(appCtx.DomainName, appCtx.Env)
-			helper.SetCookieCfg(c, "refresh_token", refreshTokenStr, appCtx.JwtConfig.RTDurationMs, cfg)
+			cfg := helper.GetCookieCfg(handlerDeps.Config.DomainName, handlerDeps.Config.Env)
+			helper.SetCookieCfg(c, "refresh_token", refreshTokenStr, handlerDeps.Config.JwtTokenConfig.RTDurationMs, cfg)
 			response.Data = &types.DataOrPage[SignUpResponseBody]{
 				Item: &SignUpResponseBody{
 					AccessToken: accessTokenStr,
@@ -179,7 +185,7 @@ func SignUp(appCtx *context.AppContext) gin.HandlerFunc {
 					User:        user,
 				},
 			}
-			appCtx.Logger.Debugfln("Response body: %#v", response.Data.Item)
+			handlerDeps.Logger.Debugfln("Response body: %#v", response.Data.Item)
 			c.JSON(http.StatusOK, response)
 			c.Abort()
 			return
@@ -193,7 +199,7 @@ func SignUp(appCtx *context.AppContext) gin.HandlerFunc {
 				User:         user,
 			},
 		}
-		appCtx.Logger.Debugfln("Response body: %#v", response.Data.Item)
+		handlerDeps.Logger.Debugfln("Response body: %#v", response.Data.Item)
 		c.JSON(http.StatusOK, response)
 		c.Abort()
 	}

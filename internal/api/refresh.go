@@ -2,7 +2,6 @@ package api
 
 import (
 	"dungtl2003/chat-app-auth-service/internal/constants"
-	"dungtl2003/chat-app-auth-service/internal/context"
 	"dungtl2003/chat-app-auth-service/internal/helper"
 	"dungtl2003/chat-app-auth-service/internal/jwthandler"
 	"dungtl2003/chat-app-auth-service/internal/model"
@@ -62,14 +61,14 @@ func (e InvalidTokenError) Error() string {
 // user service MUST return that session. If not, it means that the session is revoked).
 // 6. If the token and the hash are not matched, revoke the session, delete the
 // cookie and return 401.
-func Refresh(appCtx *context.AppContext) gin.HandlerFunc {
+func Refresh(handlerDeps *HandlerDeps) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		response := types.Response[RefreshTokenResponseBody]{}
 		native := helper.IsNativeClient(c)
 
 		var refreshRequestBody RefreshTokenRequestBody
 		if err := c.ShouldBindJSON(&refreshRequestBody); err != nil {
-			appCtx.Logger.Errorfln("ShouldBindJSON(): %v", err)
+			handlerDeps.Logger.Errorfln("ShouldBindJSON(): %v", err)
 			response.Error = &types.ErrorBlock{
 				Code:    http.StatusBadRequest,
 				Message: "Invalid payload",
@@ -82,12 +81,12 @@ func Refresh(appCtx *context.AppContext) gin.HandlerFunc {
 			return
 		}
 
-		refreshTokenStr, err := extractRTAbort(c, appCtx, native)
+		refreshTokenStr, err := extractRTAbort(c, handlerDeps, native)
 		if err != nil {
 			return
 		}
 
-		parsedToken, err := validateRTAbort(c, appCtx, refreshTokenStr, native)
+		parsedToken, err := validateRTAbort(c, handlerDeps, refreshTokenStr, native)
 		if err != nil {
 			return
 		}
@@ -96,14 +95,14 @@ func Refresh(appCtx *context.AppContext) gin.HandlerFunc {
 		sessionVersion := parsedToken.SessionVersion
 		sessId := parsedToken.SessionId
 
-		user, err := getUserAbort(appCtx, c, userId, sessId)
+		user, err := getUserAbort(handlerDeps, c, userId, sessId)
 		if err != nil {
 			return
 		}
 		// the account was attacked so this refresh token is not valid anymore
 		if sessionVersion < user.SessionVersion.Int64() {
 			handleLowerSessionVersionWithAbort(
-				appCtx, c, user.SessionVersion.Int64(), sessionVersion, sessId, native,
+				handlerDeps, c, user.SessionVersion.Int64(), sessionVersion, sessId, native,
 			)
 			return
 		}
@@ -119,23 +118,23 @@ func Refresh(appCtx *context.AppContext) gin.HandlerFunc {
 				break
 			}
 		}
-		appCtx.Logger.Debugfln("Session: %#v", session)
+		handlerDeps.Logger.Debugfln("Session: %#v", session)
 
 		// Reuse detected!!!
 		if session.RevokedAt.Valid {
-			handleRTReuseWithAbort(appCtx, c, *user)
+			handleRTReuseWithAbort(handlerDeps, c, *user)
 			return
 		}
 
 		refreshTokenHash := helper.HashWithSHA256(refreshTokenStr)
 		// check if refresh token hash is correct
 		if refreshTokenHash != session.RefreshTokenHash {
-			handleDifferentRTHashWithAbort(appCtx, c, userId, sessId, session.RefreshTokenHash, refreshTokenHash, native)
+			handleDifferentRTHashWithAbort(handlerDeps, c, userId, sessId, session.RefreshTokenHash, refreshTokenHash, native)
 			return
 		}
 
 		// revoke session
-		err = revokeSessionAbort(appCtx, c, userId, sessId)
+		err = revokeSessionAbort(handlerDeps, c, userId, sessId)
 		if err != nil {
 			return
 		}
@@ -145,15 +144,15 @@ func Refresh(appCtx *context.AppContext) gin.HandlerFunc {
 			return s.Id.Int64() != sessId
 		})
 
-		newSessId, err := generateIdAbort(appCtx, c)
+		newSessId, err := generateIdAbort(handlerDeps, c)
 		if err != nil {
 			return
 		}
 
-		newAccessTokenStr, newRefreshTokenStr, err := createNewTokenPairAbort(appCtx, c, *user, newSessId)
+		newAccessTokenStr, newRefreshTokenStr, err := createNewTokenPairAbort(handlerDeps, c, *user, newSessId)
 
 		newSession, err := createNewSessionAbort(
-			appCtx,
+			handlerDeps,
 			c,
 			*user,
 			newSessId,
@@ -175,8 +174,8 @@ func Refresh(appCtx *context.AppContext) gin.HandlerFunc {
 			response.Data = &types.DataOrPage[RefreshTokenResponseBody]{
 				Item: &refreshResponseBody,
 			}
-			appCtx.Logger.Debugfln("Response body: %#v", response.Data.Item)
-			helper.SetCookieOverride(c, "refresh_token", newRefreshTokenStr, appCtx.DomainName, appCtx.JwtConfig.RTDurationMs)
+			handlerDeps.Logger.Debugfln("Response body: %#v", response.Data.Item)
+			helper.SetCookieOverride(c, "refresh_token", newRefreshTokenStr, handlerDeps.Config.DomainName, handlerDeps.Config.JwtTokenConfig.RTDurationMs)
 			c.JSON(http.StatusOK, response)
 			c.Abort()
 			return
@@ -192,7 +191,7 @@ func Refresh(appCtx *context.AppContext) gin.HandlerFunc {
 		response.Data = &types.DataOrPage[RefreshTokenResponseBody]{
 			Item: &refreshResponseBody,
 		}
-		appCtx.Logger.Debugfln("Response body: %#v", response.Data.Item)
+		handlerDeps.Logger.Debugfln("Response body: %#v", response.Data.Item)
 		c.JSON(http.StatusOK, response)
 		c.Abort()
 	}
@@ -201,19 +200,19 @@ func Refresh(appCtx *context.AppContext) gin.HandlerFunc {
 // getUserAbort is a helper function that gets user information.
 // If there is an error, it returns an error response and aborts the request.
 func getUserAbort(
-	appCtx *context.AppContext,
+	handlerDeps *HandlerDeps,
 	c *gin.Context,
 	userId int64,
 	sessionId int64,
 ) (*model.ChatUser, error) {
 	response := types.Response[RefreshTokenResponseBody]{}
 
-	userResponse, err := appCtx.UserService.GetUserById(c, &user.GetUserByIdRequest{
+	userResponse, err := handlerDeps.UserService.GetUserById(c, &user.GetUserByIdRequest{
 		UserId:    userId,
 		SessionId: &sessionId,
 	})
 	if err != nil {
-		appCtx.Logger.Errorfln("GetUserById(): %v", err)
+		handlerDeps.Logger.Errorfln("GetUserById(): %v", err)
 		switch err := err.(type) {
 		case services.BadResponseError:
 			response.Error = &err.ErrBlock
@@ -239,16 +238,16 @@ func getUserAbort(
 // revokeSessionAbort is a helper function that revokes a session.
 // If there is an error, it returns an error response and aborts the request.
 func revokeSessionAbort(
-	appCtx *context.AppContext,
+	handlerDeps *HandlerDeps,
 	c *gin.Context,
 	userId int64,
 	sessId int64,
 ) error {
 	response := types.Response[RefreshTokenResponseBody]{}
 
-	err := appCtx.UserService.RevokeSession(c, userId, sessId)
+	err := handlerDeps.UserService.RevokeSession(c, userId, sessId)
 	if err != nil {
-		appCtx.Logger.Errorfln("RevokeSession(): %v", err)
+		handlerDeps.Logger.Errorfln("RevokeSession(): %v", err)
 		response.Error = &types.ErrorBlock{
 			Code:    http.StatusInternalServerError,
 			Message: "Internal server error",
@@ -263,12 +262,12 @@ func revokeSessionAbort(
 
 // generateIdAbort is a helper function that generates a new ID.
 // If there is an error, it returns an error response and aborts the request.
-func generateIdAbort(appCtx *context.AppContext, c *gin.Context) (int64, error) {
+func generateIdAbort(handlerDeps *HandlerDeps, c *gin.Context) (int64, error) {
 	response := types.Response[RefreshTokenResponseBody]{}
 
-	id, err := appCtx.IdGeneratorService.GenerateId(c)
+	id, err := handlerDeps.IdGeneratorService.GenerateId(c)
 	if err != nil {
-		appCtx.Logger.Errorfln("GenerateId(): %v", err)
+		handlerDeps.Logger.Errorfln("GenerateId(): %v", err)
 		response.Error = &types.ErrorBlock{
 			Code:    http.StatusInternalServerError,
 			Message: "Internal server error",
@@ -285,7 +284,7 @@ func generateIdAbort(appCtx *context.AppContext, c *gin.Context) (int64, error) 
 // createNewSessionAbort is a helper function that creates a new session.
 // If there is an error, it returns an error response and aborts the request.
 func createNewSessionAbort(
-	appCtx *context.AppContext,
+	handlerDeps *HandlerDeps,
 	c *gin.Context,
 	user model.ChatUser,
 	newSessId int64,
@@ -294,9 +293,9 @@ func createNewSessionAbort(
 ) (*model.Session, error) {
 	response := types.Response[RefreshTokenResponseBody]{}
 
-	expiresAt, err := helper.GetTokenExpirationStr(newRefreshTokenStr, appCtx.JwtConfig.JwtSecret)
+	expiresAt, err := helper.GetTokenExpirationStr(newRefreshTokenStr, handlerDeps.Config.JwtTokenConfig.JwtSecret)
 	if err != nil {
-		appCtx.Logger.Errorfln("GetTokenExpirationStr(): %v", err)
+		handlerDeps.Logger.Errorfln("GetTokenExpirationStr(): %v", err)
 		response.Error = &types.ErrorBlock{
 			Code:    http.StatusInternalServerError,
 			Message: "Internal server error",
@@ -308,8 +307,8 @@ func createNewSessionAbort(
 	}
 
 	newRefreshTokenHash := helper.HashWithSHA256(newRefreshTokenStr)
-	appCtx.Logger.Debugfln("New refresh token hash: %s", newRefreshTokenHash)
-	newSessionResponse, err := appCtx.UserService.CreateSession(c, user.Id.Int64(), u.SessionPostRequest{
+	handlerDeps.Logger.Debugfln("New refresh token hash: %s", newRefreshTokenHash)
+	newSessionResponse, err := handlerDeps.UserService.CreateSession(c, user.Id.Int64(), u.SessionPostRequest{
 		Id:               newSessId,
 		Version:          user.SessionVersion.Int64(),
 		DeviceInfo:       deviceInfo,
@@ -317,7 +316,7 @@ func createNewSessionAbort(
 		ExpiresAt:        expiresAt,
 	})
 	if err != nil {
-		appCtx.Logger.Errorfln("CreateSession(): %v", err)
+		handlerDeps.Logger.Errorfln("CreateSession(): %v", err)
 		switch err := err.(type) {
 		case services.BadResponseError:
 			response.Error = &err.ErrBlock
@@ -334,14 +333,14 @@ func createNewSessionAbort(
 		return nil, err
 	}
 
-	appCtx.Logger.Debugfln("New session created: %d", newSessId)
+	handlerDeps.Logger.Debugfln("New session created: %d", newSessId)
 	return &newSessionResponse.Session, nil
 }
 
 // createNewTokenPairAbort is a helper function that creates a new token pair.
 // If there is an error, it returns an error response and aborts the request.
 func createNewTokenPairAbort(
-	appCtx *context.AppContext,
+	handlerDeps *HandlerDeps,
 	c *gin.Context,
 	user model.ChatUser,
 	newSessId int64,
@@ -349,15 +348,15 @@ func createNewTokenPairAbort(
 	response := types.Response[RefreshTokenResponseBody]{}
 
 	newAccessTokenStr, newRefreshTokenStr, err := helper.CreateNewTokenPair(
-		appCtx.JwtConfig.JwtSecret,
+		handlerDeps.Config.JwtTokenConfig.JwtSecret,
 		user,
-		appCtx.JwtConfig.ATDurationMs,
-		appCtx.JwtConfig.RTDurationMs,
+		handlerDeps.Config.JwtTokenConfig.ATDurationMs,
+		handlerDeps.Config.JwtTokenConfig.RTDurationMs,
 		newSessId,
-		appCtx.IdGenConfig.Epoch,
+		handlerDeps.Config.IdGeneratorConfig.Epoch,
 	)
 	if err != nil {
-		appCtx.Logger.Errorfln("CreateNewTokenPair(): %v", err)
+		handlerDeps.Logger.Errorfln("CreateNewTokenPair(): %v", err)
 		response.Error = &types.ErrorBlock{
 			Code:    http.StatusInternalServerError,
 			Message: "Internal server error",
@@ -368,13 +367,13 @@ func createNewTokenPairAbort(
 		return "", "", err
 	}
 
-	appCtx.Logger.Debugfln("New access token: %s", newAccessTokenStr)
-	appCtx.Logger.Debugfln("New refresh token: %s", newRefreshTokenStr)
+	handlerDeps.Logger.Debugfln("New access token: %s", newAccessTokenStr)
+	handlerDeps.Logger.Debugfln("New refresh token: %s", newRefreshTokenStr)
 	return newAccessTokenStr, newRefreshTokenStr, nil
 }
 
 func handleDifferentRTHashWithAbort(
-	appCtx *context.AppContext,
+	handlerDeps *HandlerDeps,
 	c *gin.Context,
 	userId int64,
 	sessId int64,
@@ -383,9 +382,9 @@ func handleDifferentRTHashWithAbort(
 ) {
 	response := types.Response[RefreshTokenResponseBody]{}
 
-	err := appCtx.UserService.RevokeSession(c, userId, sessId)
+	err := handlerDeps.UserService.RevokeSession(c, userId, sessId)
 	if err != nil {
-		appCtx.Logger.Errorfln("RevokeSession(): %v", err)
+		handlerDeps.Logger.Errorfln("RevokeSession(): %v", err)
 		response.Error = &types.ErrorBlock{
 			Code:    http.StatusInternalServerError,
 			Message: "Internal server error",
@@ -396,9 +395,9 @@ func handleDifferentRTHashWithAbort(
 		return
 	}
 
-	appCtx.Logger.Errorfln("invalid refresh token hash (expected: %s, got: %s)", expectedHash, refreshTokenHash)
+	handlerDeps.Logger.Errorfln("invalid refresh token hash (expected: %s, got: %s)", expectedHash, refreshTokenHash)
 	if !native {
-		helper.ClearCookie(c, "refresh_token", appCtx.DomainName)
+		helper.ClearCookie(c, "refresh_token", handlerDeps.Config.DomainName)
 	}
 	response.Error = &types.ErrorBlock{
 		Code:    http.StatusUnauthorized,
@@ -416,7 +415,7 @@ func handleDifferentRTHashWithAbort(
 // This indicates that the refresh token is no longer valid (the user has already
 // refreshed the token before with a higher session version).
 func handleLowerSessionVersionWithAbort(
-	appCtx *context.AppContext,
+	handlerDeps *HandlerDeps,
 	c *gin.Context,
 	expectedSessVersion int64,
 	gotSessVersion int64,
@@ -425,11 +424,11 @@ func handleLowerSessionVersionWithAbort(
 ) {
 	response := types.Response[RefreshTokenResponseBody]{}
 
-	appCtx.Logger.Errorfln("Invalid session version (expected: %d, got: %d)",
+	handlerDeps.Logger.Errorfln("Invalid session version (expected: %d, got: %d)",
 		expectedSessVersion, gotSessVersion)
-	err := appCtx.UserService.RevokeSession(c, expectedSessVersion, sessId)
+	err := handlerDeps.UserService.RevokeSession(c, expectedSessVersion, sessId)
 	if err != nil {
-		appCtx.Logger.Errorfln("RevokeSession(): %v", err)
+		handlerDeps.Logger.Errorfln("RevokeSession(): %v", err)
 		response.Error = &types.ErrorBlock{
 			Code:    http.StatusInternalServerError,
 			Message: "Internal server error",
@@ -441,7 +440,7 @@ func handleLowerSessionVersionWithAbort(
 	}
 
 	if !native {
-		helper.ClearCookie(c, "refresh_token", appCtx.DomainName)
+		helper.ClearCookie(c, "refresh_token", handlerDeps.Config.DomainName)
 	}
 
 	response.Error = &types.ErrorBlock{
@@ -458,16 +457,16 @@ func handleLowerSessionVersionWithAbort(
 // either the Authorization header (for native clients) or the refresh_token
 // cookie (for web clients). If the refresh token is missing, it returns an
 // error response and aborts the request.
-func extractRTAbort(c *gin.Context, appCtx *context.AppContext, native bool) (string, error) {
+func extractRTAbort(c *gin.Context, handlerDeps *HandlerDeps, native bool) (string, error) {
 	response := types.Response[RefreshTokenResponseBody]{}
 	var refreshTokenStr string
 	var err error
 
 	if native {
 		authHeader := c.GetHeader("Authorization")
-		appCtx.Logger.Debugfln("Authorization header: %s", authHeader)
+		handlerDeps.Logger.Debugfln("Authorization header: %s", authHeader)
 		if authHeader == "" {
-			appCtx.Logger.Errorfln("Missing authorization header")
+			handlerDeps.Logger.Errorfln("Missing authorization header")
 			response.Error = &types.ErrorBlock{
 				Code:    http.StatusUnauthorized,
 				Message: "Missing authorization header",
@@ -480,7 +479,7 @@ func extractRTAbort(c *gin.Context, appCtx *context.AppContext, native bool) (st
 
 		parts := strings.Split(authHeader, " ")
 		if len(parts) != 2 {
-			appCtx.Logger.Errorfln("Authorization header should have 2 parts")
+			handlerDeps.Logger.Errorfln("Authorization header should have 2 parts")
 			response.Error = &types.ErrorBlock{
 				Code:    http.StatusUnauthorized,
 				Message: "Authorization header should have 2 parts",
@@ -492,7 +491,7 @@ func extractRTAbort(c *gin.Context, appCtx *context.AppContext, native bool) (st
 		}
 
 		if parts[0] != "Bearer" {
-			appCtx.Logger.Errorfln("Authorization header should start with `Bearer`")
+			handlerDeps.Logger.Errorfln("Authorization header should start with `Bearer`")
 			response.Error = &types.ErrorBlock{
 				Code:    http.StatusUnauthorized,
 				Message: "Authorization header should start with `Bearer`",
@@ -508,7 +507,7 @@ func extractRTAbort(c *gin.Context, appCtx *context.AppContext, native bool) (st
 		refreshTokenStr, err = c.Cookie("refresh_token")
 		if err != nil {
 			if err == http.ErrNoCookie {
-				appCtx.Logger.Errorfln("Missing refresh token")
+				handlerDeps.Logger.Errorfln("Missing refresh token")
 				response.Error = &types.ErrorBlock{
 					Code:    http.StatusUnauthorized,
 					Message: "Missing refresh token",
@@ -517,7 +516,7 @@ func extractRTAbort(c *gin.Context, appCtx *context.AppContext, native bool) (st
 				}
 				c.JSON(response.Error.Code, response)
 			} else {
-				appCtx.Logger.Errorfln("Cookie(): %v", err)
+				handlerDeps.Logger.Errorfln("Cookie(): %v", err)
 				response.Error = &types.ErrorBlock{
 					Code:    http.StatusInternalServerError,
 					Message: "Internal server error",
@@ -530,7 +529,7 @@ func extractRTAbort(c *gin.Context, appCtx *context.AppContext, native bool) (st
 		}
 	}
 
-	appCtx.Logger.Debugfln("Refresh token: %s", refreshTokenStr)
+	handlerDeps.Logger.Debugfln("Refresh token: %s", refreshTokenStr)
 	return refreshTokenStr, nil
 }
 
@@ -539,7 +538,7 @@ func extractRTAbort(c *gin.Context, appCtx *context.AppContext, native bool) (st
 // and return an error response and abort the request.
 func validateRTAbort(
 	c *gin.Context,
-	appCtx *context.AppContext,
+	handlerDeps *HandlerDeps,
 	refreshTokenStr string,
 	native bool,
 ) (*helper.ParsedToken, error) {
@@ -548,16 +547,16 @@ func validateRTAbort(
 	// Validate and parse the refresh token. If the token is invalid or
 	// expired, it will clear the cookie. For expired token, it will also
 	// revoke the session. In any case, it will return an error response.
-	parsedToken, err := validateToken(refreshTokenStr, appCtx.JwtConfig.JwtSecret)
+	parsedToken, err := validateToken(refreshTokenStr, handlerDeps.Config.JwtTokenConfig.JwtSecret)
 	if err == nil {
 		return parsedToken, nil
 	}
 
 	switch e := err.(type) {
 	case InvalidTokenError:
-		appCtx.Logger.Errorfln("Invalid refresh token")
+		handlerDeps.Logger.Errorfln("Invalid refresh token")
 		if !native {
-			helper.ClearCookie(c, "refresh_token", appCtx.DomainName)
+			helper.ClearCookie(c, "refresh_token", handlerDeps.Config.DomainName)
 		}
 		response.Error = &types.ErrorBlock{
 			Code:    http.StatusUnauthorized,
@@ -565,14 +564,14 @@ func validateRTAbort(
 			Errors:  []types.ErrorItem{{Message: "Invalid refresh token"}},
 		}
 	case ExpiredTokenError:
-		appCtx.Logger.Errorfln("Expired refresh token")
+		handlerDeps.Logger.Errorfln("Expired refresh token")
 		// TODO: make this kafka event
-		err = appCtx.UserService.RevokeSession(c, e.UserId, e.SessionId)
+		err = handlerDeps.UserService.RevokeSession(c, e.UserId, e.SessionId)
 		if err != nil {
-			appCtx.Logger.Warnfln("RevokeSession(): %v", e)
+			handlerDeps.Logger.Warnfln("RevokeSession(): %v", e)
 		}
 		if !native {
-			helper.ClearCookie(c, "refresh_token", appCtx.DomainName)
+			helper.ClearCookie(c, "refresh_token", handlerDeps.Config.DomainName)
 		}
 		response.Error = &types.ErrorBlock{
 			Code:    http.StatusUnauthorized,
@@ -580,7 +579,7 @@ func validateRTAbort(
 			Errors:  []types.ErrorItem{{Message: "Expired refresh token"}},
 		}
 	default:
-		appCtx.Logger.Errorfln("ParseToken(): %v", e)
+		handlerDeps.Logger.Errorfln("ParseToken(): %v", e)
 		response.Error = &types.ErrorBlock{
 			Code:    http.StatusInternalServerError,
 			Message: "Internal server error",
@@ -596,12 +595,12 @@ func validateRTAbort(
 // handleRTReuseWithAbort is a function that handles the case when the refresh token
 // is reused. It revokes all sessions of the user and increments the session version.
 // It also clears the refresh token cookie and returns a 401 response.
-func handleRTReuseWithAbort(appCtx *context.AppContext, c *gin.Context, user model.ChatUser) {
+func handleRTReuseWithAbort(handlerDeps *HandlerDeps, c *gin.Context, user model.ChatUser) {
 	response := types.Response[RefreshTokenResponseBody]{}
 	// maybe stolen by someone. Regardless, REVOKE ALL!!!
-	err := appCtx.UserService.RevokeAllSessions(c, user.Id.Int64())
+	err := handlerDeps.UserService.RevokeAllSessions(c, user.Id.Int64())
 	if err != nil {
-		appCtx.Logger.Errorfln("RevokeAllSessions(): %v", err)
+		handlerDeps.Logger.Errorfln("RevokeAllSessions(): %v", err)
 		response.Error = &types.ErrorBlock{
 			Code:    http.StatusInternalServerError,
 			Message: "Internal server error",
@@ -613,9 +612,9 @@ func handleRTReuseWithAbort(appCtx *context.AppContext, c *gin.Context, user mod
 	}
 
 	// update session version
-	err = appCtx.UserService.IncrementSessionVersion(c, user.Id.Int64())
+	err = handlerDeps.UserService.IncrementSessionVersion(c, user.Id.Int64())
 	if err != nil {
-		appCtx.Logger.Errorfln("IncrementSessionVersion(): %v", err)
+		handlerDeps.Logger.Errorfln("IncrementSessionVersion(): %v", err)
 		response.Error = &types.ErrorBlock{
 			Code:    http.StatusInternalServerError,
 			Message: "Internal server error",
@@ -626,8 +625,8 @@ func handleRTReuseWithAbort(appCtx *context.AppContext, c *gin.Context, user mod
 		return
 	}
 
-	appCtx.Logger.Errorfln("The account might be attacked")
-	helper.ClearCookie(c, "refresh_token", appCtx.DomainName)
+	handlerDeps.Logger.Errorfln("The account might be attacked")
+	helper.ClearCookie(c, "refresh_token", handlerDeps.Config.DomainName)
 	response.Error = &types.ErrorBlock{
 		Code:    http.StatusUnauthorized,
 		Message: "Refresh token reuse detected",

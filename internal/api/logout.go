@@ -1,7 +1,6 @@
 package api
 
 import (
-	"dungtl2003/chat-app-auth-service/internal/context"
 	"dungtl2003/chat-app-auth-service/internal/helper"
 	"dungtl2003/chat-app-auth-service/internal/jwthandler"
 	"dungtl2003/chat-app-auth-service/internal/types"
@@ -11,15 +10,15 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func Logout(appCtx *context.AppContext) gin.HandlerFunc {
+func Logout(handlerDeps *HandlerDeps) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		response := types.Response[any]{}
 
 		// Bearer <token>
 		authHeader := c.GetHeader("Authorization")
-		appCtx.Logger.Debugfln("Authorization header: %s", authHeader)
+		handlerDeps.Logger.Debugfln("Authorization header: %s", authHeader)
 		if authHeader == "" {
-			appCtx.Logger.Errorfln("Missing authorization header")
+			handlerDeps.Logger.Errorfln("Missing authorization header")
 			response.Error = &types.ErrorBlock{
 				Code:    http.StatusUnauthorized,
 				Message: "Missing authorization header",
@@ -32,7 +31,7 @@ func Logout(appCtx *context.AppContext) gin.HandlerFunc {
 
 		parts := strings.Split(authHeader, " ")
 		if len(parts) != 2 {
-			appCtx.Logger.Errorfln("Authorization header should have 2 parts")
+			handlerDeps.Logger.Errorfln("Authorization header should have 2 parts")
 			response.Error = &types.ErrorBlock{
 				Code:    http.StatusUnauthorized,
 				Message: "Authorization header should have 2 parts",
@@ -44,7 +43,7 @@ func Logout(appCtx *context.AppContext) gin.HandlerFunc {
 		}
 
 		if parts[0] != "Bearer" {
-			appCtx.Logger.Errorfln("Authorization header should start with `Bearer`")
+			handlerDeps.Logger.Errorfln("Authorization header should start with `Bearer`")
 			response.Error = &types.ErrorBlock{
 				Code:    http.StatusUnauthorized,
 				Message: "Authorization header should start with `Bearer`",
@@ -56,9 +55,9 @@ func Logout(appCtx *context.AppContext) gin.HandlerFunc {
 		}
 
 		accessTokenString := parts[1]
-		accessToken, err := jwthandler.DecodeToken(appCtx.JwtConfig.JwtSecret, accessTokenString)
+		accessToken, err := jwthandler.DecodeToken(handlerDeps.Config.JwtTokenConfig.JwtSecret, accessTokenString)
 		if err != nil {
-			appCtx.Logger.Errorfln("DecodeToken(): %v", err)
+			handlerDeps.Logger.Errorfln("DecodeToken(): %v", err)
 			response.Error = &types.ErrorBlock{
 				Code:    http.StatusUnauthorized,
 				Message: "Invalid access token",
@@ -71,7 +70,7 @@ func Logout(appCtx *context.AppContext) gin.HandlerFunc {
 
 		parsedToken, err := helper.ParseToken(accessToken)
 		if err != nil {
-			appCtx.Logger.Errorfln("ParseToken(): %v", err)
+			handlerDeps.Logger.Errorfln("ParseToken(): %v", err)
 			response.Error = &types.ErrorBlock{
 				Code:    http.StatusInternalServerError,
 				Message: "Internal server error",
@@ -85,9 +84,9 @@ func Logout(appCtx *context.AppContext) gin.HandlerFunc {
 		sessId := parsedToken.SessionId
 
 		// revoke session
-		err = appCtx.UserService.RevokeSession(c, userId, sessId)
+		err = handlerDeps.UserService.RevokeSession(c, userId, sessId)
 		if err != nil {
-			appCtx.Logger.Errorfln("RevokeSession(): %v", err)
+			handlerDeps.Logger.Errorfln("RevokeSession(): %v", err)
 			response.Error = &types.ErrorBlock{
 				Code:    http.StatusInternalServerError,
 				Message: "Internal server error",
@@ -98,14 +97,14 @@ func Logout(appCtx *context.AppContext) gin.HandlerFunc {
 			return
 		}
 
-		appCtx.Logger.Debugfln("Revoked session %d for user %d", sessId, userId)
+		handlerDeps.Logger.Debugfln("Revoked session %d for user %d", sessId, userId)
 
 		native := helper.IsNativeClient(c)
 		if !native {
-			helper.ClearCookie(c, "refresh_token", appCtx.DomainName)
+			helper.ClearCookie(c, "refresh_token", handlerDeps.Config.DomainName)
 		}
 
-		appCtx.Logger.Debugfln("Logout successful for user %d", userId)
+		handlerDeps.Logger.Debugfln("Logout successful for user %d", userId)
 		c.JSON(http.StatusOK, response)
 		c.Abort()
 	}

@@ -1,8 +1,6 @@
 package api
 
 import (
-	"dungtl2003/chat-app-auth-service/internal/context"
-	"dungtl2003/chat-app-auth-service/internal/services"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -13,29 +11,34 @@ type HealthCheckResponseBody struct {
 	Report map[string]string `json:"report"`
 }
 
-func HealthCheck(appCtx *context.AppContext) gin.HandlerFunc {
+func HealthCheck(handlerDeps *HandlerDeps) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		report := map[string]string{}
 		serverStatus := "UP"
-		for _, s := range appCtx.Services {
-			if s.Status() == services.ServiceReady {
-				report[s.Name()] = "UP"
-			} else {
-				appCtx.Logger.Errorfln("Service %s is DOWN", s.Name())
-				report[s.Name()] = "DOWN"
-				// we don't set the overall server status to DOWN to avoid k8s
-				// restarting the pod
-				// serverStatus = "DOWN"
+		// 2025-12-07: new bug: if 2 services depend on each other and they both
+		// check each other's status here, it can cause a deadlock. To fix this,
+		// we will not check the status of individual services for now.
+		/*
+			for _, s := range handlerDeps.Services {
+				if s.Status() == services.ServiceReady {
+					report[s.Name()] = "UP"
+				} else {
+					handlerDeps.Logger.Errorfln("Service %s is DOWN", s.Name())
+					report[s.Name()] = "DOWN"
+					// we don't set the overall server status to DOWN to avoid k8s
+					// restarting the pod
+					// serverStatus = "DOWN"
 
+				}
 			}
-		}
+		*/
 
 		responseBody := HealthCheckResponseBody{
 			Status: serverStatus,
 			Report: report,
 		}
 
-		appCtx.Logger.Debugfln("Response body: %v", responseBody)
+		handlerDeps.Logger.Debugfln("Response body: %v", responseBody)
 		c.JSON(http.StatusOK, responseBody)
 		c.Abort()
 	}
