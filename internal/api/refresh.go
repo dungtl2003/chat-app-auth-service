@@ -18,7 +18,7 @@ import (
 )
 
 type RefreshTokenRequestBody struct {
-	DeviceInfo types.Json `json:"device_info" validate:"required"`
+	DeviceInfo types.Json `json:"device_info"`
 }
 
 type RefreshTokenResponseBody struct {
@@ -120,8 +120,22 @@ func Refresh(handlerDeps *HandlerDeps) gin.HandlerFunc {
 		}
 		handlerDeps.Logger.Debugfln("Session: %#v", session)
 
-		// Reuse detected!!!
 		if session.RevokedAt.Valid {
+			if session.RevokedByOwner {
+				response.Error = &types.ErrorBlock{
+					Code:    http.StatusForbidden,
+					Message: "Session revoked by owner",
+					Status:  constants.SESSION_REVOKED_BY_OWNER,
+					Errors: []types.ErrorItem{
+						{Message: "Session revoked by owner", Reason: constants.SESSION_REVOKED_BY_OWNER},
+					},
+				}
+				c.JSON(response.Error.Code, response)
+				c.Abort()
+				return
+			}
+
+			// Reuse detected!!!
 			handleRTReuseWithAbort(handlerDeps, c, *user)
 			return
 		}

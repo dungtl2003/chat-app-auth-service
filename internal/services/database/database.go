@@ -60,6 +60,10 @@ func (d *DatabaseService) Status() services.ServiceStatus {
 	return d.status
 }
 
+func (d *DatabaseService) GetClient() *sql.DB {
+	return d.client
+}
+
 // Close closes the database connection. The function returns an error.
 func (d *DatabaseService) Close() error {
 	if d.Status() == services.ServiceStopped {

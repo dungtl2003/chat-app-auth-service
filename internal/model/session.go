@@ -13,4 +13,8 @@ type Session struct {
 	IssuedAt         types.JsonTime     `json:"issued_at"`
 	ExpiresAt        types.JsonTime     `json:"expires_at"`
 	UserId           types.JsonInt64    `json:"user_id"`
+	// Indicates whether the session was revoked by the user (owner) or by the
+	// system (e.g., admin action, security reasons). When this is true, it means
+	// the user themselves initiated the revocation of the session, not an external factor.
+	RevokedByOwner bool `json:"revoked_by_owner"`
 }

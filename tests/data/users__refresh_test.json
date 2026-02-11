@@ -26,5 +26,12 @@
         "username": "john doe",
         "password": "normalpassword4",
         "role": "USER"
+    },
+    {
+        "id": "5",
+        "email": "revokeduser@gmail.com",
+        "username": "revokeduser",
+        "password": "revokedpassword",
+        "role": "USER"
     }
 ]

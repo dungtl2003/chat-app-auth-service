@@ -219,11 +219,70 @@ func TestRefreshShouldHaveReuseDetection(t *testing.T) {
 	// all other refresh tokens should NOT work because server invalidated them
 	for _, refreshToken := range refreshTokens[1:] {
 		URL = fmt.Sprintf("%s/auth/refresh", helper.AuthURL)
-		header := http.Header{
+		header = http.Header{
 			"Cookie": {fmt.Sprintf("refresh_token=%s", refreshToken)},
 		}
 		resp, err = Post(helper.Client, URL, header, bytes.NewBuffer(refreshBodyJson))
 		require.NoError(t, err)
 		require.EqualValues(t, http.StatusUnauthorized, resp.StatusCode)
 	}
+}
+
+func TestRefreshShouldFailIfSessionRevokedByOwner(t *testing.T) {
+	helper := NewTestHelper()
+	SetUp(helper, &SetUpOptions{
+		DataFile: &database.DataFile{
+			UserFile: USERS__REFRESH_TEST_FILENAME,
+		},
+	})
+	defer TearDown(helper)
+
+	identifier := "revokeduser"
+	password := "revokedpassword"
+	deviceInfo := json.RawMessage(`{"user-agent": "Mozilla/5.0"}`)
+	payloadJson := fmt.Appendf(nil, `
+			{
+				"identifier": "%s",
+				"password": "%s",
+				"device_info": %s
+			}`, identifier, password, deviceInfo)
+
+	URL := fmt.Sprintf("%s/auth/login", helper.AuthURL)
+	resp, err := Post(helper.Client, URL, nil, bytes.NewBuffer(payloadJson))
+	require.NoError(t, err)
+	require.EqualValues(t, http.StatusOK, resp.StatusCode)
+
+	refreshToken := GetRTFromResponse(resp)
+	require.NotEmpty(t, refreshToken)
+
+	var loginResponseBody types.Response[api.LoginResponseBody]
+	err = json.NewDecoder(resp.Body).Decode(&loginResponseBody)
+	require.NoError(t, err)
+	require.NotNil(t, loginResponseBody.Data)
+	sessionId := loginResponseBody.Data.Item.SessionId.Int64()
+
+	// Manually revoke the session in the database
+	query := "UPDATE chat_user.session SET revoked_by_owner = true, revoked_at = NOW() WHERE id = $1"
+	_, err = helper.AdminDatabaseService.GetClient().Exec(query, sessionId)
+	require.NoError(t, err)
+
+	refreshBody := api.RefreshTokenRequestBody{
+		DeviceInfo: types.NewJson([]byte(`{"user-agent": "Mozilla/5.0"}`)),
+	}
+	refreshBodyJson, err := json.Marshal(refreshBody)
+	require.NoError(t, err)
+
+	URL = fmt.Sprintf("%s/auth/refresh", helper.AuthURL)
+	header := http.Header{
+		"Cookie": {fmt.Sprintf("refresh_token=%s", refreshToken)},
+	}
+	resp, err = Post(helper.Client, URL, header, bytes.NewBuffer(refreshBodyJson))
+	require.NoError(t, err)
+	require.EqualValues(t, http.StatusForbidden, resp.StatusCode)
+
+	var refreshResponseBody types.Response[api.RefreshTokenResponseBody]
+	err = json.NewDecoder(resp.Body).Decode(&refreshResponseBody)
+	require.NoError(t, err)
+	require.NotNil(t, refreshResponseBody.Error)
+	require.EqualValues(t, constants.SESSION_REVOKED_BY_OWNER, refreshResponseBody.Error.Status)
 }

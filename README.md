@@ -40,7 +40,7 @@ The service can be configured using the following environment variables:
 | PASSWORD_RESET_CODE_TTL | The TTL for the password reset code | No | 15 minutes | string | any valid duration. Valid time units are "ns", "us" (or "µs"), "ms", "s", "m", "h" (e.g. "300ms", "1.5h" or "2h45m") |
 | SMTP_EMAIL_FROM_NAME_DISPLAY | The display name for the email sender | No | Auth Service | string | any valid string |
 | SMTP_HOST | The SMTP email host | Yes | | string | any valid string |
-| SMTP_PORT | The SMTP email port | No | 587 | int | any valid port number |
+| SMTP_PORT | The SMTP email port | Yes | | int | any valid port number |
 
 You can see the full configuration example in `./template/env-template` file.
 
