@@ -13,6 +13,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -109,5 +110,227 @@ func TestPasswordResetFlow(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, respBody.Error)
 		require.Equal(t, "Invalid reset code", respBody.Error.Message)
+	})
+}
+
+func TestPasswordResetRateLimits(t *testing.T) {
+
+	// 1. Request Rate Limit
+	t.Run("RequestRateLimit", func(t *testing.T) {
+		t.Setenv("PASSWORD_RESET_RATE_LIMIT_MAX", "2")
+		helper := NewTestHelper()
+		mockMailer := &mailer.MockMailer{
+			MockSend: func(to, subject, body string) error {
+				return nil
+			},
+		}
+		SetUp(helper, &SetUpOptions{
+			DataFile: &database.DataFile{UserFile: PASSWORD_RESET_TEST_FILENAME},
+			ServerOptions: &server.AuthServerOptions{
+				MailerService: mockMailer,
+			},
+		})
+		defer TearDown(helper)
+
+		email := "rate-limit-request@example.com"
+		url := fmt.Sprintf("%s/auth/password-reset/request", helper.AuthURL)
+		payload, _ := json.Marshal(api.RequestPasswordResetRequestBody{Email: email})
+
+		// 1st request - OK
+		resp, err := Post(helper.Client, url, nil, bytes.NewBuffer(payload))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+
+		// 2nd request - OK
+		resp, err = Post(helper.Client, url, nil, bytes.NewBuffer(payload))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+
+		// 3rd request - Too Many Requests
+		resp, err = Post(helper.Client, url, nil, bytes.NewBuffer(payload))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusTooManyRequests, resp.StatusCode)
+	})
+
+	// 2. Request Rate Limit TTL
+	t.Run("RequestRateLimitTTL", func(t *testing.T) {
+		t.Setenv("PASSWORD_RESET_RATE_LIMIT_MAX", "1")
+		t.Setenv("PASSWORD_RESET_RATE_LIMIT_TTL", "1s")
+		helper := NewTestHelper()
+		mockMailer := &mailer.MockMailer{
+			MockSend: func(to, subject, body string) error {
+				return nil
+			},
+		}
+		SetUp(helper, &SetUpOptions{
+			DataFile: &database.DataFile{UserFile: PASSWORD_RESET_TEST_FILENAME},
+			ServerOptions: &server.AuthServerOptions{
+				MailerService: mockMailer,
+			},
+		})
+		defer TearDown(helper)
+
+		email := "rate-limit-ttl-request@example.com"
+		url := fmt.Sprintf("%s/auth/password-reset/request", helper.AuthURL)
+		payload, _ := json.Marshal(api.RequestPasswordResetRequestBody{Email: email})
+
+		// 1st request - OK
+		resp, err := Post(helper.Client, url, nil, bytes.NewBuffer(payload))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+
+		// 2nd request - Too Many Requests
+		resp, err = Post(helper.Client, url, nil, bytes.NewBuffer(payload))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusTooManyRequests, resp.StatusCode)
+
+		// Wait for TTL to expire
+		time.Sleep(1500 * time.Millisecond)
+
+		// 3rd request - OK
+		resp, err = Post(helper.Client, url, nil, bytes.NewBuffer(payload))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+	})
+
+	// 3. Attempt Limit
+	t.Run("AttemptLimit", func(t *testing.T) {
+		t.Setenv("PASSWORD_RESET_ATTEMPT_MAX", "2")
+		helper := NewTestHelper()
+		mockMailer := &mailer.MockMailer{
+			MockSend: func(to, subject, body string) error {
+				return nil
+			},
+		}
+		SetUp(helper, &SetUpOptions{
+			DataFile: &database.DataFile{UserFile: PASSWORD_RESET_TEST_FILENAME},
+			ServerOptions: &server.AuthServerOptions{
+				MailerService: mockMailer,
+			},
+		})
+		defer TearDown(helper)
+
+		email := "test-reset@example.com"
+		url := fmt.Sprintf("%s/auth/password-reset/confirm", helper.AuthURL)
+		payload, _ := json.Marshal(api.ResetPasswordRequestBody{
+			Email:       email,
+			ResetCode:   "WRONG",
+			NewPassword: "newpassword123",
+		})
+
+		// 1st attempt - Bad Request
+		resp, err := Post(helper.Client, url, nil, bytes.NewBuffer(payload))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+
+		// 2nd attempt - Bad Request
+		resp, err = Post(helper.Client, url, nil, bytes.NewBuffer(payload))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+
+		// 3rd attempt - Too Many Requests
+		resp, err = Post(helper.Client, url, nil, bytes.NewBuffer(payload))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusTooManyRequests, resp.StatusCode)
+	})
+
+	// 4. Attempt Limit TTL
+	t.Run("AttemptLimitTTL", func(t *testing.T) {
+		t.Setenv("PASSWORD_RESET_ATTEMPT_MAX", "1")
+		t.Setenv("PASSWORD_RESET_ATTEMPT_TTL", "1s")
+		helper := NewTestHelper()
+		mockMailer := &mailer.MockMailer{
+			MockSend: func(to, subject, body string) error {
+				return nil
+			},
+		}
+		SetUp(helper, &SetUpOptions{
+			DataFile: &database.DataFile{UserFile: PASSWORD_RESET_TEST_FILENAME},
+			ServerOptions: &server.AuthServerOptions{
+				MailerService: mockMailer,
+			},
+		})
+		defer TearDown(helper)
+
+		email := "test-reset@example.com"
+		url := fmt.Sprintf("%s/auth/password-reset/confirm", helper.AuthURL)
+		payload, _ := json.Marshal(api.ResetPasswordRequestBody{
+			Email:       email,
+			ResetCode:   "WRONG",
+			NewPassword: "newpassword123",
+		})
+
+		// 1st attempt - Bad Request
+		resp, err := Post(helper.Client, url, nil, bytes.NewBuffer(payload))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+
+		// 2nd attempt - Too Many Requests
+		resp, err = Post(helper.Client, url, nil, bytes.NewBuffer(payload))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusTooManyRequests, resp.StatusCode)
+
+		// Wait for TTL to expire
+		time.Sleep(1500 * time.Millisecond)
+
+		// 3rd attempt - Bad Request (back to normal)
+		resp, err = Post(helper.Client, url, nil, bytes.NewBuffer(payload))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	})
+
+	// 5. Code TTL
+	t.Run("CodeTTL", func(t *testing.T) {
+		t.Setenv("PASSWORD_RESET_CODE_TTL", "1s")
+
+		var capturedCode string
+		var mu sync.Mutex
+		mockMailer := &mailer.MockMailer{
+			MockSend: func(to, subject, body string) error {
+				mu.Lock()
+				defer mu.Unlock()
+				prefix := "Your password reset code is: "
+				if after, ok := strings.CutPrefix(body, prefix); ok {
+					capturedCode = after
+				}
+				return nil
+			},
+		}
+
+		helper := NewTestHelper()
+		SetUp(helper, &SetUpOptions{
+			DataFile: &database.DataFile{UserFile: PASSWORD_RESET_TEST_FILENAME},
+			ServerOptions: &server.AuthServerOptions{
+				MailerService: mockMailer,
+			},
+		})
+		defer TearDown(helper)
+
+		email := "test-reset@example.com"
+
+		// Request
+		reqUrl := fmt.Sprintf("%s/auth/password-reset/request", helper.AuthURL)
+		reqPayload, _ := json.Marshal(api.RequestPasswordResetRequestBody{Email: email})
+		_, err := Post(helper.Client, reqUrl, nil, bytes.NewBuffer(reqPayload))
+		require.NoError(t, err)
+
+		mu.Lock()
+		code := capturedCode
+		mu.Unlock()
+		require.NotEmpty(t, code)
+
+		// Wait for TTL to expire
+		time.Sleep(1500 * time.Millisecond)
+
+		// Confirm
+		confUrl := fmt.Sprintf("%s/auth/password-reset/confirm", helper.AuthURL)
+		confPayload, _ := json.Marshal(api.ResetPasswordRequestBody{
+			Email:       email,
+			ResetCode:   code,
+			NewPassword: "newpassword123",
+		})
+		resp, err := Post(helper.Client, confUrl, nil, bytes.NewBuffer(confPayload))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode) // Should fail because code expired
 	})
 }

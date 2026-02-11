@@ -54,6 +54,8 @@ type PasswordResetConfig struct {
 	RateLimitTtl time.Duration
 	RateLimitMax int64
 	ResetCodeTtl time.Duration
+	AttemptTtl   time.Duration
+	AttemptMax   int64
 }
 
 type PasswordManagerConfig struct {
@@ -151,6 +153,8 @@ func (p PasswordResetConfig) String() string {
 		fmt.Sprintf("RATE_LIMIT_TTL: %s", p.RateLimitTtl),
 		fmt.Sprintf("RATE_LIMIT_MAX: %d", p.RateLimitMax),
 		fmt.Sprintf("RESET_CODE_TTL: %s", p.ResetCodeTtl),
+		fmt.Sprintf("ATTEMPT_TTL: %s", p.AttemptTtl),
+		fmt.Sprintf("ATTEMPT_MAX: %d", p.AttemptMax),
 	}
 
 	return fmt.Sprintf("PasswordResetConfig{%s}", strings.Join(parts, ", "))
@@ -275,8 +279,8 @@ func (c *Config) setPasswordResetConfig() error {
 	log.Println("Setting PASSWORD_RESET_RATE_LIMIT_TTL")
 	rateLimitTtlStr, has := os.LookupEnv("PASSWORD_RESET_RATE_LIMIT_TTL")
 	if !has {
-		log.Println("PASSWORD_RESET_RATE_LIMIT_TTL not found, setting to 1 minute")
-		c.PasswordResetConfig.RateLimitTtl = time.Minute
+		log.Println("PASSWORD_RESET_RATE_LIMIT_TTL not found, setting to 1 hour")
+		c.PasswordResetConfig.RateLimitTtl = time.Hour
 	} else {
 		rateLimitTtl, err := time.ParseDuration(rateLimitTtlStr)
 		if err != nil {
@@ -309,6 +313,32 @@ func (c *Config) setPasswordResetConfig() error {
 			return fmt.Errorf("Invalid PASSWORD_RESET_CODE_TTL: %s", resetCodeTtlStr)
 		}
 		c.PasswordResetConfig.ResetCodeTtl = resetCodeTtl
+	}
+
+	log.Println("Setting PASSWORD_RESET_ATTEMPT_TTL")
+	attemptTtlStr, has := os.LookupEnv("PASSWORD_RESET_ATTEMPT_TTL")
+	if !has {
+		log.Println("PASSWORD_RESET_ATTEMPT_TTL not found, setting to 1 hour")
+		c.PasswordResetConfig.AttemptTtl = time.Hour
+	} else {
+		attemptTtl, err := time.ParseDuration(attemptTtlStr)
+		if err != nil {
+			return fmt.Errorf("Invalid PASSWORD_RESET_ATTEMPT_TTL: %s", attemptTtlStr)
+		}
+		c.PasswordResetConfig.AttemptTtl = attemptTtl
+	}
+
+	log.Println("Setting PASSWORD_RESET_ATTEMPT_MAX")
+	attemptMaxStr, has := os.LookupEnv("PASSWORD_RESET_ATTEMPT_MAX")
+	if !has {
+		log.Println("PASSWORD_RESET_ATTEMPT_MAX not found, setting to 5")
+		c.PasswordResetConfig.AttemptMax = 5
+	} else {
+		attemptMax, err := strconv.ParseInt(attemptMaxStr, 10, 64)
+		if err != nil {
+			return fmt.Errorf("Invalid PASSWORD_RESET_ATTEMPT_MAX: %s", attemptMaxStr)
+		}
+		c.PasswordResetConfig.AttemptMax = attemptMax
 	}
 
 	return nil

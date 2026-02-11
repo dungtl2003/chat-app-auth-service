@@ -44,6 +44,15 @@ func (c *Client) IncrPasswordResetRateLimit(ctx context.Context, email string) (
 	return val, nil
 }
 
+func (c *Client) DecrPasswordResetRateLimit(ctx context.Context, email string) (int64, error) {
+	key := c.GetPasswordResetRateLimitKey(email)
+	val, err := (*c.internal).Decr(ctx, key).Result()
+	if err != nil {
+		return 0, err
+	}
+	return val, nil
+}
+
 func (c *Client) ExpirePasswordResetRateLimit(ctx context.Context, email string, ttl time.Duration) error {
 	key := c.GetPasswordResetRateLimitKey(email)
 	return (*c.internal).Expire(ctx, key, ttl).Err()
@@ -77,4 +86,35 @@ func (c *Client) GetPasswordResetCode(ctx context.Context, email string) (string
 func (c *Client) DeletePasswordResetCode(ctx context.Context, email string) error {
 	key := c.GetPasswordResetCodeKey(email)
 	return (*c.internal).Del(ctx, key).Err()
+}
+
+func (c *Client) GetPasswordResetAttemptKey(email string) string {
+	return "pwd_reset_attempts:" + email
+}
+
+func (c *Client) IncrPasswordResetAttempt(ctx context.Context, email string) (int64, error) {
+	key := c.GetPasswordResetAttemptKey(email)
+	val, err := (*c.internal).Incr(ctx, key).Result()
+	if err != nil {
+		return 0, err
+	}
+	return val, nil
+}
+
+func (c *Client) DecrPasswordResetAttempt(ctx context.Context, email string) (int64, error) {
+	key := c.GetPasswordResetAttemptKey(email)
+	val, err := (*c.internal).Decr(ctx, key).Result()
+	if err != nil {
+		return 0, err
+	}
+	return val, nil
+}
+
+func (c *Client) ExpirePasswordResetAttempt(ctx context.Context, email string, ttl time.Duration) error {
+	key := c.GetPasswordResetAttemptKey(email)
+	return (*c.internal).Expire(ctx, key, ttl).Err()
+}
+
+func (c *Client) FlushAll(ctx context.Context) error {
+	return (*c.internal).FlushAll(ctx).Err()
 }

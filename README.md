@@ -1,6 +1,6 @@
 # Auth service
 
-Last updated: 2026-02-09
+Last updated: 2026-02-11
 
 # Table of Contents
 
@@ -35,9 +35,11 @@ The service can be configured using the following environment variables:
 | ID_GENERATOR_SERVICE_EPOCH | The epoch to use for the id generator service | No | 1672531200000 | int | any valid epoch in milliseconds |
 | REDIS_ADDRESSES | The addresses of the Redis server | Yes | | string | any valid addresses made of host and port (e.g. localhost:6379,localhost:6380) |
 | REDIS_PASSWORD | The password for the Redis server | No | | string | any valid string |
-| PASSWORD_RESET_RATE_LIMIT_TTL | The TTL for the password reset rate limit | No | 1 minute | string | any valid duration. Valid time units are "ns", "us" (or "µs"), "ms", "s", "m", "h" (e.g. "300ms", "1.5h" or "2h45m") |
+| PASSWORD_RESET_RATE_LIMIT_TTL | The TTL for the password reset rate limit | No | 1 hour | string | any valid duration. Valid time units are "ns", "us" (or "µs"), "ms", "s", "m", "h" (e.g. "300ms", "1.5h" or "2h45m") |
 | PASSWORD_RESET_RATE_LIMIT_MAX | The maximum number of password reset requests allowed in the TTL | No | 5 | int | any valid unsigned int | 
 | PASSWORD_RESET_CODE_TTL | The TTL for the password reset code | No | 15 minutes | string | any valid duration. Valid time units are "ns", "us" (or "µs"), "ms", "s", "m", "h" (e.g. "300ms", "1.5h" or "2h45m") |
+| PASSWORD_RESET_ATTEMPT_TTL | The TTL for the password reset attempt counter | No | 1 hour | string | any valid duration. Valid time units are "ns", "us" (or "µs"), "ms", "s", "m", "h" (e.g. "300ms", "1.5h" or "2h45m") |
+| PASSWORD_RESET_ATTEMPT_MAX | The maximum number of password reset attempts allowed in the TTL | No | 5 | int | any valid unsigned int |
 | SMTP_EMAIL_FROM_NAME_DISPLAY | The display name for the email sender | No | Auth Service | string | any valid string |
 | SMTP_HOST | The SMTP email host | Yes | | string | any valid string |
 | SMTP_PORT | The SMTP email port | Yes | | int | any valid port number |

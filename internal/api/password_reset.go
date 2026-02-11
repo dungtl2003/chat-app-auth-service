@@ -94,6 +94,7 @@ func RequestPasswordReset(handlerDeps *HandlerDeps) gin.HandlerFunc {
 		code, err := helper.GenerateSecureOTP(6)
 		if err != nil {
 			handlerDeps.Logger.Errorfln("GenerateSecureOTP(): %v", err)
+			handlerDeps.RedisClient.DecrPasswordResetRateLimit(c, reqBody.Email)
 			response.Error = &types.ErrorBlock{
 				Code:    http.StatusInternalServerError,
 				Message: "Internal server error",
@@ -111,6 +112,7 @@ func RequestPasswordReset(handlerDeps *HandlerDeps) gin.HandlerFunc {
 			handlerDeps.Config.PasswordResetConfig.ResetCodeTtl,
 		); err != nil {
 			handlerDeps.Logger.Errorfln("SetPasswordResetCode(): %v", err)
+			handlerDeps.RedisClient.DecrPasswordResetRateLimit(c, reqBody.Email)
 			response.Error = &types.ErrorBlock{
 				Code:    http.StatusInternalServerError,
 				Message: "Internal server error",
@@ -128,6 +130,7 @@ func RequestPasswordReset(handlerDeps *HandlerDeps) gin.HandlerFunc {
 			emailBody,
 		); err != nil {
 			handlerDeps.Logger.Errorfln("MailerService.Send(): %v", err)
+			handlerDeps.RedisClient.DecrPasswordResetRateLimit(c, reqBody.Email)
 			response.Error = &types.ErrorBlock{
 				Code:    http.StatusInternalServerError,
 				Message: "Internal server error",
@@ -168,9 +171,47 @@ func ResetPassword(handlerDeps *HandlerDeps) gin.HandlerFunc {
 			return
 		}
 
+		att, err := handlerDeps.RedisClient.IncrPasswordResetAttempt(c, reqBody.Email)
+		if err != nil {
+			handlerDeps.Logger.Errorfln("IncrPasswordResetAttempt(): %v", err)
+			response.Error = &types.ErrorBlock{
+				Code:    http.StatusInternalServerError,
+				Message: "Internal server error",
+				Errors:  []types.ErrorItem{{Message: "Internal server error"}},
+			}
+			c.JSON(response.Error.Code, response)
+			c.Abort()
+			return
+		}
+		if att == 1 {
+			if err := handlerDeps.RedisClient.ExpirePasswordResetAttempt(c, reqBody.Email, handlerDeps.Config.PasswordResetConfig.AttemptTtl); err != nil {
+				handlerDeps.Logger.Errorfln("ExpirePasswordResetAttempt(): %v", err)
+				response.Error = &types.ErrorBlock{
+					Code:    http.StatusInternalServerError,
+					Message: "Internal server error",
+					Errors:  []types.ErrorItem{{Message: "Internal server error"}},
+				}
+				c.JSON(response.Error.Code, response)
+				c.Abort()
+				return
+			}
+		}
+		if att > handlerDeps.Config.PasswordResetConfig.AttemptMax {
+			handlerDeps.Logger.Errorfln("Password reset attempt limit exceeded for email: %s", reqBody.Email)
+			response.Error = &types.ErrorBlock{
+				Code:    http.StatusTooManyRequests,
+				Message: "Too many password reset attempts. Please try again later.",
+				Errors:  []types.ErrorItem{{Message: "Too many password reset attempts. Please try again later."}},
+			}
+			c.JSON(response.Error.Code, response)
+			c.Abort()
+			return
+		}
+
 		storedCode, err := handlerDeps.RedisClient.GetPasswordResetCode(c, reqBody.Email)
 		if err != nil {
 			handlerDeps.Logger.Errorfln("GetPasswordResetCode(): %v", err)
+			handlerDeps.RedisClient.DecrPasswordResetAttempt(c, reqBody.Email) // decrement attempt count on error
 			response.Error = &types.ErrorBlock{
 				Code:    http.StatusInternalServerError,
 				Message: "Internal server error",
@@ -198,6 +239,7 @@ func ResetPassword(handlerDeps *HandlerDeps) gin.HandlerFunc {
 			NewPassword: reqBody.NewPassword,
 		}); err != nil {
 			handlerDeps.Logger.Errorfln("UpdateUserPassword(): %v", err)
+			handlerDeps.RedisClient.DecrPasswordResetAttempt(c, reqBody.Email) // decrement attempt count on error
 			response.Error = &types.ErrorBlock{
 				Code:    http.StatusInternalServerError,
 				Message: "Internal server error",
@@ -211,6 +253,7 @@ func ResetPassword(handlerDeps *HandlerDeps) gin.HandlerFunc {
 		// delete reset code from redis
 		if err := handlerDeps.RedisClient.DeletePasswordResetCode(c, reqBody.Email); err != nil {
 			handlerDeps.Logger.Errorfln("DeletePasswordResetCode(): %v", err)
+			handlerDeps.RedisClient.DecrPasswordResetAttempt(c, reqBody.Email) // decrement attempt count on error
 			response.Error = &types.ErrorBlock{
 				Code:    http.StatusInternalServerError,
 				Message: "Internal server error",

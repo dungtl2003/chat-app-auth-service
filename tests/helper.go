@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"context"
 	"dungtl2003/chat-app-auth-service/internal/logging"
 	"dungtl2003/chat-app-auth-service/internal/password"
 	"dungtl2003/chat-app-auth-service/internal/server"
@@ -12,9 +13,12 @@ import (
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/redis/go-redis/v9"
 )
 
 type TestHelper struct {
+	RedisClient          *redis.Client
 	AdminDatabaseService *database.DatabaseService
 	Client               *http.Client
 	AuthURL              string
@@ -112,7 +116,17 @@ func NewTestHelper() *TestHelper {
 		Timeout: 15 * time.Second,
 	}
 
+	loggerWrapper.Info("Setting up redis client")
+	redisUrl, has := os.LookupEnv("REDIS_URL")
+	if !has {
+		log.Fatalf("Error when getting REDIS_URL")
+	}
+	redisClient := redis.NewClient(&redis.Options{
+		Addr: redisUrl,
+	})
+
 	h := &TestHelper{
+		RedisClient:          redisClient,
 		AdminDatabaseService: db,
 		Client:               client,
 		Logger:               loggerWrapper,
@@ -171,6 +185,16 @@ func SetUp(t *TestHelper, opts *SetUpOptions) {
 
 func TearDown(t *TestHelper) {
 	t.Logger.Info("Tearing down test helper")
+
+	t.Logger.Info("Clearing all redis data")
+	if err := t.RedisClient.FlushAll(context.Background()).Err(); err != nil {
+		log.Fatalf("Error when clearing redis data: %v", err)
+	}
+
+	t.Logger.Info("Closing redis client")
+	if err := t.RedisClient.Close(); err != nil {
+		log.Fatalf("Error when closing redis client: %v", err)
+	}
 
 	t.Logger.Info("Clearing all data")
 	if err := t.clearAllData(); err != nil {
