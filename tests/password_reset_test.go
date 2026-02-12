@@ -133,6 +133,54 @@ func TestPasswordResetFlow(t *testing.T) {
 		require.NotNil(t, respBody.Error)
 		require.Equal(t, "Invalid reset code", respBody.Error.Message)
 	})
+
+	// 5. Reset Password - Non-registered Email
+	t.Run("ResetPassword_NonRegisteredEmail", func(t *testing.T) {
+		nonRegisteredEmail := "non-registered@example.com"
+
+		// 1. Request
+		requestPayload := api.RequestPasswordResetRequestBody{
+			Email: nonRegisteredEmail,
+		}
+		payloadJson, _ := json.Marshal(requestPayload)
+		url := fmt.Sprintf("%s/auth/password-reset/request", helper.AuthURL)
+		resp, err := Post(helper.Client, url, nil, bytes.NewBuffer(payloadJson))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+
+		mu.Lock()
+		code := capturedCode
+		mu.Unlock()
+		require.NotEmpty(t, code)
+
+		// 2. Verify
+		verifyPayload := api.VerifyOtpRequestBody{
+			Email:     nonRegisteredEmail,
+			ResetCode: code,
+		}
+		payloadJson, _ = json.Marshal(verifyPayload)
+		url = fmt.Sprintf("%s/auth/password-reset/verify-otp", helper.AuthURL)
+		resp, err = Post(helper.Client, url, nil, bytes.NewBuffer(payloadJson))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+
+		var verifyResp types.Response[api.VerifyOtpResponseBody]
+		err = json.NewDecoder(resp.Body).Decode(&verifyResp)
+		require.NoError(t, err)
+		token := verifyResp.Data.Item.ResetToken
+
+		// 3. Reset (Should fail with 404)
+		resetPayload := api.ResetPasswordRequestBody{
+			Email:       nonRegisteredEmail,
+			ResetToken:  token,
+			NewPassword: "newpassword123",
+		}
+		payloadJson, _ = json.Marshal(resetPayload)
+		url = fmt.Sprintf("%s/auth/password-reset/reset", helper.AuthURL)
+		resp, err = Post(helper.Client, url, nil, bytes.NewBuffer(payloadJson))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusNotFound, resp.StatusCode)
+	})
 }
 
 func TestPasswordResetRateLimits(t *testing.T) {

@@ -2,6 +2,7 @@ package api
 
 import (
 	"dungtl2003/chat-app-auth-service/internal/helper"
+	"dungtl2003/chat-app-auth-service/internal/services"
 	"dungtl2003/chat-app-auth-service/internal/services/mailer"
 	"dungtl2003/chat-app-auth-service/internal/services/user"
 	"dungtl2003/chat-app-auth-service/internal/types"
@@ -339,15 +340,29 @@ func ResetPassword(handlerDeps *HandlerDeps) gin.HandlerFunc {
 			Email:       reqBody.Email,
 			NewPassword: reqBody.NewPassword,
 		}); err != nil {
-			handlerDeps.Logger.Errorfln("UpdateUserPassword(): %v", err)
-			response.Error = &types.ErrorBlock{
-				Code:    http.StatusInternalServerError,
-				Message: "Internal server error",
-				Errors:  []types.ErrorItem{{Message: "Internal server error"}},
+			switch err := err.(type) {
+			case services.BadResponseError:
+				errResp := err
+				handlerDeps.Logger.Errorfln("UserService.ResetPassword(): %v", errResp.ErrBlock)
+				response.Error = &types.ErrorBlock{
+					Code:    errResp.ErrBlock.Code,
+					Message: errResp.ErrBlock.Message,
+					Errors:  errResp.ErrBlock.Errors,
+				}
+				c.JSON(response.Error.Code, response)
+				c.Abort()
+				return
+			default:
+				handlerDeps.Logger.Errorfln("UpdateUserPassword(): %v", err)
+				response.Error = &types.ErrorBlock{
+					Code:    http.StatusInternalServerError,
+					Message: "Internal server error",
+					Errors:  []types.ErrorItem{{Message: "Internal server error"}},
+				}
+				c.JSON(response.Error.Code, response)
+				c.Abort()
+				return
 			}
-			c.JSON(response.Error.Code, response)
-			c.Abort()
-			return
 		}
 
 		handlerDeps.RedisClient.DeletePasswordResetToken(c, reqBody.Email)
