@@ -18,7 +18,15 @@ type HealthResponse struct {
 	Status string `json:"status"`
 }
 
+type SendEmailRequest struct {
+	FromAddress string `json:"from_address"`
+	FromName    string `json:"from_name"`
+	To          string `json:"to"`
+	Subject     string `json:"subject"`
+	Body        string `json:"body"`
+}
+
 type MailerService interface {
 	services.Service
-	Send(to string, subject string, body string) error
+	Send(req *SendEmailRequest) error
 }

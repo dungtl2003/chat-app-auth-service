@@ -33,17 +33,22 @@ func NewSmtpMailerService(opts *SmtpMailerOptions) (*SmtpMailer, error) {
 	return s, nil
 }
 
-func (s *SmtpMailer) Send(to string, subject string, body string) error {
+func (s *SmtpMailer) Send(req *SendEmailRequest) error {
+	fromEmail := "dunlyn.services@gmail.com"
+	fromName := "Dunlyn Security"
+
 	// Note: The "From" header usually gets overwritten by Gmail to match your account
-	msg := []byte("Subject: " + subject + "\r\n" +
-		"To: " + to + "\r\n" +
-		"MIME-version: 1.0;\nContent-Type: text/html; charset=\"UTF-8\";\n\n" +
-		body + "\r\n")
+	header := fmt.Sprintf("From: %s <%s>\r\n", fromName, fromEmail) +
+		fmt.Sprintf("To: %s\r\n", req.To) +
+		fmt.Sprintf("Subject: %s\r\n", req.Subject) +
+		"MIME-version: 1.0;\nContent-Type: text/html; charset=\"UTF-8\";\n\n"
+
+	msg := []byte(header + req.Body + "\r\n")
 
 	addr := fmt.Sprintf("%s:%d", s.Host, s.Port)
 	// Send WITHOUT authentication (The container does the auth for you)
 	// We pass 'nil' for the auth parameter
-	err := smtp.SendMail(addr, nil, "Dunlyn Security <dunlyn.services@gmail.com>", []string{to}, msg)
+	err := smtp.SendMail(addr, nil, fromEmail, []string{req.To}, msg)
 
 	return err
 }

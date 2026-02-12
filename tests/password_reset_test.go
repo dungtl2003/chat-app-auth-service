@@ -28,12 +28,12 @@ func TestPasswordResetFlow(t *testing.T) {
 	var capturedCode string
 	var mu sync.Mutex
 	mockMailer := &mailer.MockMailer{
-		MockSend: func(to, subject, body string) error {
+		MockSend: func(req *mailer.SendEmailRequest) error {
 			mu.Lock()
 			defer mu.Unlock()
 			// emailBody := fmt.Sprintf("Your password reset code is: %s", code)
 			prefix := "Your password reset code is: "
-			if after, ok := strings.CutPrefix(body, prefix); ok {
+			if after, ok := strings.CutPrefix(req.Body, prefix); ok {
 				capturedCode = after
 			}
 			return nil
@@ -120,7 +120,7 @@ func TestPasswordResetRateLimits(t *testing.T) {
 		t.Setenv("PASSWORD_RESET_RATE_LIMIT_MAX", "2")
 		helper := NewTestHelper()
 		mockMailer := &mailer.MockMailer{
-			MockSend: func(to, subject, body string) error {
+			MockSend: func(req *mailer.SendEmailRequest) error {
 				return nil
 			},
 		}
@@ -158,7 +158,7 @@ func TestPasswordResetRateLimits(t *testing.T) {
 		t.Setenv("PASSWORD_RESET_RATE_LIMIT_TTL", "1s")
 		helper := NewTestHelper()
 		mockMailer := &mailer.MockMailer{
-			MockSend: func(to, subject, body string) error {
+			MockSend: func(req *mailer.SendEmailRequest) error {
 				return nil
 			},
 		}
@@ -198,7 +198,7 @@ func TestPasswordResetRateLimits(t *testing.T) {
 		t.Setenv("PASSWORD_RESET_ATTEMPT_MAX", "2")
 		helper := NewTestHelper()
 		mockMailer := &mailer.MockMailer{
-			MockSend: func(to, subject, body string) error {
+			MockSend: func(req *mailer.SendEmailRequest) error {
 				return nil
 			},
 		}
@@ -240,7 +240,7 @@ func TestPasswordResetRateLimits(t *testing.T) {
 		t.Setenv("PASSWORD_RESET_ATTEMPT_TTL", "1s")
 		helper := NewTestHelper()
 		mockMailer := &mailer.MockMailer{
-			MockSend: func(to, subject, body string) error {
+			MockSend: func(req *mailer.SendEmailRequest) error {
 				return nil
 			},
 		}
@@ -286,11 +286,11 @@ func TestPasswordResetRateLimits(t *testing.T) {
 		var capturedCode string
 		var mu sync.Mutex
 		mockMailer := &mailer.MockMailer{
-			MockSend: func(to, subject, body string) error {
+			MockSend: func(req *mailer.SendEmailRequest) error {
 				mu.Lock()
 				defer mu.Unlock()
 				prefix := "Your password reset code is: "
-				if after, ok := strings.CutPrefix(body, prefix); ok {
+				if after, ok := strings.CutPrefix(req.Body, prefix); ok {
 					capturedCode = after
 				}
 				return nil

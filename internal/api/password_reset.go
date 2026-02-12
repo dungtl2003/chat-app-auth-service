@@ -2,6 +2,7 @@ package api
 
 import (
 	"dungtl2003/chat-app-auth-service/internal/helper"
+	"dungtl2003/chat-app-auth-service/internal/services/mailer"
 	"dungtl2003/chat-app-auth-service/internal/services/user"
 	"dungtl2003/chat-app-auth-service/internal/types"
 	"fmt"
@@ -124,11 +125,13 @@ func RequestPasswordReset(handlerDeps *HandlerDeps) gin.HandlerFunc {
 		}
 
 		emailBody := fmt.Sprintf("Your password reset code is: %s", code)
-		if err := handlerDeps.MailerService.Send(
-			reqBody.Email,
-			"Password Reset Request",
-			emailBody,
-		); err != nil {
+		if err := handlerDeps.MailerService.Send(&mailer.SendEmailRequest{
+			FromAddress: handlerDeps.Config.SmtpConfig.FromAddr,
+			FromName:    handlerDeps.Config.SmtpConfig.FromNameDisplay,
+			To:          reqBody.Email,
+			Subject:     "Password Reset Request",
+			Body:        emailBody,
+		}); err != nil {
 			handlerDeps.Logger.Errorfln("MailerService.Send(): %v", err)
 			handlerDeps.RedisClient.DecrPasswordResetRateLimit(c, reqBody.Email)
 			response.Error = &types.ErrorBlock{

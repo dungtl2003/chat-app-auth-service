@@ -45,6 +45,7 @@ type RedisConfig struct {
 }
 
 type SmtpConfig struct {
+	FromAddr        string
 	FromNameDisplay string
 	Host            string
 	Port            int
@@ -140,7 +141,8 @@ func (t JwtTokenConfig) String() string {
 
 func (e SmtpConfig) String() string {
 	parts := []string{
-		fmt.Sprintf("FROM_ADDRESS: %s", e.FromNameDisplay),
+		fmt.Sprintf("FROM_ADDRESS: %s", e.FromAddr),
+		fmt.Sprintf("FROM_NAME_DISPLAY: %s", e.FromNameDisplay),
 		fmt.Sprintf("HOST: %s", e.Host),
 		fmt.Sprintf("PORT: %d", e.Port),
 	}
@@ -347,11 +349,18 @@ func (c *Config) setPasswordResetConfig() error {
 func (c *Config) setSmtpConfig() error {
 	c.SmtpConfig = SmtpConfig{}
 
-	from, has := os.LookupEnv("SMTP_EMAIL_FROM_NAME_DISPLAY")
+	fromAddr, has := os.LookupEnv("SMTP_EMAIL_FROM_ADDRESS")
 	if !has {
-		return fmt.Errorf("SMTP_EMAIL_FROM_NAME_DISPLAY not found")
+		return fmt.Errorf("SMTP_EMAIL_FROM_ADDRESS not found")
 	}
-	c.SmtpConfig.FromNameDisplay = from
+	c.SmtpConfig.FromAddr = fromAddr
+
+	fromDisplay, has := os.LookupEnv("SMTP_EMAIL_FROM_NAME_DISPLAY")
+	if !has {
+		c.SmtpConfig.FromNameDisplay = fromAddr
+	} else {
+		c.SmtpConfig.FromNameDisplay = fromDisplay
+	}
 
 	host, has := os.LookupEnv("SMTP_HOST")
 	if !has {

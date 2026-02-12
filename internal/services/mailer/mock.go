@@ -6,12 +6,12 @@ type MockMailer struct {
 	MockNameFunc   func() string
 	MockStatusFunc func() services.ServiceStatus
 	MockCloseFunc  func() error
-	MockSend       func(to string, subject string, body string) error
+	MockSend       func(req *SendEmailRequest) error
 }
 
-func (m *MockMailer) Send(to string, subject string, body string) error {
+func (m *MockMailer) Send(req *SendEmailRequest) error {
 	if m.MockSend != nil {
-		return m.MockSend(to, subject, body)
+		return m.MockSend(req)
 	}
 
 	return nil
