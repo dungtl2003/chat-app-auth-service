@@ -40,6 +40,7 @@ The service can be configured using the following environment variables:
 | PASSWORD_RESET_CODE_TTL | The TTL for the password reset code | No | 15 minutes | string | any valid duration. Valid time units are "ns", "us" (or "µs"), "ms", "s", "m", "h" (e.g. "300ms", "1.5h" or "2h45m") |
 | PASSWORD_RESET_ATTEMPT_TTL | The TTL for the password reset attempt counter | No | 1 hour | string | any valid duration. Valid time units are "ns", "us" (or "µs"), "ms", "s", "m", "h" (e.g. "300ms", "1.5h" or "2h45m") |
 | PASSWORD_RESET_ATTEMPT_MAX | The maximum number of password reset attempts allowed in the TTL | No | 5 | int | any valid unsigned int |
+| PASSWORD_RESET_TOKEN_TTL | The TTL for the password reset token | No | 15 minutes | string | any valid duration. Valid time units are "ns", "us" (or "µs"), "ms", "s", "m", "h" (e.g. "300ms", "1.5h" or "2h45m") |
 | SMTP_EMAIL_FROM_ADDRESS | The email address for the email sender | Yes | | string | any valid email address |
 | SMTP_EMAIL_FROM_NAME_DISPLAY | The display name for the email sender | No | Same as SMTP_EMAIL_FROM_ADDRESS | string | any valid string |
 | SMTP_HOST | The SMTP email host | Yes | | string | any valid string |

@@ -120,3 +120,19 @@ func GenerateSecureOTP(length int) (string, error) {
 	}
 	return string(ret), nil
 }
+
+// GenerateSecureToken returns a URL-safe, cryptographically strong token.
+// length: The number of raw random bytes (32 is recommended).
+func GenerateSecureToken(length int) (string, error) {
+	b := make([]byte, length)
+
+	// Read from the OS's CSPRNG (e.g., /dev/urandom on Linux)
+	_, err := rand.Read(b)
+	if err != nil {
+		return "", err
+	}
+
+	// Encode to Hex string (length * 2 characters)
+	// Example: 32 bytes -> 64 character string
+	return hex.EncodeToString(b), nil
+}

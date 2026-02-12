@@ -195,7 +195,12 @@ func New(opts *AuthServerOptions) (*AuthServer, error) {
 		},
 		{
 			Method: router.POST,
-			Path:   "/auth/password-reset/confirm",
+			Path:   "/auth/password-reset/verify-otp",
+			H:      api.VerifyOtp(handlerDeps),
+		},
+		{
+			Method: router.POST,
+			Path:   "/auth/password-reset/reset",
 			H:      api.ResetPassword(handlerDeps),
 		},
 	}

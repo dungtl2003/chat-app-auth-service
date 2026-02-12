@@ -118,3 +118,33 @@ func (c *Client) ExpirePasswordResetAttempt(ctx context.Context, email string, t
 func (c *Client) FlushAll(ctx context.Context) error {
 	return (*c.internal).FlushAll(ctx).Err()
 }
+
+func (c *Client) GetPasswordResetTokenKey(email string) string {
+	return "pwd_reset_token:" + email
+}
+
+func (c *Client) SetPasswordResetToken(
+	ctx context.Context,
+	email, token string,
+	ttl time.Duration,
+) error {
+	key := c.GetPasswordResetTokenKey(email)
+	return (*c.internal).Set(ctx, key, token, ttl).Err()
+}
+
+func (c *Client) GetPasswordResetToken(ctx context.Context, email string) (string, error) {
+	key := c.GetPasswordResetTokenKey(email)
+	val, err := (*c.internal).Get(ctx, key).Result()
+	if err == redis.Nil {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	return val, nil
+}
+
+func (c *Client) DeletePasswordResetToken(ctx context.Context, email string) error {
+	key := c.GetPasswordResetTokenKey(email)
+	return (*c.internal).Del(ctx, key).Err()
+}

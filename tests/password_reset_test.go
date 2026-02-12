@@ -70,37 +70,59 @@ func TestPasswordResetFlow(t *testing.T) {
 		mu.Unlock()
 	})
 
-	// 2. Confirm Password Reset
-	t.Run("ConfirmPasswordReset_Success", func(t *testing.T) {
+	// 2. Verify OTP
+	var capturedToken string
+	t.Run("VerifyOTP_Success", func(t *testing.T) {
 		mu.Lock()
 		code := capturedCode
 		mu.Unlock()
 
-		confirmPayload := api.ResetPasswordRequestBody{
-			Email:       email,
-			ResetCode:   code,
-			NewPassword: "newpassword123",
+		verifyPayload := api.VerifyOtpRequestBody{
+			Email:     email,
+			ResetCode: code,
 		}
-		payloadJson, err := json.Marshal(confirmPayload)
+		payloadJson, err := json.Marshal(verifyPayload)
 		require.NoError(t, err)
 
-		url := fmt.Sprintf("%s/auth/password-reset/confirm", helper.AuthURL)
+		url := fmt.Sprintf("%s/auth/password-reset/verify-otp", helper.AuthURL)
+		resp, err := Post(helper.Client, url, nil, bytes.NewBuffer(payloadJson))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+
+		var respBody types.Response[api.VerifyOtpResponseBody]
+		err = json.NewDecoder(resp.Body).Decode(&respBody)
+		require.NoError(t, err)
+		require.NotNil(t, respBody.Data)
+		require.NotNil(t, respBody.Data.Item)
+		capturedToken = respBody.Data.Item.ResetToken
+	})
+
+	// 3. Reset Password
+	t.Run("ResetPassword_Success", func(t *testing.T) {
+		resetPayload := api.ResetPasswordRequestBody{
+			Email:       email,
+			ResetToken:  capturedToken,
+			NewPassword: "newpassword123",
+		}
+		payloadJson, err := json.Marshal(resetPayload)
+		require.NoError(t, err)
+
+		url := fmt.Sprintf("%s/auth/password-reset/reset", helper.AuthURL)
 		resp, err := Post(helper.Client, url, nil, bytes.NewBuffer(payloadJson))
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 	})
 
-	// 3. Confirm Password Reset - Invalid Code
-	t.Run("ConfirmPasswordReset_InvalidCode", func(t *testing.T) {
-		confirmPayload := api.ResetPasswordRequestBody{
-			Email:       "another-user@example.com",
-			ResetCode:   "123456",
-			NewPassword: "newpassword123",
+	// 4. Verify OTP - Invalid Code
+	t.Run("VerifyOTP_InvalidCode", func(t *testing.T) {
+		verifyPayload := api.VerifyOtpRequestBody{
+			Email:     "another-user@example.com",
+			ResetCode: "123456",
 		}
-		payloadJson, err := json.Marshal(confirmPayload)
+		payloadJson, err := json.Marshal(verifyPayload)
 		require.NoError(t, err)
 
-		url := fmt.Sprintf("%s/auth/password-reset/confirm", helper.AuthURL)
+		url := fmt.Sprintf("%s/auth/password-reset/verify-otp", helper.AuthURL)
 		resp, err := Post(helper.Client, url, nil, bytes.NewBuffer(payloadJson))
 		require.NoError(t, err)
 		require.Equal(t, http.StatusBadRequest, resp.StatusCode)
@@ -211,11 +233,10 @@ func TestPasswordResetRateLimits(t *testing.T) {
 		defer TearDown(helper)
 
 		email := "test-reset@example.com"
-		url := fmt.Sprintf("%s/auth/password-reset/confirm", helper.AuthURL)
-		payload, _ := json.Marshal(api.ResetPasswordRequestBody{
-			Email:       email,
-			ResetCode:   "WRONG",
-			NewPassword: "newpassword123",
+		url := fmt.Sprintf("%s/auth/password-reset/verify-otp", helper.AuthURL)
+		payload, _ := json.Marshal(api.VerifyOtpRequestBody{
+			Email:     email,
+			ResetCode: "WRONG",
 		})
 
 		// 1st attempt - Bad Request
@@ -253,11 +274,10 @@ func TestPasswordResetRateLimits(t *testing.T) {
 		defer TearDown(helper)
 
 		email := "test-reset@example.com"
-		url := fmt.Sprintf("%s/auth/password-reset/confirm", helper.AuthURL)
-		payload, _ := json.Marshal(api.ResetPasswordRequestBody{
-			Email:       email,
-			ResetCode:   "WRONG",
-			NewPassword: "newpassword123",
+		url := fmt.Sprintf("%s/auth/password-reset/verify-otp", helper.AuthURL)
+		payload, _ := json.Marshal(api.VerifyOtpRequestBody{
+			Email:     email,
+			ResetCode: "WRONG",
 		})
 
 		// 1st attempt - Bad Request
@@ -322,12 +342,11 @@ func TestPasswordResetRateLimits(t *testing.T) {
 		// Wait for TTL to expire
 		time.Sleep(1500 * time.Millisecond)
 
-		// Confirm
-		confUrl := fmt.Sprintf("%s/auth/password-reset/confirm", helper.AuthURL)
-		confPayload, _ := json.Marshal(api.ResetPasswordRequestBody{
-			Email:       email,
-			ResetCode:   code,
-			NewPassword: "newpassword123",
+		// Verify OTP
+		confUrl := fmt.Sprintf("%s/auth/password-reset/verify-otp", helper.AuthURL)
+		confPayload, _ := json.Marshal(api.VerifyOtpRequestBody{
+			Email:     email,
+			ResetCode: code,
 		})
 		resp, err := Post(helper.Client, confUrl, nil, bytes.NewBuffer(confPayload))
 		require.NoError(t, err)

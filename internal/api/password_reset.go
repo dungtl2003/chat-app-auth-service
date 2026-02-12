@@ -134,6 +134,7 @@ func RequestPasswordReset(handlerDeps *HandlerDeps) gin.HandlerFunc {
 		}); err != nil {
 			handlerDeps.Logger.Errorfln("MailerService.Send(): %v", err)
 			handlerDeps.RedisClient.DecrPasswordResetRateLimit(c, reqBody.Email)
+			handlerDeps.RedisClient.DeletePasswordResetCode(c, reqBody.Email)
 			response.Error = &types.ErrorBlock{
 				Code:    http.StatusInternalServerError,
 				Message: "Internal server error",
@@ -149,17 +150,20 @@ func RequestPasswordReset(handlerDeps *HandlerDeps) gin.HandlerFunc {
 	}
 }
 
-type ResetPasswordRequestBody struct {
-	Email       string `json:"email" validate:"required"`
-	ResetCode   string `json:"reset_code" validate:"required"`
-	NewPassword string `json:"new_password" validate:"required"`
+type VerifyOtpRequestBody struct {
+	Email     string `json:"email" validate:"required"`
+	ResetCode string `json:"reset_code" validate:"required"`
 }
 
-func ResetPassword(handlerDeps *HandlerDeps) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		response := types.Response[any]{}
+type VerifyOtpResponseBody struct {
+	ResetToken string `json:"reset_token"`
+}
 
-		var reqBody ResetPasswordRequestBody
+func VerifyOtp(handlerDeps *HandlerDeps) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		response := types.Response[VerifyOtpResponseBody]{}
+
+		var reqBody VerifyOtpRequestBody
 		if err := c.ShouldBindJSON(&reqBody); err != nil {
 			handlerDeps.Logger.Errorfln("ShouldBindJSON(): %v", err)
 			response.Error = &types.ErrorBlock{
@@ -237,12 +241,105 @@ func ResetPassword(handlerDeps *HandlerDeps) gin.HandlerFunc {
 			return
 		}
 
+		token, err := helper.GenerateSecureToken(32)
+		if err != nil {
+			handlerDeps.Logger.Errorfln("GenerateSecureToken(): %v", err)
+			handlerDeps.RedisClient.DecrPasswordResetAttempt(c, reqBody.Email) // decrement attempt count on error
+			response.Error = &types.ErrorBlock{
+				Code:    http.StatusInternalServerError,
+				Message: "Internal server error",
+				Errors:  []types.ErrorItem{{Message: "Internal server error"}},
+			}
+			c.JSON(response.Error.Code, response)
+			c.Abort()
+			return
+		}
+
+		if err := handlerDeps.RedisClient.SetPasswordResetToken(
+			c,
+			reqBody.Email,
+			token,
+			handlerDeps.Config.PasswordResetConfig.TokenTtl,
+		); err != nil {
+			handlerDeps.Logger.Errorfln("SetPasswordResetToken(): %v", err)
+			handlerDeps.RedisClient.DecrPasswordResetAttempt(c, reqBody.Email) // decrement attempt count on error
+			response.Error = &types.ErrorBlock{
+				Code:    http.StatusInternalServerError,
+				Message: "Internal server error",
+				Errors:  []types.ErrorItem{{Message: "Internal server error"}},
+			}
+			c.JSON(response.Error.Code, response)
+			c.Abort()
+			return
+		}
+
+		response.Data = &types.DataOrPage[VerifyOtpResponseBody]{
+			Item: &VerifyOtpResponseBody{
+				ResetToken: token,
+			},
+		}
+
+		handlerDeps.RedisClient.DeletePasswordResetCode(c, reqBody.Email)
+		c.JSON(http.StatusOK, response)
+		c.Abort()
+	}
+}
+
+type ResetPasswordRequestBody struct {
+	Email       string `json:"email" validate:"required"`
+	ResetToken  string `json:"reset_token" validate:"required"`
+	NewPassword string `json:"new_password" validate:"required"`
+}
+
+func ResetPassword(handlerDeps *HandlerDeps) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		response := types.Response[any]{}
+
+		var reqBody ResetPasswordRequestBody
+		if err := c.ShouldBindJSON(&reqBody); err != nil {
+			handlerDeps.Logger.Errorfln("ShouldBindJSON(): %v", err)
+			response.Error = &types.ErrorBlock{
+				Code:    http.StatusBadRequest,
+				Message: "Invalid payload",
+				Errors: []types.ErrorItem{
+					{Message: "Invalid payload"},
+				},
+			}
+			c.JSON(response.Error.Code, response)
+			c.Abort()
+			return
+		}
+
+		storedToken, err := handlerDeps.RedisClient.GetPasswordResetToken(c, reqBody.Email)
+		if err != nil {
+			handlerDeps.Logger.Errorfln("GetPasswordResetToken(): %v", err)
+			response.Error = &types.ErrorBlock{
+				Code:    http.StatusInternalServerError,
+				Message: "Internal server error",
+				Errors:  []types.ErrorItem{{Message: "Internal server error"}},
+			}
+			c.JSON(response.Error.Code, response)
+			c.Abort()
+			return
+		}
+
+		if storedToken == "" || storedToken != reqBody.ResetToken {
+			handlerDeps.Logger.Errorfln("Invalid reset token for email: %s", reqBody.Email)
+			response.Error = &types.ErrorBlock{
+				Code:    http.StatusBadRequest,
+				Message: "Invalid reset code",
+				Errors:  []types.ErrorItem{{Message: "Invalid reset token"}},
+			}
+			c.JSON(response.Error.Code, response)
+			c.Abort()
+			return
+		}
+
 		if err := handlerDeps.UserService.ResetPassword(c, &user.ResetPasswordRequest{
 			Email:       reqBody.Email,
 			NewPassword: reqBody.NewPassword,
 		}); err != nil {
 			handlerDeps.Logger.Errorfln("UpdateUserPassword(): %v", err)
-			handlerDeps.RedisClient.DecrPasswordResetAttempt(c, reqBody.Email) // decrement attempt count on error
 			response.Error = &types.ErrorBlock{
 				Code:    http.StatusInternalServerError,
 				Message: "Internal server error",
@@ -253,20 +350,7 @@ func ResetPassword(handlerDeps *HandlerDeps) gin.HandlerFunc {
 			return
 		}
 
-		// delete reset code from redis
-		if err := handlerDeps.RedisClient.DeletePasswordResetCode(c, reqBody.Email); err != nil {
-			handlerDeps.Logger.Errorfln("DeletePasswordResetCode(): %v", err)
-			handlerDeps.RedisClient.DecrPasswordResetAttempt(c, reqBody.Email) // decrement attempt count on error
-			response.Error = &types.ErrorBlock{
-				Code:    http.StatusInternalServerError,
-				Message: "Internal server error",
-				Errors:  []types.ErrorItem{{Message: "Internal server error"}},
-			}
-			c.JSON(response.Error.Code, response)
-			c.Abort()
-			return
-		}
-
+		handlerDeps.RedisClient.DeletePasswordResetToken(c, reqBody.Email)
 		c.JSON(http.StatusOK, response)
 		c.Abort()
 	}

@@ -57,6 +57,7 @@ type PasswordResetConfig struct {
 	ResetCodeTtl time.Duration
 	AttemptTtl   time.Duration
 	AttemptMax   int64
+	TokenTtl     time.Duration
 }
 
 type PasswordManagerConfig struct {
@@ -341,6 +342,19 @@ func (c *Config) setPasswordResetConfig() error {
 			return fmt.Errorf("Invalid PASSWORD_RESET_ATTEMPT_MAX: %s", attemptMaxStr)
 		}
 		c.PasswordResetConfig.AttemptMax = attemptMax
+	}
+
+	log.Println("Setting PASSWORD_RESET_TOKEN_TTL")
+	tokenTtlStr, has := os.LookupEnv("PASSWORD_RESET_TOKEN_TTL")
+	if !has {
+		log.Println("PASSWORD_RESET_TOKEN_TTL not found, setting to 15 minutes")
+		c.PasswordResetConfig.TokenTtl = 15 * time.Minute
+	} else {
+		tokenTtl, err := time.ParseDuration(tokenTtlStr)
+		if err != nil {
+			return fmt.Errorf("Invalid PASSWORD_RESET_TOKEN_TTL: %s", tokenTtlStr)
+		}
+		c.PasswordResetConfig.TokenTtl = tokenTtl
 	}
 
 	return nil
