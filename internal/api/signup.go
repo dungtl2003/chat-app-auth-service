@@ -111,6 +111,8 @@ func SignUp(handlerDeps *HandlerDeps) gin.HandlerFunc {
 			handlerDeps.Config.JwtTokenConfig.RTDurationMs,
 			sessId,
 			handlerDeps.Config.IdGeneratorConfig.Epoch,
+			handlerDeps.Config.JwtTokenConfig.Issuer,
+			handlerDeps.Config.JwtTokenConfig.FrontendAudience,
 		)
 		if err != nil {
 			handlerDeps.Logger.Errorfln("CreateTokens(): error creating tokens: %v", err)

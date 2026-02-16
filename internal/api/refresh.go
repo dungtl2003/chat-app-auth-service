@@ -368,6 +368,8 @@ func createNewTokenPairAbort(
 		handlerDeps.Config.JwtTokenConfig.RTDurationMs,
 		newSessId,
 		handlerDeps.Config.IdGeneratorConfig.Epoch,
+		handlerDeps.Config.JwtTokenConfig.Issuer,
+		handlerDeps.Config.JwtTokenConfig.FrontendAudience,
 	)
 	if err != nil {
 		handlerDeps.Logger.Errorfln("CreateNewTokenPair(): %v", err)

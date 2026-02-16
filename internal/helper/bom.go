@@ -21,6 +21,7 @@ func CreateNewTokenPair(
 	rtDurationMs int64,
 	sessionId int64,
 	epoch int64,
+	issuer string, audience string,
 ) (string, string, error) {
 	accessTokenStr, err := jwthandler.CreateUserToken(
 		secret,
@@ -28,6 +29,7 @@ func CreateNewTokenPair(
 		atDurationMs,
 		sessionId,
 		epoch,
+		issuer, audience,
 	)
 	if err != nil {
 		return "", "", fmt.Errorf("error creating access token: CreateToken(): %v", err)
@@ -38,6 +40,7 @@ func CreateNewTokenPair(
 		rtDurationMs,
 		sessionId,
 		epoch,
+		issuer, audience,
 	)
 	if err != nil {
 		return "", "", fmt.Errorf("error creating refresh token: CreateToken(): %v", err)

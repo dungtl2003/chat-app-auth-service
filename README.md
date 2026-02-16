@@ -1,6 +1,6 @@
 # Auth service
 
-Last updated: 2026-02-12
+Last updated: 2026-02-16
 
 # Table of Contents
 
@@ -30,6 +30,9 @@ The service can be configured using the following environment variables:
 | REFRESH_TOKEN_DURATION_MS | The duration of the refresh token in milliseconds | No | 172800000 (2 days) | int | any valid unsigned int |
 | PASSWORD_HASH_COST | The cost of the password hashing | No | 12 | int | any valid integer between 4 and 31 |
 | DOMAIN_NAME | The domain name of the service | No | localhost | string | any valid string |
+| TOKEN_ISSUER | The issuer of the JWT tokens | No | auth-service | string | any valid string |
+| TOKEN_INTERNAL_AUDIENCE | The internal audience of the JWT tokens | No | auth-service-internal | string | any valid string |
+| TOKEN_FRONTEND_AUDIENCE | The frontend audience of the JWT tokens | No | auth-service-frontend | string | any valid string |
 | ID_GENERATOR_SERVICE_ADDR | The address of the id generator service | Yes | | string | any valid string made of address and port (e.g. localhost:8501) |
 | ID_GENERATOR_SERVICE_CERT_DIR | The directory to the certificate of the id generator service | No | | string | any valid directory |
 | ID_GENERATOR_SERVICE_EPOCH | The epoch to use for the id generator service | No | 1672531200000 | int | any valid epoch in milliseconds |

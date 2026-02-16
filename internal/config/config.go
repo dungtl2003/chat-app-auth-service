@@ -19,9 +19,12 @@ const (
 )
 
 type JwtTokenConfig struct {
-	JwtSecret    string
-	ATDurationMs int64
-	RTDurationMs int64
+	JwtSecret        string
+	ATDurationMs     int64
+	RTDurationMs     int64
+	Issuer           string
+	InternalAudience string
+	FrontendAudience string
 }
 
 type LogConfig struct {
@@ -135,6 +138,9 @@ func (t JwtTokenConfig) String() string {
 		fmt.Sprintf("JWT_SECRET: %s", t.JwtSecret),
 		fmt.Sprintf("AT_DURATION_MS: %d", t.ATDurationMs),
 		fmt.Sprintf("RT_DURATION_MS: %d", t.RTDurationMs),
+		fmt.Sprintf("ISSUER: %s", t.Issuer),
+		fmt.Sprintf("INTERNAL_AUDIENCE: %s", t.InternalAudience),
+		fmt.Sprintf("FRONTEND_AUDIENCE: %s", t.FrontendAudience),
 	}
 
 	return fmt.Sprintf("JwtTokenConfig{%s}", strings.Join(parts, ", "))
@@ -460,11 +466,32 @@ func (c *Config) setJwtTokenConfig() error {
 	if rtDurationMs < 0 {
 		return fmt.Errorf("Refresh token duration must be non-negative")
 	}
+	if atDurationMs >= rtDurationMs {
+		return fmt.Errorf("Access token duration must be less than refresh token duration")
+	}
+
+	issuer, has := os.LookupEnv("TOKEN_ISSUER")
+	if !has {
+		issuer = "chat-app"
+	}
+
+	internalAudience, has := os.LookupEnv("TOKEN_INTERNAL_AUDIENCE")
+	if !has {
+		internalAudience = "chat-app-internal"
+	}
+
+	frontendAudience, has := os.LookupEnv("TOKEN_FRONTEND_AUDIENCE")
+	if !has {
+		frontendAudience = "chat-app-frontend"
+	}
 
 	tokConfig := JwtTokenConfig{
-		JwtSecret:    secretKey,
-		RTDurationMs: rtDurationMs,
-		ATDurationMs: atDurationMs,
+		JwtSecret:        secretKey,
+		RTDurationMs:     rtDurationMs,
+		ATDurationMs:     atDurationMs,
+		Issuer:           issuer,
+		InternalAudience: internalAudience,
+		FrontendAudience: frontendAudience,
 	}
 
 	c.JwtTokenConfig = tokConfig

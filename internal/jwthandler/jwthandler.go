@@ -9,12 +9,6 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-const (
-	ISSUER            = "auth.zolo.me"
-	INTERNAL_AUDIENCE = "internal-service"
-	FRONTEND_AUDIENCE = "zolo-frontend"
-)
-
 type InternalJWTClaim struct {
 	jwt.RegisteredClaims
 }
@@ -51,6 +45,7 @@ func CreateUserToken(
 	duration int64,
 	sessionId int64,
 	epoch int64,
+	issuer string, audience string,
 ) (string, error) {
 	iatTimestamp := extractTimestampFromSnowflake(
 		sessionId,
@@ -64,8 +59,8 @@ func CreateUserToken(
 				IssuedAt:  &jwt.NumericDate{Time: iat.Time},
 				ExpiresAt: &jwt.NumericDate{Time: exp},
 				Subject:   fmt.Sprint(user.Id.Int64()),
-				Issuer:    ISSUER,
-				Audience:  []string{FRONTEND_AUDIENCE},
+				Issuer:    issuer,
+				Audience:  []string{audience},
 			},
 			types.NewJsonInt64(sessionId),
 			user.SessionVersion,
@@ -82,6 +77,7 @@ func CreateInternalToken(
 	key string,
 	duration int64,
 	userId int64,
+	issuer string, audience string,
 ) (string, error) {
 	iat := time.Now().UTC()
 	exp := iat.Add(time.Duration(duration) * time.Millisecond)
@@ -90,8 +86,8 @@ func CreateInternalToken(
 			jwt.RegisteredClaims{
 				IssuedAt:  &jwt.NumericDate{Time: iat},
 				ExpiresAt: &jwt.NumericDate{Time: exp},
-				Issuer:    ISSUER,
-				Audience:  []string{INTERNAL_AUDIENCE},
+				Issuer:    issuer,
+				Audience:  []string{audience},
 				Subject:   fmt.Sprintf("user:%d", userId),
 			},
 		},

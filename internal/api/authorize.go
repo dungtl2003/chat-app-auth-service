@@ -3,9 +3,6 @@ package api
 import (
 	"dungtl2003/chat-app-auth-service/internal/helper"
 	"dungtl2003/chat-app-auth-service/internal/jwthandler"
-	"dungtl2003/chat-app-auth-service/internal/model"
-	"dungtl2003/chat-app-auth-service/internal/services"
-	"dungtl2003/chat-app-auth-service/internal/services/user"
 	"dungtl2003/chat-app-auth-service/internal/types"
 	"fmt"
 	"net/http"
@@ -16,7 +13,7 @@ import (
 
 func Authorize(handlerDeps *HandlerDeps) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		response := types.Response[model.ChatUser]{}
+		response := types.Response[any]{}
 
 		// Bearer <token>
 		authHeader := c.GetHeader("Authorization")
@@ -99,7 +96,7 @@ func Authorize(handlerDeps *HandlerDeps) gin.HandlerFunc {
 			c.Abort()
 			return
 		}
-		if audiences[0] == jwthandler.INTERNAL_AUDIENCE {
+		if audiences[0] == handlerDeps.Config.JwtTokenConfig.InternalAudience {
 			handlerDeps.Logger.Errorfln("token is internal token")
 			response.Error = &types.ErrorBlock{
 				Code:    http.StatusUnauthorized,
@@ -130,6 +127,8 @@ func Authorize(handlerDeps *HandlerDeps) gin.HandlerFunc {
 			handlerDeps.Config.JwtTokenConfig.JwtSecret,
 			handlerDeps.Config.JwtTokenConfig.ATDurationMs,
 			userId,
+			handlerDeps.Config.JwtTokenConfig.Issuer,
+			handlerDeps.Config.JwtTokenConfig.InternalAudience,
 		)
 		if err != nil {
 			handlerDeps.Logger.Errorfln("CreateInternalToken(): %v", err)
@@ -143,43 +142,9 @@ func Authorize(handlerDeps *HandlerDeps) gin.HandlerFunc {
 			return
 		}
 
-		// get user information
-		userResponse, err := handlerDeps.UserService.GetUserById(c, &user.GetUserByIdRequest{
-			UserId: userId,
-		})
-		if err != nil {
-			handlerDeps.Logger.Errorfln("GetUserById(): %v", err)
-			switch err := err.(type) {
-			case services.BadResponseError:
-				response.Error = &err.ErrBlock
-			default:
-				response.Error = &types.ErrorBlock{
-					Code:    http.StatusInternalServerError,
-					Message: "Internal server error",
-					Errors:  []types.ErrorItem{{Message: "Internal server error"}},
-				}
-			}
-
-			c.JSON(response.Error.Code, response)
-			c.Abort()
-			return
-
-		}
-
-		user := userResponse.User
-		// sanitize user data
-		if user.Password != "" {
-			handlerDeps.Logger.Warnfln("User password should not be returned in response")
-			user.Password = ""
-		}
 		// replace user token with internal token for internal service
 		c.Header("Authorization", fmt.Sprintf("Bearer %s", internalToken))
 
-		response.Data = &types.DataOrPage[model.ChatUser]{
-			Item: &user,
-		}
-
-		handlerDeps.Logger.Debugfln("Response body: %+v", response.Data.Item)
 		c.JSON(http.StatusOK, response)
 	}
 }
