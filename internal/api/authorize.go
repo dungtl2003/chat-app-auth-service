@@ -121,12 +121,14 @@ func Authorize(handlerDeps *HandlerDeps) gin.HandlerFunc {
 			return
 		}
 		userId := parsedToken.UserId
+		sessionId := parsedToken.SessionId
 
 		// create internal token
 		internalToken, err := jwthandler.CreateInternalToken(
 			handlerDeps.Config.JwtTokenConfig.JwtSecret,
 			handlerDeps.Config.JwtTokenConfig.ATDurationMs,
 			userId,
+			sessionId,
 			handlerDeps.Config.JwtTokenConfig.Issuer,
 			handlerDeps.Config.JwtTokenConfig.InternalAudience,
 		)

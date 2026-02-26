@@ -132,7 +132,7 @@ func TestCheckWithInternalTokenShouldFail(t *testing.T) {
 	})
 	defer TearDown(helper)
 
-	internalToken, err := jwthandler.CreateInternalToken(helper.JwtSecret, 5_000_000, 2, issuer, internalAud)
+	internalToken, err := jwthandler.CreateInternalToken(helper.JwtSecret, 5_000_000, 2, 2, issuer, internalAud)
 	require.NoError(t, err)
 
 	URL := fmt.Sprintf("%s/auth/check", helper.AuthURL)

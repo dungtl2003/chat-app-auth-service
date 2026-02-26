@@ -11,6 +11,7 @@ import (
 
 type InternalJWTClaim struct {
 	jwt.RegisteredClaims
+	SessId types.JsonInt64 `json:"sess_id"`
 }
 
 type UserJWTClaim struct {
@@ -77,6 +78,7 @@ func CreateInternalToken(
 	key string,
 	duration int64,
 	userId int64,
+	sessionId int64,
 	issuer string, audience string,
 ) (string, error) {
 	iat := time.Now().UTC()
@@ -90,6 +92,7 @@ func CreateInternalToken(
 				Audience:  []string{audience},
 				Subject:   fmt.Sprintf("user:%d", userId),
 			},
+			types.NewJsonInt64(sessionId),
 		},
 	)
 
