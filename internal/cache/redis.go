@@ -2,6 +2,7 @@ package cache
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -110,6 +111,11 @@ func (c *Client) DecrPasswordResetAttempt(ctx context.Context, email string) (in
 	return val, nil
 }
 
+func (c *Client) DeletePasswordResetAttempt(ctx context.Context, email string) error {
+	key := c.GetPasswordResetAttemptKey(email)
+	return (*c.internal).Del(ctx, key).Err()
+}
+
 func (c *Client) ExpirePasswordResetAttempt(ctx context.Context, email string, ttl time.Duration) error {
 	key := c.GetPasswordResetAttemptKey(email)
 	return (*c.internal).Expire(ctx, key, ttl).Err()
@@ -147,4 +153,20 @@ func (c *Client) GetPasswordResetToken(ctx context.Context, email string) (strin
 func (c *Client) DeletePasswordResetToken(ctx context.Context, email string) error {
 	key := c.GetPasswordResetTokenKey(email)
 	return (*c.internal).Del(ctx, key).Err()
+}
+
+func (c *Client) GetBlacklistSessionKey(sessionId int64) string {
+	return fmt.Sprintf("blacklist_session_%d", sessionId)
+}
+
+func (c *Client) IsSessionBlacklisted(ctx context.Context, sessionId int64) (bool, error) {
+	key := c.GetBlacklistSessionKey(sessionId)
+	val, err := (*c.internal).Get(ctx, key).Result()
+	if err == redis.Nil {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return val == "true", nil
 }

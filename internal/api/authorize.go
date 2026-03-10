@@ -123,6 +123,22 @@ func Authorize(handlerDeps *HandlerDeps) gin.HandlerFunc {
 		userId := parsedToken.UserId
 		sessionId := parsedToken.SessionId
 
+		// check if session is blacklisted, if yes then 401, if error then ignore and continue
+		isBlacklisted, err := handlerDeps.RedisClient.IsSessionBlacklisted(c.Request.Context(), sessionId)
+		if err != nil {
+			handlerDeps.Logger.Errorfln("IsBlacklistedSession(): %v", err)
+		} else if isBlacklisted {
+			handlerDeps.Logger.Errorfln("Session %d is blacklisted", sessionId)
+			response.Error = &types.ErrorBlock{
+				Code:    http.StatusUnauthorized,
+				Message: "Invalid token",
+				Errors:  []types.ErrorItem{{Message: "Invalid token"}},
+			}
+			c.JSON(response.Error.Code, response)
+			c.Abort()
+			return
+		}
+
 		// create internal token
 		internalToken, err := jwthandler.CreateInternalToken(
 			handlerDeps.Config.JwtTokenConfig.JwtSecret,

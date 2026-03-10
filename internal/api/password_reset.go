@@ -124,6 +124,7 @@ func RequestPasswordReset(handlerDeps *HandlerDeps) gin.HandlerFunc {
 			c.Abort()
 			return
 		}
+		handlerDeps.RedisClient.DeletePasswordResetAttempt(c, reqBody.Email) // reset attempt count on successful code generation
 
 		emailBody := fmt.Sprintf("Your password reset code is: %s", code)
 		if err := handlerDeps.MailerService.Send(&mailer.SendEmailRequest{
