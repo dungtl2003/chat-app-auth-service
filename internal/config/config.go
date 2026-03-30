@@ -43,8 +43,9 @@ type IdGeneratorConfig struct {
 }
 
 type RedisConfig struct {
-	Addrs    []string
-	Password string
+	MasterAddr  string
+	ReplicaAddr string
+	Password    string
 }
 
 type SmtpConfig struct {
@@ -171,7 +172,8 @@ func (p PasswordResetConfig) String() string {
 
 func (r RedisConfig) String() string {
 	parts := []string{
-		fmt.Sprintf("ADDRS: %v", r.Addrs),
+		fmt.Sprintf("MASTER_ADDR: %s", r.MasterAddr),
+		fmt.Sprintf("REPLICA_ADDR: %s", r.ReplicaAddr),
 		fmt.Sprintf("PASSWORD: %s", r.Password),
 	}
 
@@ -266,11 +268,17 @@ func (c *Config) setIdGeneratorConfig() error {
 func (c *Config) setRedisConfig() error {
 	c.RedisConfig = RedisConfig{}
 
-	addrsStr, has := os.LookupEnv("REDIS_ADDRESSES")
+	masterAddr, has := os.LookupEnv("REDIS_MASTER_ADDR")
 	if !has {
-		return fmt.Errorf("REDIS_ADDRESSES not found")
+		return fmt.Errorf("REDIS_MASTER_ADDR is required")
 	}
-	c.RedisConfig.Addrs = strings.Split(addrsStr, ",")
+	c.RedisConfig.MasterAddr = masterAddr
+
+	replicaAddr, has := os.LookupEnv("REDIS_REPLICA_ADDR")
+	if !has {
+		replicaAddr = masterAddr
+	}
+	c.RedisConfig.ReplicaAddr = replicaAddr
 
 	password, has := os.LookupEnv("REDIS_PASSWORD")
 	if has {

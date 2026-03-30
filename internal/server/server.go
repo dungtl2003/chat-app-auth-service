@@ -126,8 +126,10 @@ func New(opts *AuthServerOptions) (*AuthServer, error) {
 	}
 
 	redisClient, err := cache.NewRedisClient(ctx, cache.Config{
-		Addrs:    config.RedisConfig.Addrs,
-		Password: config.RedisConfig.Password,
+		MasterAddr:  config.RedisConfig.MasterAddr,
+		ReplicaAddr: config.RedisConfig.ReplicaAddr,
+		Password:    config.RedisConfig.Password,
+		Logger:      loggerWrapper,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("error when creating redis client: %w", err)

@@ -2,6 +2,7 @@ package cache
 
 import (
 	"context"
+	"dungtl2003/chat-app-auth-service/internal/logging"
 	"fmt"
 	"time"
 
@@ -9,27 +10,43 @@ import (
 )
 
 type Client struct {
-	internal *redis.UniversalClient
+	writer redis.UniversalClient
+	reader redis.UniversalClient
+	logger *logging.LoggerWrapper
 }
 
 type Config struct {
-	Addrs    []string
-	Password string
+	MasterAddr  string
+	ReplicaAddr string
+	Password    string
+	Logger      *logging.LoggerWrapper
 }
 
 func NewRedisClient(ctx context.Context, cfg Config) (*Client, error) {
-	rdb := redis.NewUniversalClient(&redis.UniversalOptions{
-		Addrs:    cfg.Addrs,
+	writer := redis.NewUniversalClient(&redis.UniversalOptions{
+		Addrs:    []string{cfg.MasterAddr},
 		Password: cfg.Password,
 	})
 
-	if err := rdb.Ping(ctx).Err(); err != nil {
+	reader := redis.NewUniversalClient(&redis.UniversalOptions{
+		Addrs:    []string{cfg.ReplicaAddr},
+		Password: cfg.Password,
+	})
+
+	if err := writer.Ping(ctx).Err(); err != nil {
+		return nil, err
+	}
+
+	if err := reader.Ping(ctx).Err(); err != nil {
 		return nil, err
 	}
 
 	return &Client{
-		internal: &rdb,
+		writer: writer,
+		reader: reader,
+		logger: cfg.Logger,
 	}, nil
+
 }
 
 func (c *Client) GetPasswordResetRateLimitKey(email string) string {
@@ -38,7 +55,7 @@ func (c *Client) GetPasswordResetRateLimitKey(email string) string {
 
 func (c *Client) IncrPasswordResetRateLimit(ctx context.Context, email string) (int64, error) {
 	key := c.GetPasswordResetRateLimitKey(email)
-	val, err := (*c.internal).Incr(ctx, key).Result()
+	val, err := c.writer.Incr(ctx, key).Result()
 	if err != nil {
 		return 0, err
 	}
@@ -47,7 +64,7 @@ func (c *Client) IncrPasswordResetRateLimit(ctx context.Context, email string) (
 
 func (c *Client) DecrPasswordResetRateLimit(ctx context.Context, email string) (int64, error) {
 	key := c.GetPasswordResetRateLimitKey(email)
-	val, err := (*c.internal).Decr(ctx, key).Result()
+	val, err := c.writer.Decr(ctx, key).Result()
 	if err != nil {
 		return 0, err
 	}
@@ -56,7 +73,7 @@ func (c *Client) DecrPasswordResetRateLimit(ctx context.Context, email string) (
 
 func (c *Client) ExpirePasswordResetRateLimit(ctx context.Context, email string, ttl time.Duration) error {
 	key := c.GetPasswordResetRateLimitKey(email)
-	return (*c.internal).Expire(ctx, key, ttl).Err()
+	return c.writer.Expire(ctx, key, ttl).Err()
 }
 
 func (c *Client) GetPasswordResetCodeKey(email string) string {
@@ -69,12 +86,12 @@ func (c *Client) SetPasswordResetCode(
 	ttl time.Duration,
 ) error {
 	key := c.GetPasswordResetCodeKey(email)
-	return (*c.internal).Set(ctx, key, code, ttl).Err()
+	return c.writer.Set(ctx, key, code, ttl).Err()
 }
 
 func (c *Client) GetPasswordResetCode(ctx context.Context, email string) (string, error) {
 	key := c.GetPasswordResetCodeKey(email)
-	val, err := (*c.internal).Get(ctx, key).Result()
+	val, err := c.Get(ctx, key).Result()
 	if err == redis.Nil {
 		return "", nil
 	}
@@ -86,7 +103,7 @@ func (c *Client) GetPasswordResetCode(ctx context.Context, email string) (string
 
 func (c *Client) DeletePasswordResetCode(ctx context.Context, email string) error {
 	key := c.GetPasswordResetCodeKey(email)
-	return (*c.internal).Del(ctx, key).Err()
+	return c.writer.Del(ctx, key).Err()
 }
 
 func (c *Client) GetPasswordResetAttemptKey(email string) string {
@@ -95,7 +112,7 @@ func (c *Client) GetPasswordResetAttemptKey(email string) string {
 
 func (c *Client) IncrPasswordResetAttempt(ctx context.Context, email string) (int64, error) {
 	key := c.GetPasswordResetAttemptKey(email)
-	val, err := (*c.internal).Incr(ctx, key).Result()
+	val, err := c.writer.Incr(ctx, key).Result()
 	if err != nil {
 		return 0, err
 	}
@@ -104,7 +121,7 @@ func (c *Client) IncrPasswordResetAttempt(ctx context.Context, email string) (in
 
 func (c *Client) DecrPasswordResetAttempt(ctx context.Context, email string) (int64, error) {
 	key := c.GetPasswordResetAttemptKey(email)
-	val, err := (*c.internal).Decr(ctx, key).Result()
+	val, err := c.writer.Decr(ctx, key).Result()
 	if err != nil {
 		return 0, err
 	}
@@ -113,16 +130,16 @@ func (c *Client) DecrPasswordResetAttempt(ctx context.Context, email string) (in
 
 func (c *Client) DeletePasswordResetAttempt(ctx context.Context, email string) error {
 	key := c.GetPasswordResetAttemptKey(email)
-	return (*c.internal).Del(ctx, key).Err()
+	return c.writer.Del(ctx, key).Err()
 }
 
 func (c *Client) ExpirePasswordResetAttempt(ctx context.Context, email string, ttl time.Duration) error {
 	key := c.GetPasswordResetAttemptKey(email)
-	return (*c.internal).Expire(ctx, key, ttl).Err()
+	return c.writer.Expire(ctx, key, ttl).Err()
 }
 
 func (c *Client) FlushAll(ctx context.Context) error {
-	return (*c.internal).FlushAll(ctx).Err()
+	return c.writer.FlushAll(ctx).Err()
 }
 
 func (c *Client) GetPasswordResetTokenKey(email string) string {
@@ -135,12 +152,12 @@ func (c *Client) SetPasswordResetToken(
 	ttl time.Duration,
 ) error {
 	key := c.GetPasswordResetTokenKey(email)
-	return (*c.internal).Set(ctx, key, token, ttl).Err()
+	return c.writer.Set(ctx, key, token, ttl).Err()
 }
 
 func (c *Client) GetPasswordResetToken(ctx context.Context, email string) (string, error) {
 	key := c.GetPasswordResetTokenKey(email)
-	val, err := (*c.internal).Get(ctx, key).Result()
+	val, err := c.Get(ctx, key).Result()
 	if err == redis.Nil {
 		return "", nil
 	}
@@ -152,7 +169,7 @@ func (c *Client) GetPasswordResetToken(ctx context.Context, email string) (strin
 
 func (c *Client) DeletePasswordResetToken(ctx context.Context, email string) error {
 	key := c.GetPasswordResetTokenKey(email)
-	return (*c.internal).Del(ctx, key).Err()
+	return c.writer.Del(ctx, key).Err()
 }
 
 func (c *Client) GetBlacklistSessionKey(sessionId int64) string {
@@ -161,7 +178,7 @@ func (c *Client) GetBlacklistSessionKey(sessionId int64) string {
 
 func (c *Client) IsSessionBlacklisted(ctx context.Context, sessionId int64) (bool, error) {
 	key := c.GetBlacklistSessionKey(sessionId)
-	val, err := (*c.internal).Get(ctx, key).Result()
+	val, err := c.Get(ctx, key).Result()
 	if err == redis.Nil {
 		return false, nil
 	}
@@ -169,4 +186,18 @@ func (c *Client) IsSessionBlacklisted(ctx context.Context, sessionId int64) (boo
 		return false, err
 	}
 	return val == "true", nil
+}
+
+func (c *Client) Get(ctx context.Context, key string) *redis.StringCmd {
+	val, err := c.reader.Get(ctx, key).Result()
+	if err != nil && isNetworkError(err) {
+		c.logger.Warn("Replicas down! Falling back to Master for read operation.")
+		return c.writer.Get(ctx, key)
+	}
+
+	return redis.NewStringResult(val, err)
+}
+
+func isNetworkError(err error) bool {
+	return err != redis.Nil // redis.Nil means the key doesn't exist, which is a normal response
 }

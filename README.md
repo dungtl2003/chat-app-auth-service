@@ -1,6 +1,6 @@
 # Auth service
 
-Last updated: 2026-02-16
+Last updated: 2026-03-30
 
 # Table of Contents
 
@@ -36,7 +36,8 @@ The service can be configured using the following environment variables:
 | ID_GENERATOR_SERVICE_ADDR | The address of the id generator service | Yes | | string | any valid string made of address and port (e.g. localhost:8501) |
 | ID_GENERATOR_SERVICE_CERT_DIR | The directory to the certificate of the id generator service | No | | string | any valid directory |
 | ID_GENERATOR_SERVICE_EPOCH | The epoch to use for the id generator service | No | 1672531200000 | int | any valid epoch in milliseconds |
-| REDIS_ADDRESSES | The addresses of the Redis server | Yes | | string | any valid addresses made of host and port (e.g. localhost:6379,localhost:6380) |
+| REDIS_MASTER_ADDR | The master address of the Redis server | Yes | | string | any valid address made of host and port (e.g. localhost:6379) |
+| REDIS_REPLICA_ADDR | The replica address of the Redis server, default to the master address if not provided | No | | string | any valid address made of host and port (e.g. localhost:6379) |
 | REDIS_PASSWORD | The password for the Redis server | No | | string | any valid string |
 | PASSWORD_RESET_RATE_LIMIT_TTL | The TTL for the password reset rate limit | No | 1 hour | string | any valid duration. Valid time units are "ns", "us" (or "µs"), "ms", "s", "m", "h" (e.g. "300ms", "1.5h" or "2h45m") |
 | PASSWORD_RESET_RATE_LIMIT_MAX | The maximum number of password reset requests allowed in the TTL | No | 5 | int | any valid unsigned int | 
