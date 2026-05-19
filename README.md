@@ -1,7 +1,5 @@
 # Auth service
 
-Last updated: 2026-03-30
-
 # Table of Contents
 
 - [Description](#description)
